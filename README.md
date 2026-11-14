@@ -14,6 +14,10 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Factions**: *Ironvow Order* (soldiers, siege, sunfire) and *Thornwild Circle* (swarms, beasts, lightning, treants).
 - **Persistence**: accounts, stats, match history, and live match snapshots in MongoDB. A host can **save & exit** and resume the match another day with the same players. Matches that a server crash or restart interrupts also become resumable.
 
+## Versioning
+
+The game uses semantic versioning. The current version is in the root `package.json`, shown in the lower-right corner of the game, and every release is listed in [CHANGELOG.md](CHANGELOG.md).
+
 ## Stack
 
 | Part | Tech |

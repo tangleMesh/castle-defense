@@ -123,6 +123,8 @@ class App {
   }
 }
 
+document.getElementById('app-version')!.textContent = `v${__APP_VERSION__}`;
+
 const app = new App();
 // `?debug` exposes the app on window for manual inspection and automated UI tests.
 if (new URLSearchParams(location.search).has('debug')) (window as unknown as { bc: App }).bc = app;
