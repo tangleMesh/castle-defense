@@ -306,3 +306,41 @@ input:focus, select:focus { border-color: var(--gold-2); }
   font: 500 10px/1.2 'Alegreya Sans', system-ui, sans-serif; letter-spacing: 0.04em;
   color: rgba(230, 215, 180, 0.6); text-shadow: 0 1px 2px #000; pointer-events: none;
 }
+
+/* ---- builder item bag + castle shop button (sits on top of the command card) */
+.bag {
+  position: absolute; right: 6px; bottom: 176px; display: flex; gap: 4px; align-items: stretch; z-index: 5;
+  padding: 4px; background: linear-gradient(#2e2a22, #191712); border: 1px solid var(--edge); border-radius: 5px 5px 0 0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, .5);
+}
+@media (max-width: 760px) { .bag { bottom: 158px; } }
+.bag .tip {
+  display: none; position: absolute; bottom: calc(100% + 8px); right: 0; width: 270px; z-index: 20; text-align: left; pointer-events: none;
+  background: rgba(14, 12, 9, .96); border: 1px solid var(--edge); border-radius: 4px; padding: 8px 10px; font-size: 13px; line-height: 1.35; color: var(--text, #eee);
+  font-family: inherit; font-weight: 400;
+}
+.bag > :hover .tip { display: block; }
+.bag .hk { position: absolute; top: 1px; left: 3px; font-size: 11px; font-weight: 700; color: #ffe8a0; text-shadow: 0 1px 2px #000, 0 0 2px #000; }
+.bag-shop {
+  position: relative; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 18px; height: 40px; cursor: pointer;
+  font-family: var(--head); font-size: 14px; color: var(--gold); background: linear-gradient(#3a3020, #201a10);
+  border: 1px solid #8a6a20; border-radius: 3px;
+}
+.bag-shop:hover { border-color: var(--gold); }
+.bag-shop.active { border-color: #7aff8a; box-shadow: 0 0 0 1px #7aff8a, 0 0 10px rgba(122, 255, 138, .5); }
+.bag-shop-ico {
+  width: 18px; height: 16px; flex: none; background: linear-gradient(#e0c060, #8a6020);
+  clip-path: polygon(0 100%, 0 30%, 20% 30%, 20% 0, 40% 0, 40% 30%, 60% 30%, 60% 0, 80% 0, 80% 30%, 100% 30%, 100% 100%);
+}
+.bag-slot {
+  position: relative; width: 40px; height: 40px; padding: 0; border: 1px solid #5a4a2a; border-radius: 3px; background: #1c1a14; cursor: default;
+}
+.bag-slot img { width: 100%; height: 100%; display: block; border-radius: 2px; }
+.bag-slot.empty { background: #12110d; border-color: #2a261c; border-style: dashed; }
+.bag-slot.usable { cursor: pointer; }
+.bag-slot.usable:not(.ready) img { filter: brightness(.7); }
+.bag-slot.ready { border-color: #ffd860; box-shadow: 0 0 8px rgba(255, 216, 96, .7); animation: bagPulse 1.2s ease-in-out infinite; }
+@keyframes bagPulse { 50% { box-shadow: 0 0 2px rgba(255, 216, 96, .3); } }
+.item-line { display: flex; align-items: center; gap: 4px; }
+.item-line img { width: 22px; height: 22px; border-radius: 2px; border: 1px solid #5a4a2a; }
+.sb-items img { width: 18px; height: 18px; border-radius: 2px; vertical-align: middle; margin-left: 2px; }

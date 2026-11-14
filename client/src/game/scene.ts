@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, rectCenter,
+  BUILDINGS, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -509,12 +509,12 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- fog of war
 
-  private updateVision(snap: { tick: number; round: number; phase: import('@bc/shared').Phase; ents: EntRow[] }) {
+  private updateVision(snap: { tick: number; round: number; phase: import('@bc/shared').Phase; ents: EntRow[]; players: Array<{ items?: string[] }> }) {
     const key = `${snap.round}:${snap.tick}`;
     if (key === this.visionKey) return;
     const newRound = !this.visionKey.startsWith(`${snap.round}:`);
     this.visionKey = key;
-    this.vision = fogActive(snap.phase) ? visionFromRows(this.session.team, snap.ents) : null;
+    this.vision = fogActive(snap.phase) ? visionFromRows(this.session.team, snap.ents, snap.players) : null;
     for (const g of [...this.ghosts.values()]) {
       if (newRound || !this.vision || entityVisible(this.vision, g.kind, g.type, g.x, g.y)) {
         this.destroyView(g);
@@ -627,6 +627,12 @@ export class GameScene extends Phaser.Scene {
         const r = sel.kind === KIND_UNIT ? UNITS[sel.type].radius + 0.15 : 0.45;
         const e = isoEllipse(r);
         g.strokeEllipse(p.x, p.y, e.w, e.h);
+        // Item reach of a selected builder: crossbow range (gold), repair range (green).
+        const owner = sel.kind === KIND_BUILDER ? s.latest.players[sel.owner] : undefined;
+        const atk = owner && itemEffect(owner, 'builderAttack');
+        const rep = owner && itemEffect(owner, 'repair');
+        if (atk) { const a = isoEllipse(atk.range + 0.3); g.lineStyle(1, 0xffd060, 0.45); g.strokeEllipse(p.x, p.y, a.w, a.h); }
+        if (rep) { const a = isoEllipse(rep.range); g.lineStyle(1, 0x60ff80, 0.45); g.strokeEllipse(p.x, p.y, a.w, a.h); }
       } else {
         const size = sel.kind === KIND_CASTLE ? CASTLE_SIZE : BUILDINGS[sel.type].size;
         g.strokePoints(this.diamond(g, sel.x - size / 2, sel.y - size / 2, size, size), true);
@@ -704,7 +710,7 @@ export class GameScene extends Phaser.Scene {
   private projectile(from: View, to: View) {
     const u = from.kind === KIND_UNIT ? UNITS[from.type] : null;
     const a = toScreen(from.x, from.y), b = toScreen(to.x, to.y);
-    const ay = a.y - (from.air ? AIR_LIFT : 0) - (from.kind === KIND_UNIT ? 16 : from.kind === KIND_CASTLE ? 90 : 40);
+    const ay = a.y - (from.air ? AIR_LIFT : 0) - (from.kind === KIND_UNIT || from.kind === KIND_BUILDER ? 16 : from.kind === KIND_CASTLE ? 90 : 40);
     const by = b.y - (to.air ? AIR_LIFT : 0) - (to.kind === KIND_UNIT ? 10 : 20);
     let key = 'arrow', tint = 0xffffff;
     if (u?.attackType === 'magic') { key = 'orb'; tint = u.model.accent; }

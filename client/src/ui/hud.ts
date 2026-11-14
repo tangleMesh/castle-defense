@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, BUILDINGS, INCOME_PCT, FACTIONS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive,
+  BASE_INCOME, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -10,6 +10,7 @@ import { DPR, TEAM_COLORS, TEAM_CSS, TEAM_NAMES, WORLD, toScreen, toTile } from 
 /** Minimap size in CSS pixels; the canvas backing store is DPR× larger. */
 const MINI_W = 232, MINI_H = 116;
 import { $, clear, css, h } from './dom';
+import { itemIcon } from './itemIcons';
 
 interface CardButton {
   slot: number;
@@ -44,6 +45,9 @@ export class Hud {
   private root: HTMLElement;
   private icons = new Map<string, string>();
   private card!: HTMLElement;
+  /** The builder's item bag (above the command card), with the shop button. */
+  private bag!: HTMLElement;
+  private lastBagKey = '';
   private info!: HTMLElement;
   private top!: HTMLElement;
   private msg!: HTMLElement;
@@ -152,6 +156,7 @@ export class Hud {
 
     this.info = h('div', { class: 'info' });
     this.card = h('div', { class: 'card' });
+    this.bag = h('div', { class: 'bag' });
     this.overlay = h('div', { class: 'overlay' });
     this.overlay.hidden = true;
     this.banner = h('div', { class: 'banner' });
@@ -166,7 +171,7 @@ export class Hud {
     );
     this.board = h('div', { class: 'scoreboard' });
     this.board.hidden = true;
-    this.root.append(this.top, this.msg, this.chatLog, this.chatInput, consoleEl, this.banner, this.board, this.overlay, this.menu);
+    this.root.append(this.top, this.msg, this.chatLog, this.chatInput, consoleEl, this.bag, this.banner, this.board, this.overlay, this.menu);
     this.refreshCard(true);
     this.refreshInfo(true);
   }
@@ -212,7 +217,7 @@ export class Hud {
     for (const e of snap.ents) if (e[1] === 1 && per.has(e[3])) per.get(e[3])!.value += chainCost(e[2]);
 
     const num = (v: number) => v.toLocaleString();
-    const head = h('tr', null, ...['Player', 'Army', 'Buildings', 'Special', 'Kills', 'Lost', 'Castle dmg', 'Income', 'Gold earned', 'Gold', 'Strike']
+    const head = h('tr', null, ...['Player', 'Army', 'Buildings', 'Special', 'Items', 'Kills', 'Lost', 'Castle dmg', 'Income', 'Gold earned', 'Gold', 'Strike']
       .map((t, i) => h('th', { class: i ? 'n' : '' }, t)));
     const teamBlock = (team: 0 | 1) => {
       const ps = snap.players.filter((p) => p.team === team);
@@ -230,6 +235,7 @@ export class Hud {
           h('td', { class: 'n' }, hidden ? q() : r.units),
           h('td', { class: 'n' }, ...(hidden ? [q()] : [`${r.buildings}`, h('span', { class: 'dim' }, ` · ${num(r.value)}g`)])),
           h('td', { class: `n ${hidden || r.special === '—' ? 'dim' : 'special'}` }, hidden ? q() : r.special),
+          h('td', { class: 'n sb-items' }, (p.items ?? []).length ? (p.items ?? []).map((id) => h('img', { src: itemIcon(id), alt: '', title: ITEM_BY_ID[id]?.name ?? id })) : h('span', { class: 'dim' }, '—')),
           h('td', { class: 'n' }, p.kills),
           h('td', { class: 'n' }, p.lost),
           h('td', { class: 'n' }, num(p.castleDmg)),
@@ -244,6 +250,7 @@ export class Hud {
         h('td', { class: 'n' }, team !== myTeam && fogged ? '' : sum((p) => per.get(p.i)!.units)),
         h('td', { class: 'n' }, team !== myTeam && fogged ? '' : sum((p) => per.get(p.i)!.buildings)),
         h('td', { class: 'n' }, team !== myTeam && fogged ? '' : ps.filter((p) => per.get(p.i)!.special !== '—').length),
+        h('td', { class: 'n' }, sum((p) => (p.items ?? []).length)),
         h('td', { class: 'n' }, sum((p) => p.kills)),
         h('td', { class: 'n' }, sum((p) => p.lost)),
         h('td', { class: 'n' }, num(sum((p) => p.castleDmg))),
@@ -252,7 +259,7 @@ export class Hud {
         h('td', { class: 'n' }, team === myTeam ? num(sum((p) => p.gold)) : ''),
         h('td', { class: 'n' }, `${ps.filter((p) => !p.rescueUsed).length}/${ps.length}`),
       );
-      return [h('tr', { class: 'team-head' }, h('td', { colSpan: 11, style: `color:${TEAM_CSS[team]}` }, `${TEAM_NAMES[team]}${team === myTeam ? ' (your team)' : ''}`)), ...rows, total];
+      return [h('tr', { class: 'team-head' }, h('td', { colSpan: 12, style: `color:${TEAM_CSS[team]}` }, `${TEAM_NAMES[team]}${team === myTeam ? ' (your team)' : ''}`)), ...rows, total];
     };
     const mins = Math.floor(snap.tick / TICK_RATE / 60);
     clear(this.board);
@@ -386,11 +393,13 @@ export class Hud {
     }
     const row = s.selection !== null ? s.latestById.get(s.selection) : undefined;
     if (row && row[1] === 1 && row[3] === s.you) return this.buildingCard(row);
+    if (row && row[1] === 3 && row[4] === s.team) return this.shopCard();
     return this.builderCard();
   }
 
   private refreshCard(force = false) {
     if (!this.session.latest) return;
+    this.renderBag(force);
     const btns = this.currentCard();
     const key = JSON.stringify(btns.map((b) => [b.slot, b.name, b.disabled, b.active, b.afford]));
     if (!force && key === this.lastCardKey) return;
@@ -412,6 +421,93 @@ export class Hud {
       h('span', { class: 'hk' }, GRID_HOTKEYS[slot]),
       b.cost ? h('span', { class: `cost${b.afford === false ? ' short' : ''}` }, h('i', { class: 'coin' }), String(b.cost)) : null,
       tip));
+    }
+  }
+
+  // ---------------------------------------------------------------- castle shop & item bag
+
+  private ownCastleId(): number | null {
+    const c = this.session.latest?.ents.find((e) => e[1] === 3 && e[4] === this.session.team);
+    return c ? c[0] : null;
+  }
+
+  private shopOpen(): boolean {
+    const s = this.session;
+    return s.selection !== null && s.selection === this.ownCastleId();
+  }
+
+  private openShop() {
+    const id = this.ownCastleId();
+    if (id === null) return;
+    const s = this.session;
+    if (s.mode.kind !== 'none') s.setMode({ kind: 'none' });
+    s.select(s.selection === id ? null : id);
+  }
+
+  private shopCard(): CardButton[] {
+    const s = this.session;
+    const me = s.latest.players[s.you];
+    const bag = me.items ?? [];
+    const out: CardButton[] = ITEMS.map((it, slot) => {
+      const owned = bag.includes(it.id);
+      const full = bag.length >= MAX_ITEMS;
+      return {
+        slot, icon: itemIcon(it.id), name: it.name, cost: it.cost, afford: me.gold >= it.cost,
+        tip: `<span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${owned ? '<b>Your builder carries this.</b>' : full ? `Bag full (${MAX_ITEMS} items).` : `Carried by your builder until the round ends · ${bag.length}/${MAX_ITEMS} slots used`}</span>`,
+        disabled: owned || full || me.gold < it.cost,
+        active: owned,
+        run: () => {
+          if (owned) return this.error(`You already carry ${it.name}`);
+          if (full) return this.error(`Your builder can carry only ${MAX_ITEMS} items`);
+          if (me.gold < it.cost) return this.error('Not enough gold');
+          s.send({ c: 'buy', item: it.id });
+        },
+      };
+    });
+    out.push(this.rescueButton(), {
+      slot: 11, icon: svgUrl(SVG.cancel), name: 'Close shop', tip: 'Back to your builder (B / Esc).',
+      run: () => s.select(s.me.builderId),
+    });
+    return out;
+  }
+
+  private useItem(slot: number) {
+    const s = this.session;
+    const id = s.latest?.players[s.you].items?.[slot];
+    if (!id) return;
+    const it = ITEM_BY_ID[id];
+    if (!it.refreshStrike) return this.error(`${it.name} works on its own: nothing to use`);
+    if (!s.latest.players[s.you].rescueUsed) return this.error('Your rescue strike is still ready: keep the flare for later');
+    s.send({ c: 'use', item: id });
+  }
+
+  private renderBag(force = false) {
+    const s = this.session;
+    const me = s.latest?.players[s.you];
+    if (!me) return;
+    const bag = me.items ?? [];
+    const open = this.shopOpen();
+    const key = JSON.stringify([bag, open, me.rescueUsed]);
+    if (!force && key === this.lastBagKey) return;
+    this.lastBagKey = key;
+    clear(this.bag);
+    const tip = (html: string) => { const t = h('div', { class: 'tip' }); t.innerHTML = html; return t; };
+    this.bag.append(h('button', {
+      class: `bag-shop${open ? ' active' : ''}`,
+      onclick: (e: MouseEvent) => { e.preventDefault(); this.openShop(); },
+    }, h('span', { class: 'bag-shop-ico' }), 'Castle shop', h('span', { class: 'hk' }, 'B'),
+    tip('<div class="tip-title">Castle shop (B)</div>Expensive items for your builder: team-wide auras, a crossbow, a repair hammer and more. Opens your castle’s command card.')));
+    for (let i = 0; i < MAX_ITEMS; i++) {
+      const id = bag[i];
+      if (!id) { this.bag.append(h('div', { class: 'bag-slot empty', title: 'Empty item slot' }, h('span', { class: 'hk' }, String(i + 1)))); continue; }
+      const it = ITEM_BY_ID[id];
+      const usable = !!it.refreshStrike;
+      const ready = usable && me.rescueUsed;
+      this.bag.append(h('button', {
+        class: `bag-slot${usable ? ' usable' : ''}${ready ? ' ready' : ''}`,
+        onclick: (e: MouseEvent) => { e.preventDefault(); this.useItem(i); },
+      }, h('img', { src: itemIcon(id), alt: '' }), h('span', { class: 'hk' }, String(i + 1)),
+      tip(`<div class="tip-title">${it.name}</div><span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${usable ? (ready ? `Press ${i + 1} to use it now.` : 'Usable once your rescue strike is spent.') : 'Passive: works while your builder carries it.'}</span>`)));
     }
   }
 
@@ -447,11 +543,17 @@ export class Hud {
     (bar.lastChild as HTMLElement).textContent = `Next ${UNITS[sp.unit].name} in ${Math.ceil(left / TICK_RATE)}s`;
   }
 
+  private itemLine(player: number) {
+    const items = this.session.latest.players[player]?.items ?? [];
+    if (!items.length) return h('div', { class: 'dim' }, 'No items · buy some at the castle (B)');
+    return h('div', { class: 'item-line' }, 'Items: ', items.map((id) => h('img', { src: itemIcon(id), alt: ITEM_BY_ID[id].name, title: `${ITEM_BY_ID[id].name}: ${ITEM_BY_ID[id].desc}` })));
+  }
+
   private refreshInfo(force = false) {
     const s = this.session;
     if (!s.latest) return;
     const row = s.selection !== null ? s.latestById.get(s.selection) : undefined;
-    const key = row ? JSON.stringify([row[0], row[2], row[7], row[9]]) : `none:${s.latest.players.map((p) => `${p.kills}${p.connected}`).join()}`;
+    const key = row ? JSON.stringify([row[0], row[2], row[7], row[9], row[1] === 2 ? s.latest.players[row[3]]?.items : 0]) : `none:${s.latest.players.map((p) => `${p.kills}${p.connected}`).join()}`;
     if (!force && key === this.lastInfoKey) return;
     this.lastInfoKey = key;
     clear(this.info);
@@ -493,11 +595,13 @@ export class Hud {
       this.info.append(portrait('builder'), h('div', { class: 'istats' },
         h('div', { class: 'info-title' }, 'Builder'), h('div', { class: 'dim' }, ownerName),
         h('div', { class: 'desc' }, 'Invulnerable worker. Right-click to move, choose a building from the command card to construct it. Hold Shift to queue.'),
+        this.itemLine(owner),
       ));
     } else {
       this.info.append(portrait(`castle${team}`), h('div', { class: 'istats' },
         h('div', { class: 'info-title' }, `${TEAM_NAMES[team]} Castle`), hpBar,
         h('div', { class: 'desc' }, 'Destroy the enemy castle to win the round. The castle has no attack of its own: defend it with units, towers and your rescue strike.'),
+        team === s.team ? h('div', { class: 'gold-text' }, `Castle shop: buy items for your builder (up to ${MAX_ITEMS}). They last until the round ends.`) : null,
       ));
     }
   }
@@ -642,6 +746,14 @@ export class Hud {
           this.message(`${s.playerName(ev.p)} calls a rescue strike!`, team === s.team ? 'gold' : 'error', 2500);
         }
         return;
+      case 'item': {
+        const it = ITEM_BY_ID[ev.item];
+        if (!it) return;
+        const team = s.latest.players[ev.p]?.team;
+        if (ev.p === s.you) this.message(ev.use ? `${it.name} fired: your rescue strike is ready again!` : `${it.name} bought.`, 'gold', 3000);
+        else if (team === s.team) this.message(`${s.playerName(ev.p)} ${ev.use ? 'fired' : 'bought'} ${it.name}.`, 'info', 2500);
+        return;
+      }
       case 'built': {
         const row = s.latestById.get(ev.id);
         if (row && row[3] === s.you) this.message(`${BUILDINGS[row[2]].name} complete.`, 'info', 1800);
@@ -737,6 +849,7 @@ export class Hud {
         h('div', null, 'Q W E R / A S D F / Z X C V: command card'),
         h('div', null, 'Shift: queue buildings · Esc: cancel'),
         h('div', null, 'T: rescue strike · F1/Space: builder · Backspace: castle'),
+        h('div', null, 'B: castle shop (builder items) · 1 2 3: use an item'),
         h('div', null, 'Arrows / screen edge / middle-drag: camera · Wheel: zoom · Alt: show all building health bars · Hold Tab: scoreboard'),
         h('div', null, 'Enter: chat'),
         h('div', null, 'Fog of war: you see your own base, plus 6 tiles around each of your team\'s units'),
@@ -772,6 +885,8 @@ export class Hud {
     if (e.key === 'Backspace') { this.scene.centerOnCastle(); e.preventDefault(); return; }
     const k = e.key.toUpperCase();
     if (k === 'T') { this.rescueButton().run(); return; }
+    if (k === 'B') { this.openShop(); e.preventDefault(); return; }
+    if (/^[1-9]$/.test(e.key) && Number(e.key) <= MAX_ITEMS) { this.useItem(Number(e.key) - 1); e.preventDefault(); return; }
     const slot = GRID_HOTKEYS.indexOf(k);
     if (slot >= 0 && !e.ctrlKey && !e.metaKey) {
       const b = this.buttons.find((x) => x.slot === slot);
