@@ -380,6 +380,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private destroyView(v: View) {
+    this.tweens.killTweensOf(v.sprite);
     v.sprite.destroy(); v.shadow?.destroy(); v.ring?.destroy(); v.flag?.destroy(); v.scaffold?.destroy();
     this.views.delete(v.id);
   }
@@ -747,20 +748,42 @@ export class GameScene extends Phaser.Scene {
     cam.zoomTo(Phaser.Math.Clamp(cam.zoom, 0.9 * DPR, 1.2 * DPR), PAN, 'Sine.easeInOut', true);
     const H = v.sprite.displayHeight, Wd = v.sprite.displayWidth;
     const rnd = () => ({ x: c.x + (Math.random() - 0.5) * Wd * 0.8, y: c.y - Math.random() * H * 0.7 });
+    // Sequence on real time (not Phaser's clock, which slows down on low frame rates) so every
+    // client stays in step with the server's fixed round-end pause.
+    const after = (ms: number, fn: () => void) => { window.setTimeout(fn, ms); };
+    let ended = false;
+    const finish = () => {
+      if (ended) return;
+      ended = true;
+      this.cinematic = false;
+      this.collapsing.delete(v.id);
+      done();
+    };
+    // If the castle view goes away mid-sequence (e.g. the next round already started on a slow
+    // client), stop touching it and unlock the camera.
+    const alive = () => {
+      if (!ended && this.views.get(v.id) === v && v.sprite.active) return true;
+      finish();
+      return false;
+    };
+    after(PAN + RUMBLE + COLLAPSE + HOLD + 3000, finish); // safety net
 
-    this.time.delayedCall(PAN, () => {
+    after(PAN, () => {
+      if (!alive()) return;
       // 1. Rumble: the castle shakes, darkens and explodes from within.
       cam.shake(RUMBLE + COLLAPSE, 0.004);
       const baseX = v.sprite.x;
-      this.tweens.add({ targets: v.sprite, x: baseX + 2, duration: 60, yoyo: true, repeat: Math.floor(RUMBLE / 120), onComplete: () => v.sprite.setX(baseX) });
+      this.tweens.add({ targets: v.sprite, x: baseX + 2, duration: 60, yoyo: true, repeat: Math.floor(RUMBLE / 120), onComplete: () => { if (v.sprite.active) v.sprite.setX(baseX); } });
       this.tweens.addCounter({ from: 255, to: 120, duration: RUMBLE, onUpdate: (tw) => {
+        if (!v.sprite.active) return;
         const k = Math.round(tw.getValue() ?? 255);
         v.sprite.setTint(Phaser.Display.Color.GetColor(255, k, k));
       } });
-      for (let i = 0; i < 9; i++) this.time.delayedCall(i * (RUMBLE / 9) + Math.random() * 80, () => { const p = rnd(); this.explosion(p.x, p.y, 0.8 + Math.random() * 0.6); });
+      for (let i = 0; i < 9; i++) after(i * (RUMBLE / 9) + Math.random() * 80, () => { if (!alive()) return; const p = rnd(); this.explosion(p.x, p.y, 0.8 + Math.random() * 0.6); });
 
       // 2. Collapse: the castle sinks into a cloud of dust and debris…
-      this.time.delayedCall(RUMBLE, () => {
+      after(RUMBLE, () => {
+        if (!alive()) return;
         cam.shake(COLLAPSE + 400, 0.012);
         this.explosion(c.x, c.y - H * 0.35, 2.4);
         this.tweens.add({ targets: v.sprite, y: v.sprite.y + H * 0.25, scaleY: v.sprite.scaleY * 0.55, duration: COLLAPSE, ease: 'Quad.easeIn' });
@@ -776,21 +799,18 @@ export class GameScene extends Phaser.Scene {
         }
         for (let i = 0; i < 14; i++) {
           const p = { x: c.x + (Math.random() - 0.5) * Wd * 0.9, y: c.y - Math.random() * 40 };
-          this.time.delayedCall(Math.random() * COLLAPSE, () => this.smoke(p.x, p.y, 0x8a8478, 1.6 + Math.random()));
+          after(Math.random() * COLLAPSE, () => { if (alive()) this.smoke(p.x, p.y, 0x8a8478, 1.6 + Math.random()); });
         }
         // …and what's left is a ruin.
-        this.time.delayedCall(COLLAPSE, () => {
+        after(COLLAPSE, () => {
           this.tweens.killTweensOf(v.sprite);
+          if (!alive()) return;
           const foot = toScreen(v.x + CASTLE_SIZE / 2, v.y + CASTLE_SIZE / 2);
           v.sprite.setPosition(foot.x, foot.y);
           this.setRuin(v);
           this.cameras.main.flash(200, 255, 230, 200);
           for (let i = 0; i < 10; i++) { const p = rnd(); this.smoke(p.x, c.y - Math.random() * 30, 0x6a645a, 2 + Math.random()); }
-          this.time.delayedCall(HOLD, () => {
-            this.cinematic = false;
-            this.collapsing.delete(v.id);
-            done();
-          });
+          after(HOLD, finish);
         });
       });
     });
