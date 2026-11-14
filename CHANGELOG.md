@@ -2,6 +2,12 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.7.0
+- Builder items cost 3× as much (420–720 gold): true late-game purchases.
+- Mason's Hammer repairs 10 HP/s (was 30).
+- Removed the Far-Seer Spyglass and the Signal Flare. New: *War Drum* (team spawn buildings train 15% faster) and *Bulwark Seal* (+4 armor for team buildings and the castle).
+- Items are passive only now, so the 1–3 item keys are gone.
+
 ## 0.6.0
 - Castle shop: eight expensive late-game items for the builder (press B or click your castle). The builder carries up to 3 until the round ends: team-wide damage, armor, regeneration and speed auras, a crossbow so the builder shoots enemies, a repair hammer, a spyglass for longer sight, and a single-use flare that restores the rescue strike.
 - Item bag above the command card (keys 1–3), items in the builder info panel and the Tab scoreboard, range rings for the crossbow and hammer.

@@ -509,12 +509,12 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- fog of war
 
-  private updateVision(snap: { tick: number; round: number; phase: import('@bc/shared').Phase; ents: EntRow[]; players: Array<{ items?: string[] }> }) {
+  private updateVision(snap: { tick: number; round: number; phase: import('@bc/shared').Phase; ents: EntRow[] }) {
     const key = `${snap.round}:${snap.tick}`;
     if (key === this.visionKey) return;
     const newRound = !this.visionKey.startsWith(`${snap.round}:`);
     this.visionKey = key;
-    this.vision = fogActive(snap.phase) ? visionFromRows(this.session.team, snap.ents, snap.players) : null;
+    this.vision = fogActive(snap.phase) ? visionFromRows(this.session.team, snap.ents) : null;
     for (const g of [...this.ghosts.values()]) {
       if (newRound || !this.vision || entityVisible(this.vision, g.kind, g.type, g.x, g.y)) {
         this.destroyView(g);

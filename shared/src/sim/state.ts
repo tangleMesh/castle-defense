@@ -96,8 +96,8 @@ export type SimEvent =
   | { t: 'round'; winner: Team; score: [number, number]; round: number }
   | { t: 'match'; winner: Team; score: [number, number] }
   | { t: 'err'; p: number; msg: string }
-  /** Player `p` bought (use 0) or used (use 1) an item. */
-  | { t: 'item'; p: number; item: string; use: 0 | 1 };
+  /** Player `p` bought an item. */
+  | { t: 'item'; p: number; item: string };
 
 export interface RoundRecord {
   winner: Team;
@@ -142,7 +142,6 @@ export type Command =
   | { c: 'sell'; id: number }
   | { c: 'rescue'; x: number; y: number }
   | { c: 'buy'; item: string }
-  | { c: 'use'; item: string }
   | { c: 'stop' };
 
 export interface PlayerCommand {

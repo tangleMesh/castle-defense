@@ -31,15 +31,17 @@ const ICONS: Record<string, string> = {
     + '<path d="M22 12 L34 6 L42 20 L30 26 Z" fill="#a8b0c0" stroke="#40444c" stroke-width="1.5"/>'
     + '<path d="M24 13 L33 9" stroke="#e8eef8" stroke-width="1.5"/>'
     + '<path d="M8 36 l3 -3 M6 30 l4 0 M12 42 l0 -4" stroke="#ffd860" stroke-width="2" stroke-linecap="round"/>',
-  spyglass: bg('#2a2a4a', '#0a0a1a')
-    + '<path d="M8 34 L36 14" stroke="#c8a040" stroke-width="7" stroke-linecap="round"/>'
-    + '<path d="M8 34 L20 25.5" stroke="#7a5a20" stroke-width="5" stroke-linecap="round"/>'
-    + '<circle cx="38" cy="12.5" r="4.5" fill="#a8d8ff" stroke="#e8c060" stroke-width="2"/>'
-    + '<circle cx="36.5" cy="11" r="1.4" fill="#fff"/>',
-  flare: bg('#5a1a10', '#1a0604')
-    + '<path d="M24 4 Q32 14 28 22 Q34 20 34 28 Q34 40 24 42 Q14 40 14 28 Q14 20 20 22 Q16 14 24 4 Z" fill="#ff8030"/>'
-    + '<path d="M24 16 Q29 24 27 30 Q30 30 30 34 Q29 40 24 40 Q19 40 18 34 Q18 30 21 30 Q19 24 24 16 Z" fill="#ffd860"/>'
-    + '<circle cx="24" cy="35" r="3" fill="#fff8d0"/>',
+  war_drum: bg('#5a2a1a', '#1a0a06')
+    + '<ellipse cx="24" cy="16" rx="14" ry="5" fill="#e8d8b0" stroke="#5a3010" stroke-width="1.5"/>'
+    + '<path d="M10 16 V32 Q24 40 38 32 V16 Q24 24 10 16 Z" fill="#a8402a" stroke="#5a1a10" stroke-width="1.5"/>'
+    + '<path d="M10 18 L17 34 L24 20 L31 34 L38 18" fill="none" stroke="#f0d070" stroke-width="1.6"/>'
+    + '<path d="M30 4 L19 15 M40 7 L28 15" stroke="#7a4a20" stroke-width="2.5" stroke-linecap="round"/>'
+    + '<circle cx="30" cy="4.5" r="2.2" fill="#e8d8b0"/><circle cx="40" cy="7" r="2.2" fill="#e8d8b0"/>',
+  bulwark: bg('#3a3a40', '#121216')
+    + '<path d="M8 40 V20 H14 V14 H20 V20 H28 V14 H34 V20 H40 V40 Z" fill="#9a9aa8" stroke="#3a3a44" stroke-width="1.5"/>'
+    + '<path d="M8 28 H40 M8 34 H40 M18 28 V34 M30 28 V34 M24 34 V40 M14 20 V28 M24 20 V28 M34 20 V28" stroke="#5a5a66" stroke-width="1"/>'
+    + '<circle cx="24" cy="26" r="7" fill="#c83a2a" stroke="#ffd860" stroke-width="1.8"/>'
+    + '<path d="M24 22 L27 26 L24 30 L21 26 Z" fill="#ffd860"/>',
 };
 
 export function itemIcon(id: string): string {

@@ -95,17 +95,7 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       if (p.gold < item.cost) return fail('Not enough gold');
       p.gold -= item.cost;
       p.items = [...bag, item.id];
-      sim.emit({ t: 'item', p: player, item: item.id, use: 0 });
-      return;
-    }
-    case 'use': {
-      const item = ITEM_BY_ID[cmd.item];
-      if (!item || !itemsOf(p).includes(item.id)) return;
-      if (!item.refreshStrike) return fail(`${item.name} works on its own`);
-      if (!p.rescueUsed) return fail('Your rescue strike is still ready');
-      p.rescueUsed = false;
-      p.items = itemsOf(p).filter((i) => i !== item.id);
-      sim.emit({ t: 'item', p: player, item: item.id, use: 1 });
+      sim.emit({ t: 'item', p: player, item: item.id });
       return;
     }
   }

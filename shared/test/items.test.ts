@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ITEMS, ITEM_BY_ID, MAX_ITEMS, MAP, Sim, computeVision, filterSnapshot, makeSnapshot, rectCenter, tileVisible, type PlayerSetup, type SimEvent } from '../src/index';
+import { ITEMS, ITEM_BY_ID, MAX_ITEMS, Sim, TICK_RATE, makeSnapshot, type PlayerSetup, type SimEvent } from '../src/index';
+import { armorOf } from '../src/sim/combat';
 import { spawnUnit } from '../src/sim/spawning';
 import { modsOf } from '../src/sim/auras';
 
@@ -12,7 +13,7 @@ const buy = (sim: Sim, item: string, player = 0) => sim.step([{ player, cmd: { c
 
 describe('builder items', () => {
   it('are expensive late-game purchases', () => {
-    for (const i of ITEMS) expect(i.cost, i.id).toBeGreaterThanOrEqual(120);
+    for (const i of ITEMS) expect(i.cost, i.id).toBeGreaterThanOrEqual(420);
   });
 
   it('buying costs gold, refuses duplicates, a full bag and empty purses', () => {
@@ -22,7 +23,7 @@ describe('builder items', () => {
     expect(errs(buy(sim, 'war_horn'))).toEqual(['Not enough gold']);
     me.gold = 2000;
     const ev = buy(sim, 'war_horn');
-    expect(ev.some((e) => e.t === 'item' && e.item === 'war_horn' && e.use === 0)).toBe(true);
+    expect(ev.some((e) => e.t === 'item' && e.item === 'war_horn')).toBe(true);
     expect(me.gold).toBe(2000 - ITEM_BY_ID.war_horn.cost);
     expect(errs(buy(sim, 'war_horn'))[0]).toMatch(/already/);
     buy(sim, 'aegis'); buy(sim, 'boots');
@@ -69,41 +70,40 @@ describe('builder items', () => {
     buy(sim, 'hammer');
     const castle = sim.castle(0);
     castle.hp = 5000;
-    for (let i = 0; i < 20; i++) sim.step();
-    expect(castle.hp).toBeGreaterThan(5000 + 20);
+    for (let i = 0; i < 10 * TICK_RATE; i++) sim.step();
+    expect(castle.hp).toBeCloseTo(5100, 0); // 10 HP per second
   });
 
-  it('the Signal Flare restores the spent rescue strike once', () => {
-    const sim = newSim();
-    const me = sim.state.players[0];
-    me.gold = 2000;
-    buy(sim, 'flare');
-    const c = rectCenter(MAP.castles[0]);
-    const use = () => sim.step([{ player: 0, cmd: { c: 'use', item: 'flare' } }]);
-    expect(use().some((e) => e.t === 'err')).toBe(true); // strike still ready
-    sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 3, y: c.y } }]);
-    expect(me.rescueUsed).toBe(true);
-    use();
-    expect(me.rescueUsed).toBe(false);
-    expect(me.items).toEqual([]);
+  it('the War Drum makes the team spawn 15% faster', () => {
+    const run = (drum: boolean) => {
+      const sim = newSim();
+      const me = sim.state.players[0];
+      me.gold = 5000;
+      sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_militia_hall', tx: 14, ty: 4 } }]);
+      for (let i = 0; i < 400 && sim.get(me.builderId)!.orders!.length; i++) sim.step();
+      const hall = sim.state.entities.find((e) => e.kind === 'building')!;
+      hall.buildLeft = 1; sim.step();
+      if (drum) buy(sim, 'war_drum');
+      const ids = new Set<number>();
+      for (let i = 0; i < 120 * TICK_RATE; i++) {
+        sim.castle(0).hp = sim.castle(1).hp = 8000;
+        sim.step();
+        for (const e of sim.state.entities) if (e.kind === 'unit' && e.owner === 0) ids.add(e.id);
+      }
+      return ids.size;
+    };
+    const base = run(false), fast = run(true);
+    expect(fast / base).toBeGreaterThan(1.1);
+    expect(fast / base).toBeLessThan(1.25);
   });
 
-  it('the spyglass doubles the builder sight; enemies see it in the snapshot', () => {
+  it('the Bulwark Seal armors buildings and the castle of the team', () => {
     const sim = newSim();
-    const me = sim.state.players[0];
-    const b = sim.get(me.builderId)!;
-    b.x = 40.5; b.y = 14.5;
-    const foe = spawnUnit(sim, sim.castle(1), 'tw_vineling', 1, 1);
-    foe.x = 50; foe.y = 14.5;
-    sim.step();
-    const seen = () => filterSnapshot(makeSnapshot(sim, []), 0).ents.some((e) => e[0] === foe.id);
-    foe.x = 50; b.x = 40.5; b.y = 14.5;
-    expect(seen()).toBe(false);
-    me.gold = 2000;
-    buy(sim, 'spyglass');
-    foe.x = 50; b.x = 40.5; b.y = 14.5;
-    expect(seen()).toBe(true);
-    expect(tileVisible(computeVision(0, [{ x: 40.5, y: 14.5, r: 12 }]), 51.5, 14.5)).toBe(true);
+    const before = armorOf(sim, sim.castle(0)).value;
+    sim.state.players[0].gold = 2000;
+    buy(sim, 'bulwark');
+    expect(armorOf(sim, sim.castle(0)).value).toBe(before + 4);
+    expect(armorOf(sim, sim.castle(1)).value).toBe(before);
   });
 
   it('items are lost when the round ends', () => {

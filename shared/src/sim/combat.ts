@@ -1,5 +1,5 @@
 import { BOUNTY_MULT, CASTLE_ARMOR, DEFAULT_AGGRO, TICK_RATE } from '../constants';
-import { BUILDINGS, UNITS, computeDamage, type ArmorType, type AttackType } from '../data';
+import { BUILDINGS, UNITS, computeDamage, teamItemBonus, type ArmorType, type AttackType } from '../data';
 import type { Sim } from './sim';
 import type { Entity } from './state';
 import { modsOf } from './auras';
@@ -43,8 +43,9 @@ export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number }
     const u = UNITS[e.type];
     return { type: u.armorType, value: u.armor + modsOf(sim, e.id).armor };
   }
-  if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR };
-  if (e.kind === 'building') return { type: 'fortified', value: BUILDINGS[e.type].armor };
+  // Bulwark Seal: extra armor on all structures of the carrier's team.
+  if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
+  if (e.kind === 'building') return { type: 'fortified', value: BUILDINGS[e.type].armor + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
   return { type: 'light', value: 0 };
 }
 

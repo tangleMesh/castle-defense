@@ -1,5 +1,5 @@
 import { TICK_RATE } from '../constants';
-import { BUILDINGS, UNITS } from '../data';
+import { BUILDINGS, UNITS, teamItemBonus } from '../data';
 import { idx, inBounds, nearestFree } from './grid';
 import type { Sim } from './sim';
 import { nextRandom } from './rng';
@@ -7,6 +7,13 @@ import type { Entity } from './state';
 
 /** Construction/upgrade progress and periodic unit spawning. */
 export function stepBuildings(sim: Sim) {
+  // War Drum: spawn timers of the carrier's team run faster (kept integral and deterministic).
+  const t = sim.state.tick;
+  const step = [0, 1].map((team) => {
+    const d = teamItemBonus(sim.state.players, team, 'spawnSpeed');
+    // +d ticks per tick on average: one extra tick whenever floor(t·d) steps up.
+    return 1 + (Math.floor((t + 1) * d) - Math.floor(t * d));
+  });
   // Iterate over a copy: spawning appends to the entity list.
   for (const e of sim.state.entities.slice()) {
     if (e.kind !== 'building' || e.hp <= 0) continue;
@@ -24,7 +31,8 @@ export function stepBuildings(sim: Sim) {
     }
     if (!def.spawn) continue;
     if (e.spawnTimer === undefined) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE * 0.5);
-    if (--e.spawnTimer > 0) continue;
+    e.spawnTimer -= step[e.team];
+    if (e.spawnTimer > 0) continue;
     e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
     for (let i = 0; i < def.spawn.count; i++) spawnUnit(sim, e, def.spawn.unit, i, def.spawn.count);
   }

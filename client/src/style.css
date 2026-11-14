@@ -337,10 +337,6 @@ input:focus, select:focus { border-color: var(--gold-2); }
 }
 .bag-slot img { width: 100%; height: 100%; display: block; border-radius: 2px; }
 .bag-slot.empty { background: #12110d; border-color: #2a261c; border-style: dashed; }
-.bag-slot.usable { cursor: pointer; }
-.bag-slot.usable:not(.ready) img { filter: brightness(.7); }
-.bag-slot.ready { border-color: #ffd860; box-shadow: 0 0 8px rgba(255, 216, 96, .7); animation: bagPulse 1.2s ease-in-out infinite; }
-@keyframes bagPulse { 50% { box-shadow: 0 0 2px rgba(255, 216, 96, .3); } }
 .item-line { display: flex; align-items: center; gap: 4px; }
 .item-line img { width: 22px; height: 22px; border-radius: 2px; border: 1px solid #5a4a2a; }
 .sb-items img { width: 18px; height: 18px; border-radius: 2px; vertical-align: middle; margin-left: 2px; }

@@ -7,16 +7,16 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **One special building per player**: the expensive Sun Citadel or Elder Heartwood. It summons a champion and can be upgraded twice.
 - **Rescue strike**: once per round, call down sunfire near your own castle. It kills every enemy unit in a large circle.
 - **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
-  - *Horn of Valor* (220): +20% damage for every unit of your team.
-  - *Aegis Charm* (200): +3 armor for every unit of your team.
-  - *Verdant Chalice* (180): every unit of your team regenerates 4 HP/s.
-  - *Pathfinder Boots* (140): your team's units move 15% faster, your builder 30%.
-  - *Warden's Crossbow* (180): your builder shoots nearby enemy units (it stays invulnerable).
-  - *Mason's Hammer* (150): your builder repairs nearby buildings and the castle, 30 HP/s.
-  - *Far-Seer Spyglass* (120): your builder sees 12 tiles through the fog instead of 6.
-  - *Signal Flare* (240): single use; brings back your spent rescue strike.
+  - *Horn of Valor* (660): +20% damage for every unit of your team.
+  - *Aegis Charm* (600): +3 armor for every unit of your team.
+  - *Verdant Chalice* (540): every unit of your team regenerates 4 HP/s.
+  - *Pathfinder Boots* (420): your team's units move 15% faster, your builder 30%.
+  - *War Drum* (720): every spawn building of your team trains units 15% faster.
+  - *Bulwark Seal* (480): +4 armor for every building of your team and the castle.
+  - *Warden's Crossbow* (540): your builder shoots nearby enemy units (it stays invulnerable).
+  - *Mason's Hammer* (450): your builder repairs nearby buildings and the castle, 10 HP/s.
 
-  The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long, and Hard bots carry a flare when their castle is in trouble.
+  The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long and they can afford them.
 - **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 100 gold, enough for one cheap spawn building.
 - **Fast rounds** (about 5–7 minutes): castles have 8000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 12×12 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
@@ -37,7 +37,7 @@ The game uses semantic versioning. The current version is in the root `package.j
 | `server/` | Node 24, fastify (REST + static), `ws` websockets, MongoDB driver |
 | `client/` | Phaser 3 isometric renderer with all art generated procedurally at runtime, plus a DOM HUD. Built with Vite |
 
-The server is authoritative. Clients send only intents (move, build, upgrade, sell, rescue, buy, use). The server steps the simulation and broadcasts compact snapshots at 10 Hz, and clients interpolate between them.
+The server is authoritative. Clients send only intents (move, build, upgrade, sell, rescue, buy). The server steps the simulation and broadcasts compact snapshots at 10 Hz, and clients interpolate between them.
 
 ## Run with Docker (recommended)
 
@@ -83,7 +83,6 @@ BASE_URL=http://localhost:3000 RESTART_CMD="docker compose restart server" npm r
 | Shift + click | Queue several buildings |
 | `T` | Rescue strike targeting |
 | `B` | Castle shop (builder items) |
-| `1 2 3` | Use an item (the Signal Flare) |
 | `F1` / Space / Backspace | Select builder / center on builder / center on castle |
 | Arrows, screen edge, middle-drag, wheel | Camera |
 | Alt | Show all building health bars (unit health bars are always shown) |

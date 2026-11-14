@@ -471,23 +471,13 @@ export class Hud {
     return out;
   }
 
-  private useItem(slot: number) {
-    const s = this.session;
-    const id = s.latest?.players[s.you].items?.[slot];
-    if (!id) return;
-    const it = ITEM_BY_ID[id];
-    if (!it.refreshStrike) return this.error(`${it.name} works on its own: nothing to use`);
-    if (!s.latest.players[s.you].rescueUsed) return this.error('Your rescue strike is still ready: keep the flare for later');
-    s.send({ c: 'use', item: id });
-  }
-
   private renderBag(force = false) {
     const s = this.session;
     const me = s.latest?.players[s.you];
     if (!me) return;
     const bag = me.items ?? [];
     const open = this.shopOpen();
-    const key = JSON.stringify([bag, open, me.rescueUsed]);
+    const key = JSON.stringify([bag, open]);
     if (!force && key === this.lastBagKey) return;
     this.lastBagKey = key;
     clear(this.bag);
@@ -496,18 +486,13 @@ export class Hud {
       class: `bag-shop${open ? ' active' : ''}`,
       onclick: (e: MouseEvent) => { e.preventDefault(); this.openShop(); },
     }, h('span', { class: 'bag-shop-ico' }), 'Castle shop', h('span', { class: 'hk' }, 'B'),
-    tip('<div class="tip-title">Castle shop (B)</div>Expensive items for your builder: team-wide auras, a crossbow, a repair hammer and more. Opens your castle’s command card.')));
+    tip('<div class="tip-title">Castle shop (B)</div>Expensive late-game items for your builder: team-wide auras, faster spawning, tougher buildings, a crossbow and a repair hammer. Opens your castle’s command card.')));
     for (let i = 0; i < MAX_ITEMS; i++) {
       const id = bag[i];
-      if (!id) { this.bag.append(h('div', { class: 'bag-slot empty', title: 'Empty item slot' }, h('span', { class: 'hk' }, String(i + 1)))); continue; }
+      if (!id) { this.bag.append(h('div', { class: 'bag-slot empty', title: 'Empty item slot' })); continue; }
       const it = ITEM_BY_ID[id];
-      const usable = !!it.refreshStrike;
-      const ready = usable && me.rescueUsed;
-      this.bag.append(h('button', {
-        class: `bag-slot${usable ? ' usable' : ''}${ready ? ' ready' : ''}`,
-        onclick: (e: MouseEvent) => { e.preventDefault(); this.useItem(i); },
-      }, h('img', { src: itemIcon(id), alt: '' }), h('span', { class: 'hk' }, String(i + 1)),
-      tip(`<div class="tip-title">${it.name}</div><span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${usable ? (ready ? `Press ${i + 1} to use it now.` : 'Usable once your rescue strike is spent.') : 'Passive: works while your builder carries it.'}</span>`)));
+      this.bag.append(h('div', { class: 'bag-slot' }, h('img', { src: itemIcon(id), alt: '' }),
+        tip(`<div class="tip-title">${it.name}</div><span class="tip-desc">${it.desc}</span><br><span class="tip-meta">Works while your builder carries it, until the round ends.</span>`)));
     }
   }
 
@@ -750,8 +735,8 @@ export class Hud {
         const it = ITEM_BY_ID[ev.item];
         if (!it) return;
         const team = s.latest.players[ev.p]?.team;
-        if (ev.p === s.you) this.message(ev.use ? `${it.name} fired: your rescue strike is ready again!` : `${it.name} bought.`, 'gold', 3000);
-        else if (team === s.team) this.message(`${s.playerName(ev.p)} ${ev.use ? 'fired' : 'bought'} ${it.name}.`, 'info', 2500);
+        if (ev.p === s.you) this.message(`${it.name} bought.`, 'gold', 3000);
+        else if (team === s.team) this.message(`${s.playerName(ev.p)} bought ${it.name}.`, 'info', 2500);
         return;
       }
       case 'built': {
@@ -849,7 +834,7 @@ export class Hud {
         h('div', null, 'Q W E R / A S D F / Z X C V: command card'),
         h('div', null, 'Shift: queue buildings · Esc: cancel'),
         h('div', null, 'T: rescue strike · F1/Space: builder · Backspace: castle'),
-        h('div', null, 'B: castle shop (builder items) · 1 2 3: use an item'),
+        h('div', null, 'B: castle shop (builder items)'),
         h('div', null, 'Arrows / screen edge / middle-drag: camera · Wheel: zoom · Alt: show all building health bars · Hold Tab: scoreboard'),
         h('div', null, 'Enter: chat'),
         h('div', null, 'Fog of war: you see your own base, plus 6 tiles around each of your team\'s units'),
@@ -886,7 +871,6 @@ export class Hud {
     const k = e.key.toUpperCase();
     if (k === 'T') { this.rescueButton().run(); return; }
     if (k === 'B') { this.openShop(); e.preventDefault(); return; }
-    if (/^[1-9]$/.test(e.key) && Number(e.key) <= MAX_ITEMS) { this.useItem(Number(e.key) - 1); e.preventDefault(); return; }
     const slot = GRID_HOTKEYS.indexOf(k);
     if (slot >= 0 && !e.ctrlKey && !e.metaKey) {
       const b = this.buttons.find((x) => x.slot === slot);
