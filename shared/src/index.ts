@@ -1,0 +1,12 @@
+export * from './constants';
+export * from './data';
+export * from './map/map';
+export * from './protocol';
+export * from './sim/state';
+export { Sim, type CreateOptions } from './sim/sim';
+export { makeSnapshot, KIND_CODES, type Snapshot, type EntRow, type SnapshotPlayer } from './sim/snapshot';
+export { basicPlacementError, placementError, nearCastle } from './sim/placement';
+export { incomeFor } from './sim/economy';
+export { ROCK_GRID, isFullyConnected, computeFlowField, buildBlockedGrid } from './sim/grid';
+export * from './ai/ai';
+export { VISION_RANGE, baseArea, fogActive, computeVision, tileVisible, entityVisible, visionFromRows, filterSnapshot } from './sim/vision';

@@ -1,0 +1,315 @@
+import { describe, expect, it } from 'vitest';
+import {
+  BASE_INCOME, BOUNTY_MULT, MAX_INCOME_BONUS, BUILDINGS, CASTLE_HP, FACTIONS, INCOME_INTERVAL_TICKS, INCOME_PCT, MAP, RESCUE_RANGE, ROCK_GRID,
+  ROUND_END_TICKS, START_GOLD, Sim, UNITS, computeDamage, computeFlowField, buildBlockedGrid, isFullyConnected,
+  incomeFor, makeSnapshot, rectCenter, type PlayerSetup, type SimEvent, type Team,
+} from '../src/index';
+import { spawnUnit } from '../src/sim/spawning';
+import { dealDamage } from '../src/sim/combat';
+
+const players = (n = 1): PlayerSetup[] => {
+  const out: PlayerSetup[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push({ userId: `a${i}`, name: `A${i}`, team: 0, faction: 'ironvow' });
+    out.push({ userId: `b${i}`, name: `B${i}`, team: 1, faction: 'thornwild' });
+  }
+  return out;
+};
+
+const newSim = (bestOf = 3, n = 1) => Sim.create({ players: players(n), bestOf, seed: 1234 });
+
+/** Place a completed building directly, bypassing the builder walk. */
+function placeNow(sim: Sim, player: number, building: string, tx: number, ty: number, complete = true) {
+  const p = sim.state.players[player];
+  sim.state.players[player].gold += 10000;
+  sim.step([{ player, cmd: { c: 'build', building, tx, ty } }]);
+  for (let i = 0; i < 400 && sim.get(p.builderId)!.orders!.length; i++) sim.step();
+  const b = sim.state.entities.find((e) => e.kind === 'building' && e.tx === tx && e.ty === ty)!;
+  expect(b, `building ${building} placed`).toBeTruthy();
+  if (complete) { b.buildLeft = 1; b.hp = b.maxHp; sim.step(); }
+  return b;
+}
+
+describe('data', () => {
+  it('every reference resolves', () => {
+    for (const f of Object.values(FACTIONS)) {
+      for (const id of f.build) expect(BUILDINGS[id], id).toBeTruthy();
+      for (const b of f.buildings) {
+        if (b.spawn) expect(UNITS[b.spawn.unit], b.spawn.unit).toBeTruthy();
+        for (const u of b.upgrades ?? []) expect(BUILDINGS[u]?.upgradeOnly, u).toBe(true);
+      }
+      expect(f.buildings.filter((b) => b.special && !b.upgradeOnly)).toHaveLength(1);
+    }
+  });
+});
+
+describe('combat table', () => {
+  it('applies attack/armour multipliers and armour reduction', () => {
+    expect(computeDamage(100, 'pierce', 'light', 0)).toBeCloseTo(200);
+    expect(computeDamage(100, 'siege', 'fortified', 0)).toBeCloseTo(150);
+    expect(computeDamage(100, 'magic', 'heavy', 0)).toBeCloseTo(200);
+    expect(computeDamage(100, 'normal', 'medium', 5)).toBeCloseTo(150 * (1 - 0.3 / 1.3));
+  });
+});
+
+describe('map & pathing', () => {
+  it('the bare map is fully connected', () => {
+    expect(isFullyConnected(ROCK_GRID)).toBe(true);
+  });
+
+  it('flow field routes around buildings', () => {
+    const sim = newSim();
+    const before = computeFlowField(buildBlockedGrid(sim.state), MAP.castles[1]);
+    const i = (x: number, y: number) => y * MAP.width + x;
+    const start = before[i(12, 14)];
+    // wall off a column in front of tile (12,14) with buildings, leaving gaps at the edges
+    for (let y = 4; y < 24; y += 2) placeNow(sim, 0, 'iv_war_banner', 14, y);
+    const after = sim.flowField(0);
+    expect(after[i(12, 14)]).toBeGreaterThan(start);
+    expect(after[i(12, 14)]).toBeLessThan(0xffff);
+  });
+});
+
+describe('placement', () => {
+  it('rejects outside build zone and on occupied tiles', () => {
+    const sim = newSim();
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_militia_hall', tx: 40, ty: 2 } }]);
+    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('zone'))).toBe(true);
+    placeNow(sim, 0, 'iv_militia_hall', 10, 6);
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_militia_hall', tx: 11, ty: 7 } }]);
+    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('occupied'))).toBe(true);
+  });
+
+  it('keeps a clear ring around the castle', () => {
+    const sim = newSim();
+    const c = MAP.castles[0];
+    // Directly behind and in front of the castle, 1 tile away: refused.
+    for (const [tx, ty] of [[c.x - 3, c.y], [c.x + c.w + 1, c.y + 1], [c.x, c.y - 3]]) {
+      sim.state.events.length = 0;
+      sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_militia_hall', tx, ty } }]);
+      expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('clear around the castle'))).toBe(true);
+    }
+    // Exactly 2 tiles away is fine.
+    placeNow(sim, 0, 'iv_militia_hall', c.x - 4, c.y);
+  });
+
+  it('starts every faction with enough gold for its cheapest building', () => {
+    for (const f of Object.values(FACTIONS)) {
+      const cheapest = Math.min(...Object.values(BUILDINGS).filter((b) => b.faction === f.id).map((b) => b.cost));
+      expect(START_GOLD).toBeGreaterThanOrEqual(cheapest);
+    }
+  });
+
+  it('rejects other factions buildings', () => {
+    const sim = newSim();
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'tw_burrow', tx: 10, ty: 10 } }]);
+    expect(sim.state.events.some((e) => e.t === 'err')).toBe(true);
+  });
+
+  it('allows only one special building per player', () => {
+    const sim = newSim();
+    placeNow(sim, 0, 'iv_sun_citadel', 10, 6);
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_sun_citadel', tx: 16, ty: 6 } }]);
+    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('special'))).toBe(true);
+  });
+
+  it('rejects placements that enclose a pocket', () => {
+    const sim = newSim();
+    // ring of 2x2 buildings around the 2x2 hole at (17..18, 4..5)
+    const ring = [[15, 2], [17, 2], [19, 2], [15, 4], [19, 4], [15, 6]];
+    for (const [x, y] of ring) placeNow(sim, 0, 'iv_war_banner', x, y);
+    sim.state.players[0].gold = 10000;
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_war_banner', tx: 17, ty: 6 } }]);
+    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('block'))).toBe(true);
+  });
+
+  it('charges gold on order and refunds on stop', () => {
+    const sim = newSim();
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_militia_hall', tx: 20, ty: 3 } }]);
+    expect(sim.state.players[0].gold).toBe(START_GOLD - BUILDINGS.iv_militia_hall.cost);
+    sim.step([{ player: 0, cmd: { c: 'stop' } }]);
+    expect(sim.state.players[0].gold).toBe(START_GOLD);
+  });
+});
+
+describe('economy', () => {
+  it('pays base + percentage of building value at each income tick', () => {
+    const sim = newSim();
+    const b = placeNow(sim, 0, 'iv_militia_hall', 10, 6);
+    const expected = Math.floor(BASE_INCOME + INCOME_PCT * b.value!);
+    expect(incomeFor(sim, 0)).toBe(expected);
+    sim.state.incomeTicks = 1;
+    const gold = sim.state.players[0].gold;
+    sim.step();
+    expect(sim.state.players[0].gold).toBe(gold + expected);
+    expect(sim.state.incomeTicks).toBe(INCOME_INTERVAL_TICKS);
+  });
+
+  it('income bonus buildings scale income', () => {
+    const sim = newSim();
+    placeNow(sim, 0, 'iv_counting_house', 10, 6);
+    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * 150) * 1.15));
+  });
+
+  it('income bonuses are capped', () => {
+    const sim = newSim();
+    for (let i = 0; i < 4; i++) placeNow(sim, 0, 'iv_counting_house', 14 + i * 2, 2);
+    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * 600) * (1 + MAX_INCOME_BONUS)));
+  });
+});
+
+describe('spawning & combat', () => {
+  it('spawn buildings produce units that march to the enemy castle', () => {
+    const sim = newSim();
+    placeNow(sim, 0, 'iv_militia_hall', 20, 12);
+    for (let i = 0; i < 20 * 20; i++) sim.step();
+    const units = sim.state.entities.filter((e) => e.kind === 'unit' && e.team === 0);
+    expect(units.length).toBeGreaterThanOrEqual(BUILDINGS.iv_militia_hall.spawn!.count);
+    expect(Math.max(...units.map((u) => u.x))).toBeGreaterThan(25);
+  });
+
+  it('upgrades change the spawned unit', () => {
+    const sim = newSim();
+    const b = placeNow(sim, 0, 'iv_militia_hall', 20, 12);
+    sim.state.players[0].gold = 1000;
+    sim.step([{ player: 0, cmd: { c: 'upgrade', id: b.id, to: 'iv_shield_hall' } }]);
+    expect(b.type).toBe('iv_shield_hall');
+    expect(b.upgrading).toBe(true);
+    for (let i = 0; i < 20 * 25; i++) sim.step();
+    expect(sim.state.entities.some((e) => e.type === 'iv_shieldbearer')).toBe(true);
+  });
+
+  it('opposing units fight and kills pay bounty', () => {
+    const sim = newSim();
+    const a = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 25, 12), 'iv_knight', 0, 1);
+    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_burrow', 54, 12), 'tw_vineling', 0, 1);
+    a.x = 40; a.y = 16; b.x = 41; b.y = 16;
+    const gold = sim.state.players[0].gold;
+    const events: SimEvent[] = [];
+    for (let i = 0; i < 20 * 15 && sim.get(b.id); i++) events.push(...sim.step());
+    expect(sim.get(b.id)).toBeUndefined();
+    expect(sim.state.players[0].kills).toBe(1);
+    expect(events.some((e) => e.t === 'gold' && e.p === 0 && e.g >= 1)).toBe(true);
+    expect(sim.state.players[1].lost).toBe(1);
+    dealDamage(sim, sim.castle(1), 100, 'chaos', 0);
+    expect(sim.state.players[0].castleDmg).toBeCloseTo(sim.castle(1).maxHp - sim.castle(1).hp);
+    expect(makeSnapshot(sim, []).players[0].castleDmg).toBeGreaterThan(0);
+    expect(sim.state.players[0].gold).toBeGreaterThanOrEqual(gold + Math.max(1, Math.round(UNITS.tw_vineling.bounty * BOUNTY_MULT)));
+  });
+
+  it('ground melee cannot hit air units', () => {
+    const sim = newSim();
+    const a = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 25, 12), 'iv_militia', 0, 1);
+    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_moth_hive', 54, 12), 'tw_dusk_moth', 0, 1);
+    a.x = 40; a.y = 16; b.x = 40.5; b.y = 16;
+    const hp = b.hp;
+    for (let i = 0; i < 10; i++) { b.x = 40.5; b.y = 16; sim.step(); }
+    expect(sim.get(b.id)!.hp).toBe(hp);
+  });
+});
+
+describe('rescue strike', () => {
+  function setup() {
+    const sim = newSim();
+    const c = rectCenter(MAP.castles[0]);
+    const hut = placeNow(sim, 1, 'tw_burrow', 54, 12);
+    const enemy = spawnUnit(sim, hut, 'tw_vineling', 0, 1);
+    enemy.x = c.x + 6; enemy.y = c.y;
+    const far = spawnUnit(sim, hut, 'tw_vineling', 0, 1);
+    far.x = c.x + 20; far.y = c.y;
+    const friend = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 10, 2), 'iv_militia', 0, 1);
+    friend.x = c.x + 6; friend.y = c.y + 1;
+    return { sim, c, enemy, far, friend };
+  }
+
+  it('is rejected outside range of the own castle', () => {
+    const { sim, c } = setup();
+    sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + RESCUE_RANGE + 2, y: c.y } }]);
+    expect(sim.state.players[0].rescueUsed).toBe(false);
+    expect(sim.state.events.some((e) => e.t === 'err')).toBe(true);
+  });
+
+  it('kills only enemy units in the circle, once per round', () => {
+    const { sim, c, enemy, far, friend } = setup();
+    sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
+    expect(sim.state.players[0].rescueUsed).toBe(true);
+    // keep the targets pinned in place during the telegraph
+    for (let i = 0; i < 25; i++) {
+      for (const [u, x, y] of [[enemy, c.x + 6, c.y], [friend, c.x + 6, c.y + 1], [far, c.x + 20, c.y]] as const) {
+        const e = sim.get(u.id); if (e) { e.x = x; e.y = y; }
+      }
+      sim.step();
+    }
+    expect(sim.get(enemy.id)).toBeUndefined();
+    expect(sim.get(friend.id)).toBeDefined();
+    expect(sim.get(far.id)).toBeDefined();
+    sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
+    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('already'))).toBe(true);
+  });
+});
+
+describe('rounds', () => {
+  it('castle death ends the round and resets the map with new builders, gold and strikes', () => {
+    const sim = newSim(3);
+    placeNow(sim, 0, 'iv_militia_hall', 10, 6);
+    sim.state.players[0].rescueUsed = true;
+    const oldBuilder = sim.state.players[0].builderId;
+    sim.castle(1).hp = 0;
+    sim.step();
+    expect(sim.state.phase).toBe('roundOver');
+    expect(sim.state.score).toEqual([1, 0]);
+    for (let i = 0; i < ROUND_END_TICKS; i++) sim.step();
+    expect(sim.state.phase).toBe('playing');
+    expect(sim.state.round).toBe(2);
+    expect(sim.state.entities.filter((e) => e.kind === 'building')).toHaveLength(0);
+    expect(sim.state.players[0].builderId).not.toBe(oldBuilder);
+    expect(sim.get(sim.state.players[0].builderId)?.kind).toBe('builder');
+    expect(sim.state.players[0].gold).toBe(START_GOLD);
+    expect(sim.state.players[0].rescueUsed).toBe(false);
+    expect(sim.castle(1).hp).toBe(CASTLE_HP);
+  });
+
+  it('best-of detection ends the match at majority', () => {
+    const sim = newSim(3);
+    const win = (t: Team) => {
+      sim.castle((1 - t) as Team).hp = 0;
+      sim.step();
+      for (let i = 0; i < ROUND_END_TICKS && sim.state.phase === 'roundOver'; i++) sim.step();
+    };
+    win(1);
+    win(0);
+    expect(sim.state.phase).toBe('playing');
+    win(1);
+    expect(sim.state.phase).toBe('matchOver');
+    expect(sim.state.winner).toBe(1);
+    expect(sim.state.score).toEqual([1, 2]);
+  });
+});
+
+describe('determinism & persistence', () => {
+  function busySim() {
+    const sim = newSim(3, 2);
+    const orders: Array<[number, string, number, number]> = [
+      [0, 'iv_militia_hall', 20, 6], [2, 'iv_crossbow_lodge', 20, 18], [1, 'tw_burrow', 58, 8], [3, 'tw_thorn_grove', 58, 18],
+    ];
+    sim.step(orders.map(([player, building, tx, ty]) => ({ player, cmd: { c: 'build' as const, building, tx, ty } })));
+    for (let i = 0; i < 20 * 40; i++) sim.step();
+    return sim;
+  }
+
+  it('save/restore round-trip continues identically', () => {
+    const a = busySim();
+    const saved = JSON.parse(JSON.stringify(a.serialize()));
+    const b = Sim.restore(saved);
+    for (let i = 0; i < 20 * 30; i++) { a.step(); b.step(); }
+    expect(a.serialize()).toEqual(b.serialize());
+    expect(a.state.entities.filter((e) => e.kind === 'unit').length).toBeGreaterThan(0);
+  });
+
+  it('snapshots are JSON-serialisable and compact', () => {
+    const a = busySim();
+    const snap = makeSnapshot(a, []);
+    const json = JSON.stringify(snap);
+    expect(JSON.parse(json).ents.length).toBe(a.state.entities.length);
+  });
+});
