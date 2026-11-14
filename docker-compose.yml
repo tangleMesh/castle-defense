@@ -1,0 +1,31 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: bastion_clash
+      PORT: "3000"
+      TICK_MS: ${TICK_MS:-50}
+    ports:
+      - "3000:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # time to persist running matches on shutdown
+    stop_grace_period: 20s
+
+volumes:
+  mongo-data:
