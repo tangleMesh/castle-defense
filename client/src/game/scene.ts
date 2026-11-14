@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, CASTLE_CLEARANCE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, rectCenter,
+  BUILDINGS, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -29,6 +29,8 @@ interface View {
   moving: boolean;
   lunge: number;
   flash: number;
+  /** Ticks until the next spawn (spawn buildings). */
+  spawn: number;
   /** Castle that has collapsed (shows the ruin texture). */
   ruined?: boolean;
 }
@@ -348,7 +350,7 @@ export class GameScene extends Phaser.Scene {
     if (ghost) { this.destroyView(ghost); this.ghosts.delete(id); }
     const v: View = {
       id, kind, type, owner, team: team as Team, x, y, hp, maxHp, extra,
-      sprite: null!, air: false, facing: team === 0 ? 1 : -1, moving: false, lunge: 0, flash: 0,
+      spawn: 0, sprite: null!, air: false, facing: team === 0 ? 1 : -1, moving: false, lunge: 0, flash: 0,
     };
     if (kind === KIND_UNIT || kind === KIND_BUILDER) {
       const u = kind === KIND_UNIT ? UNITS[type] : null;
@@ -439,6 +441,8 @@ export class GameScene extends Phaser.Scene {
       const src = nb ?? row;
       if (src[7] < v.hp) v.flash = 90;
       v.hp = src[7]; v.maxHp = src[8]; v.extra = src[9];
+      // Spawn countdown, interpolated between snapshots (unless a unit spawned in between).
+      v.spawn = nb && nb[10] <= row[10] ? row[10] + (nb[10] - row[10]) * alpha : src[10];
       // A building changing type means an upgrade completed / started.
       if (v.type !== row[2]) { this.destroyView(v); v = this.makeView(row); }
       if (v.kind === KIND_CASTLE) {
@@ -549,6 +553,13 @@ export class GameScene extends Phaser.Scene {
       const r = Math.max(0, v.hp / v.maxHp);
       g.fillStyle(0x000000, 0.7); g.fillRect(x - 1, y - 1, w + 2, 5);
       g.fillStyle(r > 0.6 ? 0x3ad04a : r > 0.3 ? 0xe0c030 : 0xe03a2a); g.fillRect(x, y, w * r, 3);
+      const sp = v.kind === KIND_BUILDING && !constructing && v.id === sel ? BUILDINGS[v.type].spawn : undefined;
+      if (sp) {
+        // next-unit timer of the selected spawn building
+        const prog = 1 - Math.min(1, v.spawn / (sp.interval * TICK_RATE));
+        g.fillStyle(0x000000, 0.7); g.fillRect(x - 1, y + 5, w + 2, 4);
+        g.fillStyle(0x5ab8ff); g.fillRect(x, y + 6, w * prog, 2);
+      }
       if (constructing) {
         const prog = Math.abs(v.extra) / 100;
         g.fillStyle(0x000000, 0.7); g.fillRect(x - 1, y + 5, w + 2, 4);

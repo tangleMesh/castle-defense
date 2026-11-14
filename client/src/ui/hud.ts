@@ -431,6 +431,22 @@ export class Hud {
 
   // ---------------------------------------------------------------- info panel
 
+  private spawnBar: HTMLElement | null = null;
+
+  /** Fill the "next unit" bar of the selected spawn building (runs on every snapshot). */
+  private updateSpawnBar() {
+    const s = this.session;
+    const bar = this.spawnBar;
+    if (!bar?.isConnected) { this.spawnBar = null; return; }
+    const row = s.selection !== null ? s.latestById.get(s.selection) : undefined;
+    const sp = row && BUILDINGS[row[2]]?.spawn;
+    if (!row || !sp) return;
+    const total = sp.interval * TICK_RATE;
+    const left = Math.min(total, row[10]);
+    (bar.firstChild as HTMLElement).style.width = `${(100 * (1 - left / total)).toFixed(1)}%`;
+    (bar.lastChild as HTMLElement).textContent = `Next ${UNITS[sp.unit].name} in ${Math.ceil(left / TICK_RATE)}s`;
+  }
+
   private refreshInfo(force = false) {
     const s = this.session;
     if (!s.latest) return;
@@ -470,7 +486,9 @@ export class Hud {
         extra !== 100 ? h('div', { class: 'gold-text' }, `${extra < 0 ? 'Upgrading' : 'Constructing'}… ${Math.abs(extra)}%`) : null,
         h('div', { class: 'desc' }, d.desc),
         d.spawn ? h('div', null, `Spawns ${d.spawn.count}× ${UNITS[d.spawn.unit].name} every ${d.spawn.interval}s`) : null,
+        d.spawn && extra === 100 ? (this.spawnBar = h('div', { class: 'ispawn', title: 'Time until the next unit' }, h('div'), h('span'))) : null,
       ));
+      this.updateSpawnBar();
     } else if (kind === 2) {
       this.info.append(portrait('builder'), h('div', { class: 'istats' },
         h('div', { class: 'info-title' }, 'Builder'), h('div', { class: 'dim' }, ownerName),
@@ -599,6 +617,7 @@ export class Hud {
     if (!this.board.hidden) this.renderBoard(snap);
     this.refreshCard();
     this.refreshInfo();
+    this.updateSpawnBar();
     // The banner waits until the castle-collapse cinematic has played.
     if (snap.phase === 'roundOver' && !this.scene.cinematic) this.renderRoundBanner(snap);
     else if (!this.banner.hidden && snap.phase === 'playing') {
