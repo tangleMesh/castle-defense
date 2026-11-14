@@ -2,6 +2,9 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.5.3
+- Fix: units standing in front of a castle's (or large building's) side were drawn behind it; they now always appear in front.
+
 ## 0.5.2
 - Fix: the castle-collapse cinematic is timed in real time, so it stays in step with the server on slow machines, and it stops cleanly if the next round starts early.
 

@@ -385,10 +385,40 @@ export class GameScene extends Phaser.Scene {
     this.views.delete(v.id);
   }
 
+  /** Footprints (top-left tile, size) and render depth of all buildings and castles this frame. */
+  private structs: Array<{ x0: number; y0: number; s: number; d: number }> = [];
+
+  private collectStructures(ents: readonly EntRow[]) {
+    this.structs.length = 0;
+    for (const e of ents) {
+      if (e[1] !== KIND_BUILDING && e[1] !== KIND_CASTLE) continue;
+      const s = e[1] === KIND_CASTLE ? CASTLE_SIZE : BUILDINGS[e[2]]?.size ?? 1;
+      this.structs.push({ x0: e[5] - s / 2, y0: e[6] - s / 2, s, d: depthAt(e[5] + s / 2, e[6] + s / 2) - 2 });
+    }
+  }
+
+  /**
+   * Depth of a ground unit. Plain (x + y) sorting fails next to big footprints: a unit standing
+   * in front of a castle's side face is still "behind" its front corner and got hidden. A unit
+   * past either front face (x ≥ right edge or y ≥ bottom edge) of a nearby structure is lifted
+   * just above that structure.
+   */
+  private unitDepth(x: number, y: number): number {
+    let d = depthAt(x, y);
+    for (const b of this.structs) {
+      if (b.d < d) continue;
+      const x1 = b.x0 + b.s, y1 = b.y0 + b.s;
+      // Only structures whose sprite can overlap the unit on screen (near its footprint).
+      if (x < b.x0 - 1 || y < b.y0 - 1 || x > x1 + b.s || y > y1 + b.s) continue;
+      if (x >= x1 || y >= y1) d = b.d + 1;
+    }
+    return d;
+  }
+
   private placeView(v: View, time: number) {
     if (v.kind === KIND_UNIT || v.kind === KIND_BUILDER) {
       const p = toScreen(v.x, v.y);
-      const d = depthAt(v.x, v.y);
+      const d = this.unitDepth(v.x, v.y);
       const bob = v.air ? Math.sin(time / 260 + v.id) * 3 : v.moving ? -Math.abs(Math.sin(time / 90 + v.id)) * 2 : 0;
       const lungeOff = v.lunge > 0 ? Math.sin((v.lunge / 160) * Math.PI) * 5 * v.facing : 0;
       v.sprite.setPosition(p.x + lungeOff, p.y - (v.air ? AIR_LIFT : 0) + bob).setDepth(d + (v.air ? 5000 : 0));
@@ -426,6 +456,7 @@ export class GameScene extends Phaser.Scene {
     if (!f) return;
     const { a, b, alpha } = f;
     this.updateVision(a.snap);
+    this.collectStructures(a.snap.ents);
     const seen = new Set<number>();
     for (const row of a.snap.ents) {
       const id = row[0];
