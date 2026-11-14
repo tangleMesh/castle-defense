@@ -872,7 +872,7 @@ export class GameScene extends Phaser.Scene {
         const p = toScreen(ev.x, ev.y);
         const coin = this.img(p.x - 12, p.y - 30, 'coin').setDepth(9.4e6).setScale(sc(1.3));
         const txt = this.add.text(p.x - 1, p.y - 30, `+${ev.g}`, {
-          fontFamily: 'Georgia, serif', fontSize: '20px', fontStyle: 'bold', color: '#ffe04a', stroke: '#1a0e00', strokeThickness: 5,
+          fontFamily: 'MedievalSharp, Georgia, serif', fontSize: '22px', color: '#ffe04a', stroke: '#1a0e00', strokeThickness: 5,
         }).setOrigin(0, 0.5).setDepth(9.4e6).setResolution(window.devicePixelRatio || 1);
         const objs = [coin, txt];
         for (const o of objs) o.setAlpha(0);
@@ -908,7 +908,7 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.shake(320, 0.008);
         this.cameras.main.flash(160, 255, 250, 210);
         if (ev.kills) {
-          const txt = this.add.text(p.x, p.y - 80, `${ev.kills} slain`, { fontFamily: 'Cinzel, Georgia, serif', fontSize: '22px', color: '#ffe680', stroke: '#2a1a00', strokeThickness: 4 })
+          const txt = this.add.text(p.x, p.y - 80, `${ev.kills} slain`, { fontFamily: 'MedievalSharp, Georgia, serif', fontSize: '24px', color: '#ffe680', stroke: '#2a1a00', strokeThickness: 4 })
             .setOrigin(0.5).setDepth(9.5e6).setResolution(window.devicePixelRatio || 1);
           this.tweens.add({ targets: txt, y: p.y - 130, alpha: 0, duration: 1600, onComplete: () => txt.destroy() });
         }

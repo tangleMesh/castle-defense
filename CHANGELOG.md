@@ -2,6 +2,9 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.5.0
+- Medieval look: titles, buttons, banners, labels and floating combat texts use the MedievalSharp font; descriptions, tooltips and tables keep the readable Alegreya Sans.
+
 ## 0.4.0
 - Every unit (own and enemy) always shows its health bar. Alt now reveals all building health bars.
 

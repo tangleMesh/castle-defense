@@ -10,12 +10,15 @@
   --dim: #a59c86;
   --red: #e2574a;
   --green: #5fd06a;
-  --head: 'Cinzel', Georgia, 'Times New Roman', serif;
+  /* Medieval display face for titles, buttons, banners and labels; body text stays readable. */
+  --head: 'MedievalSharp', 'Cinzel', Georgia, 'Times New Roman', serif;
   --body: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
+/* MedievalSharp has a single weight: don't let browsers fake bold versions of it. */
+html { font-synthesis: none; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.4 var(--body); }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
@@ -145,10 +148,10 @@ input:focus, select:focus { border-color: var(--gold-2); }
 .rescue-pill.used { background: #222; color: #777; border-color: #333; }
 .topbar .center { flex: 1; display: flex; justify-content: center; align-items: center; gap: 14px; min-width: 0; }
 .score { text-align: center; }
-.score .round { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+.score .round { font-family: var(--head); font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
 .score .tally { font-family: var(--head); font-size: 20px; line-height: 1; }
 .castle-bar { display: grid; grid-template-columns: auto; gap: 1px; width: 160px; }
-.cb-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.cb-label { font-family: var(--head); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
 .cb-track { height: 7px; background: #0e0d0a; border: 1px solid #000; border-radius: 2px; overflow: hidden; }
 .cb-fill { height: 100%; transition: width .2s; }
 .cb-num { font-size: 11px; color: var(--dim); }
