@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bastion Clash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="screen-auth" class="screen" hidden></div>
+    <div id="screen-lobby" class="screen" hidden></div>
+    <div id="screen-game" class="screen" hidden>
+      <div id="phaser"></div>
+      <div id="hud"></div>
+    </div>
+    <div id="net-status" hidden>Connection lost — reconnecting…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
