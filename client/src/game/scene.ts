@@ -538,7 +538,8 @@ export class GameScene extends Phaser.Scene {
     for (const v of this.views.values()) {
       if (v.kind === KIND_BUILDER || v.ruined) continue;
       const constructing = v.kind === KIND_BUILDING && v.extra !== 100;
-      if (!(v.hp < v.maxHp || v.id === sel || constructing || this.showAllBars)) continue;
+      // Units always show their health bar (own and enemy); structures only when damaged/selected/Alt.
+      if (v.kind !== KIND_UNIT && !(v.hp < v.maxHp || v.id === sel || constructing || this.showAllBars)) continue;
       let w: number, x: number, y: number;
       if (v.kind === KIND_UNIT) {
         const p = toScreen(v.x, v.y);

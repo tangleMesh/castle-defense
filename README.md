@@ -73,7 +73,7 @@ BASE_URL=http://localhost:3000 RESTART_CMD="docker compose restart server" npm r
 | `T` | Rescue strike targeting |
 | `F1` / Space / Backspace | Select builder / center on builder / center on castle |
 | Arrows, screen edge, middle-drag, wheel | Camera |
-| Alt | Show all health bars |
+| Alt | Show all building health bars (unit health bars are always shown) |
 | Tab (hold) | Scoreboard: army, buildings, special, kills, losses, castle damage, income, gold, strikes |
 | Enter | Chat |
 | F10 / Esc | Menu (pause vote, save & exit, leave) |

@@ -737,7 +737,7 @@ export class Hud {
         h('div', null, 'Q W E R / A S D F / Z X C V: command card'),
         h('div', null, 'Shift: queue buildings · Esc: cancel'),
         h('div', null, 'T: rescue strike · F1/Space: builder · Backspace: castle'),
-        h('div', null, 'Arrows / screen edge / middle-drag: camera · Wheel: zoom · Alt: show all health bars · Hold Tab: scoreboard'),
+        h('div', null, 'Arrows / screen edge / middle-drag: camera · Wheel: zoom · Alt: show all building health bars · Hold Tab: scoreboard'),
         h('div', null, 'Enter: chat'),
         h('div', null, 'Fog of war: you see your own base, plus 6 tiles around each of your team\'s units'),
       ),
