@@ -103,7 +103,7 @@ export function findTarget(sim: Sim, a: Entity, st: AttackStats, radius: number)
   return best;
 }
 
-function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmgMult: number) {
+export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmgMult: number) {
   const raw = st.dmg * dmgMult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
   if (st.chain > 1) {

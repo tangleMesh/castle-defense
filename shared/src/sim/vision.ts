@@ -1,4 +1,4 @@
-import { BUILDINGS } from '../data';
+import { BUILDINGS, itemEffect } from '../data';
 import { CASTLE_SIZE } from '../constants';
 import { MAP, type Rect } from '../map/map';
 import type { Phase, SimEvent, Team } from './state';
@@ -24,14 +24,15 @@ export function fogActive(phase: Phase): boolean {
 }
 
 /** Visibility grid (1 = visible) for a team, given the positions of all its entities. */
-export function computeVision(team: Team, sources: Iterable<{ x: number; y: number }>): Uint8Array {
+export function computeVision(team: Team, sources: Iterable<{ x: number; y: number; r?: number }>): Uint8Array {
   const grid = new Uint8Array(W * H);
   const b = baseArea(team);
   for (let y = b.y; y < b.y + b.h; y++) grid.fill(1, y * W + b.x, y * W + b.x + b.w);
   for (const s of sources) {
-    // Tiles whose centre lies in [pos − 6, pos + 6) on both axes: always exactly 12×12 tiles.
-    const x0 = Math.max(0, Math.ceil(s.x - VISION_RANGE - 0.5)), x1 = Math.min(W - 1, Math.ceil(s.x + VISION_RANGE - 0.5) - 1);
-    const y0 = Math.max(0, Math.ceil(s.y - VISION_RANGE - 0.5)), y1 = Math.min(H - 1, Math.ceil(s.y + VISION_RANGE - 0.5) - 1);
+    // Tiles whose centre lies in [pos − r, pos + r) on both axes: always exactly 2r×2r tiles (r = 6 by default).
+    const r = s.r ?? VISION_RANGE;
+    const x0 = Math.max(0, Math.ceil(s.x - r - 0.5)), x1 = Math.min(W - 1, Math.ceil(s.x + r - 0.5) - 1);
+    const y0 = Math.max(0, Math.ceil(s.y - r - 0.5)), y1 = Math.min(H - 1, Math.ceil(s.y + r - 0.5) - 1);
     for (let y = y0; y <= y1; y++) if (x1 >= x0) grid.fill(1, y * W + x0, y * W + x1 + 1);
   }
   return grid;
@@ -59,10 +60,17 @@ export function entityVisible(grid: Uint8Array, kind: number, type: string, x: n
   return false;
 }
 
+/** Sight radius of an entity: builders carrying a spyglass see further. */
+export function sightOf(kind: number, owner: number, players: ReadonlyArray<{ items?: string[] } | undefined>): number {
+  if (kind !== 2) return VISION_RANGE;
+  const p = players[owner];
+  return (p && itemEffect(p, 'vision')) || VISION_RANGE;
+}
+
 /** Vision grid of a team computed from snapshot rows (own-team rows are never filtered). */
-export function visionFromRows(team: Team, ents: EntRow[]): Uint8Array {
-  const own: Array<{ x: number; y: number }> = [];
-  for (const e of ents) if (e[4] === team) own.push({ x: e[5], y: e[6] });
+export function visionFromRows(team: Team, ents: EntRow[], players: ReadonlyArray<{ items?: string[] } | undefined> = []): Uint8Array {
+  const own: Array<{ x: number; y: number; r: number }> = [];
+  for (const e of ents) if (e[4] === team) own.push({ x: e[5], y: e[6], r: sightOf(e[1], e[3], players) });
   return computeVision(team, own);
 }
 
@@ -72,7 +80,7 @@ export function visionFromRows(team: Team, ents: EntRow[]): Uint8Array {
  */
 export function filterSnapshot(snap: Snapshot, team: Team): Snapshot {
   if (!fogActive(snap.phase)) return snap;
-  const grid = visionFromRows(team, snap.ents);
+  const grid = visionFromRows(team, snap.ents, snap.players);
   const ents = snap.ents.filter((e) => e[4] === team || e[1] === 3 || entityVisible(grid, e[1], e[2], e[5], e[6]));
   const ids = new Set(ents.map((e) => e[0]));
   const playerTeam = (p: number) => snap.players[p]?.team;

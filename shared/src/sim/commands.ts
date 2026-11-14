@@ -1,5 +1,5 @@
 import { RESCUE_DELAY_TICKS, RESCUE_RANGE, SELL_REFUND, TICK_RATE } from '../constants';
-import { BUILDINGS } from '../data';
+import { BUILDINGS, ITEM_BY_ID, MAX_ITEMS, itemsOf } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import type { Sim } from './sim';
 import type { Entity, PlayerCommand } from './state';
@@ -84,6 +84,28 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       p.strikes++;
       s.strikes.push({ player, x: cmd.x, y: cmd.y, ticksLeft: RESCUE_DELAY_TICKS });
       sim.emit({ t: 'strike', p: player, x: cmd.x, y: cmd.y, hit: 0 });
+      return;
+    }
+    case 'buy': {
+      const item = ITEM_BY_ID[cmd.item];
+      if (!item) return fail('Unknown item');
+      const bag = itemsOf(p);
+      if (bag.includes(item.id)) return fail(`You already carry ${item.name}`);
+      if (bag.length >= MAX_ITEMS) return fail(`Your builder can carry only ${MAX_ITEMS} items`);
+      if (p.gold < item.cost) return fail('Not enough gold');
+      p.gold -= item.cost;
+      p.items = [...bag, item.id];
+      sim.emit({ t: 'item', p: player, item: item.id, use: 0 });
+      return;
+    }
+    case 'use': {
+      const item = ITEM_BY_ID[cmd.item];
+      if (!item || !itemsOf(p).includes(item.id)) return;
+      if (!item.refreshStrike) return fail(`${item.name} works on its own`);
+      if (!p.rescueUsed) return fail('Your rescue strike is still ready');
+      p.rescueUsed = false;
+      p.items = itemsOf(p).filter((i) => i !== item.id);
+      sim.emit({ t: 'item', p: player, item: item.id, use: 1 });
       return;
     }
   }

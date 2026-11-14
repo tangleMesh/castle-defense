@@ -1,10 +1,10 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, TICK_RATE } from '../constants';
-import { BUILDINGS, DAMAGE_TABLE, FACTIONS, UNITS, type ArmorType, type BuildingDef, type UnitDef } from '../data';
+import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, hasItem, itemsOf, type ArmorType, type BuildingDef, type ItemDef, type UnitDef } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
 import { KIND_CODES } from '../sim/snapshot';
-import { computeVision, entityVisible } from '../sim/vision';
+import { computeVision, entityVisible, sightOf } from '../sim/vision';
 import type { Sim } from '../sim/sim';
 import type { Command, Entity, PlayerState } from '../sim/state';
 
@@ -57,20 +57,27 @@ interface Profile {
   safeSpots: boolean;
   /** Longest wait (seconds of income) the bot accepts while saving for its special building. */
   saveForSpecial: number;
+  /** Minutes into a round before the bot starts buying builder items (Infinity: never). */
+  itemsAfterMin: number;
+  /** Items in the order the bot wants them. */
+  items: string[];
 }
 
 const PROFILES: Record<AiLevel, Profile> = {
   easy: {
     think: 6 * TICK_RATE, maxQueue: 1, idle: 0.3, upgradeAfter: 10, specialAt: 14, planner: false, counter: false,
     saves: false, tidy: false, rescueAt: 14, rescueDelay: 2 * TICK_RATE, rescueAim: 2.5, upgradeBias: 1, rangedShare: 0, safeSpots: false, saveForSpecial: 0,
+    itemsAfterMin: 8, items: ['chalice', 'boots', 'spyglass'],
   },
   normal: {
     think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: false,
     saves: false, tidy: true, rescueAt: 9, rescueDelay: TICK_RATE, rescueAim: 1, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
+    itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'],
   },
   hard: {
     think: Math.round(0.5 * TICK_RATE), maxQueue: 2, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 8, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
+    itemsAfterMin: 5, items: ['war_horn', 'aegis', 'crossbow'],
   },
 };
 
@@ -116,9 +123,17 @@ export class AiPlayer {
   // ---------------------------------------------------------------- rescue strike
 
   private rescue(sim: Sim): Command | null {
+    const me = sim.state.players[this.player];
+    // With the strike spent, a carried Signal Flare brings it back when a strike is wanted.
+    if (me.rescueUsed && !hasItem(me, 'flare')) return null;
+    const want = this.strikeWanted(sim);
+    if (!want) return null;
+    return me.rescueUsed ? { c: 'use', item: 'flare' } : want;
+  }
+
+  private strikeWanted(sim: Sim): Command | null {
     const s = sim.state;
     const me = s.players[this.player];
-    if (me.rescueUsed) return null;
     const c = rectCenter(MAP.castles[me.team]);
     const castle = sim.castle(me.team);
     // Every difficulty: never let a building of our team fall if a strike can still save it.
@@ -197,6 +212,13 @@ export class AiPlayer {
     const mine = sim.playerBuildings(this.player);
     const queued = builder.orders ?? [];
 
+    const item = this.wantedItem(sim, mine.length);
+    if (item) {
+      if (me.gold >= item.cost) return { c: 'buy', item: item.id };
+      // Planners stop building and save for it (late in a round the bonus beats one more building).
+      if (P.planner) return null;
+    }
+
     const options = this.options(sim, me, mine, queued);
     if (!options.length) return null;
 
@@ -233,6 +255,20 @@ export class AiPlayer {
     if (queued.length >= P.maxQueue) return null;
     const spot = this.findSpot(sim, pick.def);
     return spot ? { c: 'build', building: pick.def.id, tx: spot.tx, ty: spot.ty, queue: true } : null;
+  }
+
+  /** Next builder item this bot wants, once the round is old enough and its base stands. */
+  private wantedItem(sim: Sim, buildings: number): ItemDef | null {
+    const s = sim.state;
+    const me = s.players[this.player];
+    const P = this.profile;
+    const bag = itemsOf(me);
+    if (bag.length >= MAX_ITEMS) return null;
+    // A spent strike and a castle in trouble: a Signal Flare first (strategic bots only).
+    if (P.counter && me.rescueUsed && !bag.includes('flare') && sim.castle(me.team).hp < sim.castle(me.team).maxHp * 0.6) return ITEM_BY_ID.flare;
+    if (s.tick - s.roundStartTick < P.itemsAfterMin * 60 * TICK_RATE || buildings < 5) return null;
+    const id = P.items.find((i) => !bag.includes(i));
+    return id ? ITEM_BY_ID[id] : null;
   }
 
   private options(sim: Sim, me: PlayerState, mine: Entity[], queued: { building: string }[]): Option[] {
@@ -343,7 +379,8 @@ export class AiPlayer {
     };
     let near = 0;
     // Bots play under the same fog of war as humans: they only judge what their team can see.
-    const own = sim.state.entities.filter((e) => e.team === me.team);
+    const own = sim.state.entities.filter((e) => e.team === me.team)
+      .map((e) => ({ x: e.x, y: e.y, r: sightOf(KIND_CODES.indexOf(e.kind), e.owner, sim.state.players) }));
     const vision = computeVision(me.team, own);
     for (const e of sim.state.entities) {
       if (e.team === me.team || e.hp <= 0) continue;

@@ -71,6 +71,8 @@ export interface PlayerState {
   lost?: number;
   /** Damage dealt to the enemy castle. */
   castleDmg?: number;
+  /** Builder items carried this round (optional: absent in games saved by older versions). */
+  items?: string[];
 }
 
 export interface PendingStrike {
@@ -93,7 +95,9 @@ export type SimEvent =
   | { t: 'income'; amounts: number[] }
   | { t: 'round'; winner: Team; score: [number, number]; round: number }
   | { t: 'match'; winner: Team; score: [number, number] }
-  | { t: 'err'; p: number; msg: string };
+  | { t: 'err'; p: number; msg: string }
+  /** Player `p` bought (use 0) or used (use 1) an item. */
+  | { t: 'item'; p: number; item: string; use: 0 | 1 };
 
 export interface RoundRecord {
   winner: Team;
@@ -137,6 +141,8 @@ export type Command =
   | { c: 'upgrade'; id: number; to: string }
   | { c: 'sell'; id: number }
   | { c: 'rescue'; x: number; y: number }
+  | { c: 'buy'; item: string }
+  | { c: 'use'; item: string }
   | { c: 'stop' };
 
 export interface PlayerCommand {

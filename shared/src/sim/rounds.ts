@@ -37,6 +37,7 @@ export function startRound(sim: Sim) {
     p.builderId = builder.id;
     p.gold = START_GOLD;
     p.rescueUsed = false;
+    p.items = [];
   }
 }
 

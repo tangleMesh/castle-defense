@@ -1,5 +1,5 @@
 import { BUILDER_REACH, BUILDER_SPEED, TICK_RATE } from '../constants';
-import { BUILDINGS, UNITS } from '../data';
+import { BUILDINGS, UNITS, itemEffect } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { footprint, idx, inBounds, flowStep, nearestFree } from './grid';
 import { placementError } from './placement';
@@ -56,10 +56,10 @@ export function followFlow(sim: Sim, e: Entity, step: number) {
 
 /** Builders walk to their move target or to the next build site and place foundations. */
 export function stepBuilders(sim: Sim) {
-  const step = BUILDER_SPEED / TICK_RATE;
   for (const p of sim.state.players) {
     const b = sim.get(p.builderId);
     if (!b) continue;
+    const step = (BUILDER_SPEED * (1 + (itemEffect(p, 'builderSpeed') ?? 0))) / TICK_RATE;
     const order = b.orders?.[0];
     if (order) {
       const def = BUILDINGS[order.building];

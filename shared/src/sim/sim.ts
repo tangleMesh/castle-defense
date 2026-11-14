@@ -11,6 +11,7 @@ import { computeAuras, type Mods } from './auras';
 import { stepCombatUnits, stepStructureAttacks } from './combat';
 import { stepBuilders, stepUnitMovementPost } from './movement';
 import { stepStrikes } from './rescue';
+import { stepItems } from './items';
 import { checkRoundEnd, startRound, stepPhase } from './rounds';
 
 export interface CreateOptions {
@@ -189,6 +190,7 @@ export class Sim {
     computeAuras(this);
     stepCombatUnits(this);
     stepStructureAttacks(this);
+    stepItems(this);
     stepBuilders(this);
     stepStrikes(this);
     stepUnitMovementPost(this);

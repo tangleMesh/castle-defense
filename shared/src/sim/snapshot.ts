@@ -26,6 +26,8 @@ export interface SnapshotPlayer {
   goldEarned: number;
   lost: number;
   castleDmg: number;
+  /** Builder items carried this round. */
+  items: string[];
 }
 
 export interface Snapshot {
@@ -76,6 +78,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
       income: incomeFor(sim, p.index), rescueUsed: p.rescueUsed, builderId: p.builderId,
       connected: p.connected, kills: p.kills,
       goldEarned: Math.floor(p.goldEarned), lost: p.lost ?? 0, castleDmg: Math.round(p.castleDmg ?? 0),
+      items: [...(p.items ?? [])],
     })),
     ents,
     orders,

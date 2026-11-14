@@ -4,6 +4,7 @@ import { THORNWILD } from './factions/thornwild';
 
 export * from './types';
 export * from './combat';
+export * from './items';
 
 export const FACTIONS: Record<FactionId, FactionDef> = { ironvow: IRONVOW, thornwild: THORNWILD };
 export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
