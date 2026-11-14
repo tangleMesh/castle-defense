@@ -6,6 +6,17 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
 - **One special building per player**: the expensive Sun Citadel or Elder Heartwood. It summons a champion and can be upgraded twice.
 - **Rescue strike**: once per round, call down sunfire near your own castle. It kills every enemy unit in a large circle.
+- **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
+  - *Horn of Valor* (220): +20% damage for every unit of your team.
+  - *Aegis Charm* (200): +3 armor for every unit of your team.
+  - *Verdant Chalice* (180): every unit of your team regenerates 4 HP/s.
+  - *Pathfinder Boots* (140): your team's units move 15% faster, your builder 30%.
+  - *Warden's Crossbow* (180): your builder shoots nearby enemy units (it stays invulnerable).
+  - *Mason's Hammer* (150): your builder repairs nearby buildings and the castle, 30 HP/s.
+  - *Far-Seer Spyglass* (120): your builder sees 12 tiles through the fog instead of 6.
+  - *Signal Flare* (240): single use; brings back your spent rescue strike.
+
+  The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long, and Hard bots carry a flare when their castle is in trouble.
 - **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 100 gold, enough for one cheap spawn building.
 - **Fast rounds** (about 5–7 minutes): castles have 8000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 12×12 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
@@ -26,7 +37,7 @@ The game uses semantic versioning. The current version is in the root `package.j
 | `server/` | Node 24, fastify (REST + static), `ws` websockets, MongoDB driver |
 | `client/` | Phaser 3 isometric renderer with all art generated procedurally at runtime, plus a DOM HUD. Built with Vite |
 
-The server is authoritative. Clients send only intents (move, build, upgrade, sell, rescue). The server steps the simulation and broadcasts compact snapshots at 10 Hz, and clients interpolate between them.
+The server is authoritative. Clients send only intents (move, build, upgrade, sell, rescue, buy, use). The server steps the simulation and broadcasts compact snapshots at 10 Hz, and clients interpolate between them.
 
 ## Run with Docker (recommended)
 
@@ -71,10 +82,12 @@ BASE_URL=http://localhost:3000 RESTART_CMD="docker compose restart server" npm r
 | `Q W E R / A S D F / Z X C V` | Command card (build, upgrade, rescue strike, stop/sell) |
 | Shift + click | Queue several buildings |
 | `T` | Rescue strike targeting |
+| `B` | Castle shop (builder items) |
+| `1 2 3` | Use an item (the Signal Flare) |
 | `F1` / Space / Backspace | Select builder / center on builder / center on castle |
 | Arrows, screen edge, middle-drag, wheel | Camera |
 | Alt | Show all building health bars (unit health bars are always shown) |
-| Tab (hold) | Scoreboard: army, buildings, special, kills, losses, castle damage, income, gold, strikes |
+| Tab (hold) | Scoreboard: army, buildings, special, items, kills, losses, castle damage, income, gold, strikes |
 | Enter | Chat |
 | F10 / Esc | Menu (pause vote, save & exit, leave) |
 
@@ -83,7 +96,8 @@ BASE_URL=http://localhost:3000 RESTART_CMD="docker compose restart server" npm r
 ```
 shared/src/data/factions/*.ts   buildings & units (data-driven; add a faction by adding a file)
 shared/src/sim/                 sim.ts (step loop), combat, movement (flow fields), economy,
-                                placement, rescue, rounds, auras, spawning, snapshot
+                                placement, rescue, rounds, auras, items, spawning, snapshot
+shared/src/data/items.ts        castle-shop items for the builder
 server/src/                     app.ts (http+ws), lobby.ts, matchRoom.ts, persistence/
 client/src/                     game/ (scene, textures, session, iso), ui/ (hud, lobby, auth)
 ```

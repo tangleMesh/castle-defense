@@ -2,6 +2,11 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.6.0
+- Castle shop: eight expensive late-game items for the builder (press B or click your castle). The builder carries up to 3 until the round ends: team-wide damage, armor, regeneration and speed auras, a crossbow so the builder shoots enemies, a repair hammer, a spyglass for longer sight, and a single-use flare that restores the rescue strike.
+- Item bag above the command card (keys 1–3), items in the builder info panel and the Tab scoreboard, range rings for the crossbow and hammer.
+- Bots buy items in long rounds; Hard bots carry a flare when their castle is in trouble.
+
 ## 0.5.3
 - Fix: units standing in front of a castle's (or large building's) side were drawn behind it; they now always appear in front.
 
