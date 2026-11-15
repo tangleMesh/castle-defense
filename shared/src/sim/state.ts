@@ -11,6 +11,8 @@ export interface BuildOrder {
   ty: number;
   /** Gold already paid for this order (refunded if it fails). */
   paid: number;
+  /** Sapphires already paid for this order (refunded if it fails). */
+  paidS?: number;
 }
 
 /**
@@ -78,6 +80,8 @@ export interface PlayerState {
   castleDmg?: number;
   /** Builder items carried this round (optional: absent in games saved by older versions). */
   items?: string[];
+  /** Sapphires (rare resource for special buildings and elite upgrades); absent in old saves = START_SAPPHIRES. */
+  sapphires?: number;
 }
 
 export interface PendingStrike {
@@ -103,6 +107,8 @@ export type SimEvent =
   | { t: 'err'; p: number; msg: string }
   /** Player `p` bought an item. */
   | { t: 'item'; p: number; item: string }
+  /** Player `p` bought a sapphire in the castle shop. */
+  | { t: 'sapphire'; p: number }
   /** Player `p` finished the round's `place`-th first building (0-based) and got `g` bonus gold. */
   | { t: 'first'; p: number; place: number; g: number };
 
@@ -149,6 +155,7 @@ export interface PlayerSetup {
 export type Command =
   | { c: 'move'; x: number; y: number }
   | { c: 'build'; building: string; tx: number; ty: number; queue?: boolean }
+  | { c: 'buySapphire' }
   | { c: 'upgrade'; id: number; to: string }
   | { c: 'sell'; id: number }
   | { c: 'rescue'; x: number; y: number }

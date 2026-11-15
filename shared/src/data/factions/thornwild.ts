@@ -64,8 +64,9 @@ export const THORNWILD: FactionDef = {
     },
     {
       id: 'tw_storm_lodge', name: 'Storm Lodge', faction: 'thornwild', cost: 150, hp: 750, armor: 3, buildTime: 10, size: 2, upgradeOnly: true,
-      desc: 'Spawns a Stormcaller whose lightning jumps between 5 enemies.',
+      desc: 'Spawns a Stormcaller whose lightning jumps between 5 enemies. Upgrades (with a sapphire) into the Tempest Circle.',
       spawn: { unit: 'tw_stormcaller', count: 1, interval: 22 },
+      upgrades: ['tw_tempest_circle'],
       model: { style: 'hut', wall: 0x8a6a4a, roof: 0x3a6ad0, height: 28 },
     },
     {
@@ -83,9 +84,22 @@ export const THORNWILD: FactionDef = {
     },
     {
       id: 'tw_great_stag_den', name: 'Great Stag Den', faction: 'thornwild', cost: 180, hp: 900, armor: 4, buildTime: 12, size: 2, upgradeOnly: true,
-      desc: 'Spawns an Elder Stag with a wider trample.',
+      desc: 'Spawns an Elder Stag with a wider trample. Upgrades (with a sapphire) into the Wild Hunt Grove.',
       spawn: { unit: 'tw_elder_stag', count: 1, interval: 28 },
+      upgrades: ['tw_wild_hunt'],
       model: { style: 'stable', wall: BARK, roof: 0x3a8a3a, height: 22 },
+    },
+    {
+      id: 'tw_wild_hunt', name: 'Wild Hunt Grove', faction: 'thornwild', cost: 260, sapphires: 1, hp: 1300, armor: 5, buildTime: 14, size: 2, upgradeOnly: true,
+      desc: 'ELITE (costs a sapphire): spawns a Stormhorn, a giant stag that tramples whole groups and feeds on its prey.',
+      spawn: { unit: 'tw_stormhorn', count: 1, interval: 32 },
+      model: { style: 'stable', wall: 0x5a4a3a, roof: 0x6a5aa0, height: 26 },
+    },
+    {
+      id: 'tw_tempest_circle', name: 'Tempest Circle', faction: 'thornwild', cost: 240, sapphires: 1, hp: 1100, armor: 4, buildTime: 14, size: 2, upgradeOnly: true,
+      desc: 'ELITE (costs a sapphire): spawns a Tempest Caller whose venomous storm jumps between 7 enemies.',
+      spawn: { unit: 'tw_tempest_caller', count: 1, interval: 26 },
+      model: { style: 'hut', wall: 0x5a4a6a, roof: 0x2a4ad0, height: 34 },
     },
     {
       id: 'tw_moth_hive', name: 'Moth Hive', faction: 'thornwild', cost: 150, hp: 550, armor: 2, buildTime: 10, size: 2,
@@ -113,8 +127,8 @@ export const THORNWILD: FactionDef = {
       model: { style: 'shrine', wall: 0x8a6a3a, roof: 0xe0a030, height: 20 },
     },
     {
-      id: 'tw_elder_heartwood', name: 'Elder Heartwood', faction: 'thornwild', cost: 400, hp: 2000, armor: 6, buildTime: 20, size: 2, special: true,
-      desc: 'SPECIAL (one per player). Awakens an Ancient Treant; when it falls, three Saplings rise from its roots. Upgrades twice.',
+      id: 'tw_elder_heartwood', name: 'Elder Heartwood', faction: 'thornwild', cost: 400, hp: 2000, armor: 6, buildTime: 20, size: 2, special: true, sapphires: 1,
+      desc: 'SPECIAL: costs a sapphire. Awakens an Ancient Treant; when it falls, three Saplings rise from its roots. Upgrades twice.',
       spawn: { unit: 'tw_ancient_treant', count: 1, interval: 45 },
       upgrades: ['tw_elder_heartwood_2'],
       model: { style: 'tree', wall: 0x5a3a20, roof: 0x2a6a2a, height: 56 },
@@ -156,6 +170,11 @@ export const THORNWILD: FactionDef = {
       model: { shape: 'cavalry', body: 0x9a7a50, accent: 0x7ab0ff, scale: 1.1 } },
     { id: 'tw_elder_stag', name: 'Elder Stag', hp: 780, armor: 5, armorType: 'heavy', dmg: 33, attackType: 'normal', range: 0.5, cooldown: 1.3, speed: 3.6, radius: 0.48, bounty: 12, splash: 1.2,
       model: { shape: 'cavalry', body: 0xd0c0a0, accent: MOSS, scale: 1.2 } },
+    { id: 'tw_stormhorn', name: 'Stormhorn', hp: 1500, armor: 6, armorType: 'heavy', dmg: 55, attackType: 'normal', range: 0.5, cooldown: 1.3, speed: 3.6, radius: 0.55, bounty: 30, splash: 1.5, lifesteal: 0.25,
+      model: { shape: 'cavalry', body: 0x6a5a8a, accent: 0x9ad0ff, scale: 1.35 } },
+    { id: 'tw_tempest_caller', name: 'Tempest Caller', hp: 600, armor: 2, armorType: 'light', dmg: 42, attackType: 'magic', range: 6, cooldown: 1.6, speed: 2.5, radius: 0.36, bounty: 20, targetsAir: true, chain: 7,
+      poison: { dps: 6, duration: 3, slow: 0.25 },
+      model: { shape: 'caster', body: 0x4a3a6a, accent: 0xc0e0ff, scale: 1.3 } },
     { id: 'tw_dusk_moth', name: 'Dusk Moth', hp: 85, armor: 0, armorType: 'light', dmg: 6, attackType: 'magic', range: 2.5, cooldown: 1.1, speed: 4.2, radius: 0.34, bounty: 2, air: true, targetsAir: true, poison: { dps: 3, duration: 3, slow: 0.15 },
       model: { shape: 'flyer', body: 0x9a6ac0, accent: 0xf0e080, scale: 1 } },
     { id: 'tw_ancient_treant', name: 'Ancient Treant', hp: 2400, armor: 5, armorType: 'heavy', dmg: 55, attackType: 'siege', range: 0.6, cooldown: 1.6, speed: 2.5, radius: 0.65, bounty: 40, splash: 1.2, onDeath: { unit: 'tw_sapling', count: 3 },

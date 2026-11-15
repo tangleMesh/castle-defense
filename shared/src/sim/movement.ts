@@ -1,4 +1,4 @@
-import { BUILDER_REACH, BUILDER_SPEED, TICK_RATE } from '../constants';
+import { BUILDER_REACH, BUILDER_SPEED, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, itemEffect } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { footprint, idx, inBounds, flowStep, nearestFree } from './grid';
@@ -80,6 +80,7 @@ export function stepBuilders(sim: Sim) {
       const err = placementError(sim, p.index, def.id, order.tx, order.ty, order);
       if (err) {
         p.gold += order.paid;
+        if (order.paidS) p.sapphires = (p.sapphires ?? START_SAPPHIRES) + order.paidS;
         sim.emit({ t: 'err', p: p.index, msg: `${def.name}: ${err}` });
         continue;
       }

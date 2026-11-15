@@ -165,11 +165,6 @@ export class MatchSession {
     const occ = this.occupancy();
     const err = basicPlacementError(this.team, tx, ty, def.size, (x, y) => !!occ[y * MAP.width + x]);
     if (err) return err;
-    if (def.special) {
-      const ownsSpecial = this.latest.ents.some((e) => e[1] === 1 && e[3] === this.you && BUILDINGS[e[2]].special)
-        || this.latest.orders.some(([p, b]) => p === this.you && BUILDINGS[b].special);
-      if (ownsSpecial) return 'You may only have one special building';
-    }
     const g = occ.slice();
     for (let y = ty; y < ty + def.size; y++) for (let x = tx; x < tx + def.size; x++) g[y * MAP.width + x] = 1;
     if (!isFullyConnected(g)) return 'That would block the path';

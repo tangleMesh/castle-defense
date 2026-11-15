@@ -1,4 +1,4 @@
-import type { GameMode } from '../constants';
+import { START_SAPPHIRES, type GameMode } from '../constants';
 import { incomeFor } from './economy';
 import type { Sim } from './sim';
 import type { EntityKind, Phase, SimEvent } from './state';
@@ -33,6 +33,8 @@ export interface SnapshotPlayer {
   castleDmg: number;
   /** Builder items carried this round. */
   items: string[];
+  /** Sapphires in hand. */
+  sapphires: number;
 }
 
 export interface Snapshot {
@@ -86,6 +88,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
       connected: p.connected, kills: p.kills,
       goldEarned: Math.floor(p.goldEarned), lost: p.lost ?? 0, castleDmg: Math.round(p.castleDmg ?? 0),
       items: [...(p.items ?? [])],
+      sapphires: p.sapphires ?? START_SAPPHIRES,
     })),
     ents,
     orders,

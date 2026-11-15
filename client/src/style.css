@@ -258,6 +258,22 @@ button.mode { cursor: pointer; }
   background: radial-gradient(circle at 35% 35%, #fff2a0, #e0a820 55%, #8a5a10); box-shadow: 0 0 0 1px #5a3a08;
 }
 .cbtn .cost.short .coin { filter: grayscale(.6) brightness(.8); }
+/* Sapphires: the rare resource for special buildings and elite upgrades. */
+.gem-ico {
+  display: inline-block; width: 11px; height: 12px; flex: none;
+  background: linear-gradient(135deg, #b8e8ff, #2a6ae0 55%, #0c2470);
+  clip-path: polygon(20% 0, 80% 0, 100% 35%, 50% 100%, 0 35%); filter: drop-shadow(0 0 2px rgba(120, 190, 255, .7));
+}
+.cbtn .gem-badge {
+  position: absolute; top: 2px; right: 3px; display: flex; padding: 2px; border-radius: 50%;
+  background: rgba(8, 12, 24, .85); box-shadow: 0 0 0 1px #4a7ac8;
+}
+.cbtn .gem-badge.short { filter: grayscale(.8) brightness(.7); }
+.tip-cost.gem { color: #1c4aa0; margin-top: -4px; }
+.tip-cost.gem.short { color: #ff8a78; }
+.tip-cost .gem-ico { width: 13px; height: 14px; }
+.sapphires { display: inline-flex; align-items: center; gap: 5px; margin-left: 2px; color: #a8d8ff; font-family: var(--head); font-size: 17px; text-shadow: 0 1px 0 #000, 0 0 8px rgba(100, 170, 255, .4); }
+.sapphires .gem-ico { width: 14px; height: 16px; }
 .cbtn .tip {
   display: none; position: absolute; bottom: calc(100% + 8px); right: 0; width: 290px; z-index: 20; text-align: left; pointer-events: none;
   background: rgba(14, 12, 9, .96); border: 1px solid var(--edge); border-radius: 4px; padding: 8px 10px; font-size: 13px; line-height: 1.35;

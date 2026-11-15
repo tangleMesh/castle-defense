@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   BASE_INCOME, BOUNTY_MULT, MAX_INCOME_BONUS, BUILDINGS, CASTLE_HP, FACTIONS, INCOME_INTERVAL_TICKS, INCOME_PCT, MAP, RESCUE_RANGE, ROCK_GRID,
-  ROUND_END_TICKS, START_GOLD, Sim, UNITS, computeDamage, computeFlowField, buildBlockedGrid, isFullyConnected,
+  ROUND_END_TICKS, SAPPHIRE_GOLD, START_GOLD, START_SAPPHIRES, Sim, UNITS, computeDamage, computeFlowField, buildBlockedGrid, isFullyConnected,
   incomeFor, makeSnapshot, rectCenter, type PlayerSetup, type SimEvent, type Team,
 } from '../src/index';
 import { spawnUnit } from '../src/sim/spawning';
 import { dealDamage } from '../src/sim/combat';
+import { startRound } from '../src/sim/rounds';
 
 const players = (n = 1): PlayerSetup[] => {
   const out: PlayerSetup[] = [];
@@ -106,11 +107,39 @@ describe('placement', () => {
     expect(sim.state.events.some((e) => e.t === 'err')).toBe(true);
   });
 
-  it('allows only one special building per player', () => {
+  it('special buildings and elite upgrades cost sapphires; one more can be bought for gold', () => {
     const sim = newSim();
-    placeNow(sim, 0, 'iv_sun_citadel', 10, 6);
-    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_sun_citadel', tx: 16, ty: 6 } }]);
-    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('special'))).toBe(true);
+    const me = sim.state.players[0];
+    me.gold = 5000;
+    expect(me.sapphires).toBe(START_SAPPHIRES);
+    const errs = () => sim.state.events.filter((e) => e.t === 'err').map((e) => (e as { msg: string }).msg);
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_sun_citadel', tx: 10, ty: 6 } }]);
+    expect(me.sapphires).toBe(0);
+    // A second special needs another sapphire.
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_sun_citadel', tx: 16, ty: 6, queue: true } }]);
+    expect(errs()[0]).toMatch(/sapphire/);
+    // Cancelling the order returns the sapphire with the gold.
+    sim.step([{ player: 0, cmd: { c: 'stop' } }]);
+    expect(me.sapphires).toBe(1);
+    expect(me.gold).toBe(5000);
+    // Buying one in the castle shop.
+    sim.step([{ player: 0, cmd: { c: 'buySapphire' } }]);
+    expect(me.sapphires).toBe(2);
+    expect(me.gold).toBe(5000 - SAPPHIRE_GOLD);
+    me.gold = 100;
+    sim.step([{ player: 0, cmd: { c: 'buySapphire' } }]);
+    expect(errs()[0]).toMatch(/sapphire costs/);
+    // Elite upgrade of a spawn building.
+    me.gold = 5000;
+    const st = placeNow(sim, 0, 'iv_lancer_stables', 20, 6);
+    sim.step([{ player: 0, cmd: { c: 'upgrade', id: st.id, to: 'iv_knight_stables' } }]);
+    st.buildLeft = 1; sim.step();
+    sim.step([{ player: 0, cmd: { c: 'upgrade', id: st.id, to: 'iv_paladin_chapter' } }]);
+    expect(st.type).toBe('iv_paladin_chapter');
+    expect(me.sapphires).toBe(1);
+    // The next round starts with exactly one sapphire again.
+    startRound(sim);
+    expect(sim.state.players[0].sapphires).toBe(START_SAPPHIRES);
   });
 
   it('rejects placements that enclose a pocket', () => {

@@ -1,4 +1,4 @@
-import { CASTLE_HP, CASTLE_SIZE, INCOME_INTERVAL_TICKS, ROUND_END_TICKS, START_GOLD } from '../constants';
+import { CASTLE_HP, CASTLE_SIZE, INCOME_INTERVAL_TICKS, ROUND_END_TICKS, START_GOLD, START_SAPPHIRES } from '../constants';
 import { MAP, rectCenter } from '../map/map';
 import { FACTION_IDS } from '../data';
 import { nextRandom } from './rng';
@@ -43,6 +43,7 @@ export function startRound(sim: Sim) {
     p.gold = START_GOLD;
     p.rescueUsed = false;
     p.items = [];
+    p.sapphires = START_SAPPHIRES;
   }
 }
 

@@ -14,6 +14,7 @@ export const CommandSchema = z.discriminatedUnion('c', [
   z.object({ c: z.literal('rescue'), x: num, y: num }),
   z.object({ c: z.literal('buy'), item: z.string().max(64) }),
   z.object({ c: z.literal('stop') }),
+  z.object({ c: z.literal('buySapphire') }),
 ]);
 
 export const FactionSchema = z.enum(['ironvow', 'thornwild']);

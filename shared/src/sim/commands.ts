@@ -1,15 +1,19 @@
-import { RESCUE_DELAY_TICKS, RESCUE_RANGE, SELL_REFUND, TICK_RATE } from '../constants';
+import { RESCUE_DELAY_TICKS, RESCUE_RANGE, SAPPHIRE_GOLD, SELL_REFUND, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, ITEM_BY_ID, MAX_ITEMS, itemsOf } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import type { Sim } from './sim';
-import type { Entity, PlayerCommand } from './state';
+import type { Entity, PlayerCommand, PlayerState } from './state';
 import { placementError } from './placement';
 import { builderBounds } from './movement';
 
 function refundOrders(sim: Sim, builder: Entity) {
   const p = sim.state.players[builder.owner];
-  for (const o of builder.orders ?? []) p.gold += o.paid;
+  for (const o of builder.orders ?? []) { p.gold += o.paid; if (o.paidS) p.sapphires = sapphiresOf(p) + o.paidS; }
   builder.orders = [];
+}
+
+export function sapphiresOf(p: PlayerState): number {
+  return p.sapphires ?? START_SAPPHIRES;
 }
 
 const finite = (...v: number[]) => v.every((n) => typeof n === 'number' && Number.isFinite(n));
@@ -43,10 +47,13 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       if (!def || def.upgradeOnly) return fail('Cannot build that');
       if (!cmd.queue) refundOrders(sim, builder);
       if (p.gold < def.cost) return fail('Not enough gold');
+      const gems = def.sapphires ?? 0;
+      if (sapphiresOf(p) < gems) return fail('Needs a sapphire (buy one in the castle shop)');
       const err = placementError(sim, player, def.id, cmd.tx, cmd.ty);
       if (err) return fail(err);
       p.gold -= def.cost;
-      builder.orders!.push({ building: def.id, tx: cmd.tx, ty: cmd.ty, paid: def.cost });
+      if (gems) p.sapphires = sapphiresOf(p) - gems;
+      builder.orders!.push({ building: def.id, tx: cmd.tx, ty: cmd.ty, paid: def.cost, ...(gems ? { paidS: gems } : {}) });
       delete builder.moveX; delete builder.moveY;
       return;
     }
@@ -58,7 +65,9 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       const to = BUILDINGS[cmd.to];
       if (!to || !from.upgrades?.includes(to.id)) return fail('Invalid upgrade');
       if (p.gold < to.cost) return fail('Not enough gold');
+      if (sapphiresOf(p) < (to.sapphires ?? 0)) return fail('Needs a sapphire (buy one in the castle shop)');
       p.gold -= to.cost;
+      if (to.sapphires) p.sapphires = sapphiresOf(p) - to.sapphires;
       const ratio = e.hp / e.maxHp;
       e.type = to.id;
       e.maxHp = to.hp;
@@ -74,6 +83,9 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       if (!e || e.kind !== 'building' || e.owner !== player || e.hp <= 0) return;
       const fresh = (e.buildLeft ?? 0) > 0 && !e.upgrading;
       p.gold += Math.floor((e.value ?? 0) * (fresh ? 1 : SELL_REFUND));
+      // Cancelling a construction returns its sapphire too; a finished one keeps it.
+      const gems = BUILDINGS[e.type].sapphires;
+      if (fresh && gems) p.sapphires = sapphiresOf(p) + gems;
       sim.removeNow(e);
       sim.emit({ t: 'die', id: e.id, x: e.x, y: e.y, k: 'building' });
       return;
@@ -87,6 +99,13 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       p.strikes++;
       s.strikes.push({ player, x: cmd.x, y: cmd.y, ticksLeft: RESCUE_DELAY_TICKS });
       sim.emit({ t: 'strike', p: player, x: cmd.x, y: cmd.y, hit: 0 });
+      return;
+    }
+    case 'buySapphire': {
+      if (p.gold < SAPPHIRE_GOLD) return fail(`A sapphire costs ${SAPPHIRE_GOLD} gold`);
+      p.gold -= SAPPHIRE_GOLD;
+      p.sapphires = sapphiresOf(p) + 1;
+      sim.emit({ t: 'sapphire', p: player });
       return;
     }
     case 'buy': {

@@ -24,6 +24,10 @@ export const MAX_INCOME_BONUS = 0.3;
 export const SELL_REFUND = 0.5;
 /** Kill-bounty bonus buildings stack up to this total (+100%). */
 export const MAX_BOUNTY_BONUS = 1;
+/** Sapphires: the rare resource for special buildings and elite upgrades. Every round starts with this many. */
+export const START_SAPPHIRES = 1;
+/** Gold price of one more sapphire in the castle shop. */
+export const SAPPHIRE_GOLD = 1500;
 /** Bonus gold for the first, second and third player to finish a building each round. */
 export const FIRST_BUILD_BONUS = [20, 15, 10];
 

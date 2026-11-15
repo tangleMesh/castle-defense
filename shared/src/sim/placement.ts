@@ -48,12 +48,6 @@ export function placementError(sim: Sim, player: number, buildingId: string, tx:
   const basic = basicPlacementError(p.team, tx, ty, def.size, (x, y) => !!grid[idx(x, y)]);
   if (basic) return basic;
 
-  if (def.special) {
-    const owns = sim.playerBuildings(player).some((e) => BUILDINGS[e.type].special);
-    const pending = (sim.get(p.builderId)?.orders ?? []).some((o) => o !== ignoreOrder && BUILDINGS[o.building].special);
-    if (owns || pending) return 'You may only have one special building';
-  }
-
   fillRect(grid, { x: tx, y: ty, w: def.size, h: def.size }, 1);
   if (!isFullyConnected(grid)) return 'That would block the path';
   return null;

@@ -142,6 +142,8 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
       hit.push(next);
       last = next;
     }
+    // Venomous storms poison every enemy the lightning touches.
+    if (ud?.poison) for (const h of hit) if (h.kind === 'unit' && h.hp > 0) h.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: ud.poison.slow, owner: a.owner };
     sim.emit({ t: 'chain', ids: [a.id, ...hit.map((h) => h.id)] });
     return;
   }

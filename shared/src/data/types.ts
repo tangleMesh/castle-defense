@@ -87,6 +87,8 @@ export interface BuildingDef {
   /** Not directly buildable; reached by upgrading. */
   upgradeOnly?: boolean;
   special?: boolean;
+  /** Sapphires needed (on top of gold) to build or upgrade into this building. */
+  sapphires?: number;
   spawn?: { unit: string; count: number; interval: number };
   aura?: AuraDef;
   attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number };

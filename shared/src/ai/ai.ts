@@ -1,4 +1,4 @@
-import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, TICK_RATE } from '../constants';
+import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type ItemDef, type UnitDef } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
@@ -212,6 +212,9 @@ export class AiPlayer {
       if (P.planner && waitTicks <= 90 * TICK_RATE) return null;
     }
 
+    // Rich planners buy another sapphire for an elite upgrade or a second special building.
+    if (P.planner && (me.sapphires ?? START_SAPPHIRES) === 0 && me.gold >= SAPPHIRE_GOLD + 200 && mine.length >= 6) return { c: 'buySapphire' };
+
     const options = this.options(sim, me, mine, queued);
     if (!options.length) return null;
 
@@ -295,8 +298,10 @@ export class AiPlayer {
     const ranged = count((d) => !!d.spawn && !d.special && UNITS[d.spawn.unit].range >= 4);
     const wantTowers = enemy.pressure ? 2 : spawners >= (P.counter ? 3 : 5) ? 1 : 0;
 
+    const gems = me.sapphires ?? START_SAPPHIRES;
     for (const id of faction.build) {
       const def = BUILDINGS[id];
+      if ((def.sapphires ?? 0) > gems) continue;
       if (def.special) {
         if (total >= P.specialAt && !count((d) => !!d.special)) out.push({ kind: 'build', def, score: top * (P.planner ? 1.3 : 1) });
         continue;
@@ -340,6 +345,7 @@ export class AiPlayer {
         if (!from.upgrades?.length || e.buildLeft) continue;
         for (const to of from.upgrades) {
           const def = BUILDINGS[to];
+          if ((def.sapphires ?? 0) > gems) continue;
           let score: number;
           if (def.special) score = top * (P.planner ? 1.2 : 0.8);
           else if (def.spawn && from.spawn) {

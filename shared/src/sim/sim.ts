@@ -1,4 +1,4 @@
-import { INCOME_INTERVAL_TICKS, START_GOLD, type GameMode } from '../constants';
+import { INCOME_INTERVAL_TICKS, START_GOLD, START_SAPPHIRES, type GameMode } from '../constants';
 import { nextRandom } from './rng';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
@@ -59,7 +59,7 @@ export class Sim {
       nextId: 1,
       players: opts.players.map((p, index) => ({
         index, userId: p.userId, name: p.name, team: p.team, faction: p.faction,
-        gold: START_GOLD, rescueUsed: false, builderId: 0, connected: true,
+        gold: START_GOLD, sapphires: START_SAPPHIRES, rescueUsed: false, builderId: 0, connected: true,
         kills: 0, strikes: 0, goldEarned: 0, lost: 0, castleDmg: 0,
       })),
       entities: [],

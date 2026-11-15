@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -19,6 +19,10 @@ interface CardButton {
   cost?: number;
   /** False when the player can't pay `cost` right now. */
   afford?: boolean;
+  /** Sapphires needed on top of the gold. */
+  gems?: number;
+  /** False when the player lacks the sapphires. */
+  gemsOk?: boolean;
   tip: string;
   disabled?: boolean;
   active?: boolean;
@@ -29,6 +33,7 @@ const SVG = {
   rescue: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><radialGradient id="rg"><stop offset="0" stop-color="#fff8c0"/><stop offset="1" stop-color="#e0a020"/></radialGradient></defs><rect width="48" height="48" fill="#3a2a10"/><g stroke="#ffd860" stroke-width="3">${Array.from({ length: 8 }, (_, i) => { const a = (i * Math.PI) / 4; return `<line x1="${24 + Math.cos(a) * 12}" y1="${24 + Math.sin(a) * 12}" x2="${24 + Math.cos(a) * 21}" y2="${24 + Math.sin(a) * 21}"/>`; }).join('')}</g><circle cx="24" cy="24" r="10" fill="url(#rg)"/></svg>`,
   stop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2a1a1a"/><rect x="13" y="13" width="22" height="22" rx="3" fill="#c84040" stroke="#ffb0a0" stroke-width="2"/></svg>`,
   sell: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2a2410"/><circle cx="24" cy="24" r="13" fill="#e0b040" stroke="#fff0a0" stroke-width="2"/><text x="24" y="30" font-size="16" text-anchor="middle" fill="#6a4a10" font-family="Georgia" font-weight="bold">$</text></svg>`,
+  sapphire: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ad8ff"/><stop offset=".5" stop-color="#2a6ae0"/><stop offset="1" stop-color="#102a80"/></linearGradient></defs><rect width="48" height="48" fill="#141a2a"/><path d="M14 18 L20 11 H28 L34 18 L24 38 Z" fill="url(#sg)" stroke="#d8f0ff" stroke-width="1.5"/><path d="M14 18 H34 M20 11 L24 18 L28 11 M24 18 L24 38" stroke="#d8f0ff" stroke-width=".8" opacity=".7" fill="none"/></svg>`,
   cancel: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1a1a"/><path d="M14 14 L34 34 M34 14 L14 34" stroke="#e05040" stroke-width="5" stroke-linecap="round"/></svg>`,
 };
 const svgUrl = (s: string) => `data:image/svg+xml;utf8,${encodeURIComponent(s)}`;
@@ -329,6 +334,8 @@ export class Hud {
       h('div', { class: 'res' },
         h('span', { class: 'gold-ico' }),
         h('b', { class: 'gold' }, me.gold),
+        h('span', { class: 'sapphires', title: 'Sapphires: special buildings and elite upgrades cost one. Buy more in the castle shop.' },
+          h('i', { class: 'gem-ico' }), h('b', null, String(me.sapphires ?? START_SAPPHIRES))),
         h('span', { class: 'income', title: `Income every 10 s = ${BASE_INCOME} + ${INCOME_PCT * 100}% of your building value` },
           `+${me.income}`,
           h('span', { class: 'income-track' }, h('span', { class: 'income-fill', style: `width:${pct}%` })),
@@ -354,12 +361,14 @@ export class Hud {
     const faction = FACTIONS[me.faction as keyof typeof FACTIONS];
     const out: CardButton[] = faction.build.map((id, slot) => {
       const def = BUILDINGS[id];
+      const gemsOk = (me.sapphires ?? 1) >= (def.sapphires ?? 0);
       return {
-        slot, icon: this.icon(`b_${id}`), name: def.name, cost: def.cost, afford: me.gold >= def.cost,
+        slot, icon: this.icon(`b_${id}`), name: def.name, cost: def.cost, afford: me.gold >= def.cost, gems: def.sapphires, gemsOk,
         tip: this.buildingTip(def.id),
-        disabled: me.gold < def.cost,
+        disabled: me.gold < def.cost || !gemsOk,
         active: s.mode.kind === 'place' && s.mode.building === id,
         run: () => {
+          if (!gemsOk) return this.error('Needs a sapphire (buy one in the castle shop)');
           if (me.gold < def.cost) return this.error('Not enough gold');
           s.setMode({ kind: 'place', building: id });
         },
@@ -390,12 +399,14 @@ export class Hud {
     const busy = row[9] !== 100;
     const out: CardButton[] = (def.upgrades ?? []).map((id, slot) => {
       const up = BUILDINGS[id];
+      const gemsOk = (me.sapphires ?? 1) >= (up.sapphires ?? 0);
       return {
-        slot, icon: this.icon(`b_${id}`), name: `Upgrade: ${up.name}`, cost: up.cost, afford: me.gold >= up.cost,
+        slot, icon: this.icon(`b_${id}`), name: `Upgrade: ${up.name}`, cost: up.cost, afford: me.gold >= up.cost, gems: up.sapphires, gemsOk,
         tip: `<b>Upgrade to ${up.name}</b><br>${this.buildingTip(id)}`,
-        disabled: busy || me.gold < up.cost,
+        disabled: busy || me.gold < up.cost || !gemsOk,
         run: () => {
           if (busy) return this.error('Building is busy');
+          if (!gemsOk) return this.error('Needs a sapphire (buy one in the castle shop)');
           if (me.gold < up.cost) return this.error('Not enough gold');
           s.send({ c: 'upgrade', id: row[0], to: id });
         },
@@ -429,7 +440,7 @@ export class Hud {
     if (!this.session.latest) return;
     this.renderBag(force);
     const btns = this.currentCard();
-    const key = JSON.stringify(btns.map((b) => [b.slot, b.name, b.disabled, b.active, b.afford]));
+    const key = JSON.stringify(btns.map((b) => [b.slot, b.name, b.disabled, b.active, b.afford, b.gemsOk]));
     if (!force && key === this.lastCardKey) return;
     this.lastCardKey = key;
     this.buttons = btns;
@@ -440,6 +451,7 @@ export class Hud {
       const tip = h('div', { class: 'tip' });
       tip.innerHTML = `<div class="tip-title">${b.name}</div>`
         + (b.cost ? `<div class="tip-cost${b.afford === false ? ' short' : ''}"><i class="coin"></i>${b.cost} gold${b.afford === false ? ' <span>· not enough gold</span>' : ''}</div>` : '')
+        + (b.gems ? `<div class="tip-cost gem${b.gemsOk === false ? ' short' : ''}"><i class="gem-ico"></i>${b.gems} sapphire${b.gems > 1 ? 's' : ''}${b.gemsOk === false ? ' <span>· buy one in the castle shop</span>' : ''}</div>` : '')
         + `<div>${b.tip}</div>`;
       this.card.append(h('button', {
         class: `cbtn${b.disabled ? ' disabled' : ''}${b.active ? ' active' : ''}${b.cost ? ' has-cost' : ''}`,
@@ -448,6 +460,7 @@ export class Hud {
       h('img', { src: b.icon, alt: '' }),
       h('span', { class: 'hk' }, GRID_HOTKEYS[slot]),
       b.cost ? h('span', { class: `cost${b.afford === false ? ' short' : ''}` }, h('i', { class: 'coin' }), String(b.cost)) : null,
+      b.gems ? h('span', { class: `gem-badge${b.gemsOk === false ? ' short' : ''}`, title: 'Costs a sapphire' }, h('i', { class: 'gem-ico' })) : null,
       tip));
     }
   }
@@ -492,7 +505,12 @@ export class Hud {
         },
       };
     });
-    out.push(this.rescueButton(), {
+    out.push({
+      slot: 8, icon: svgUrl(SVG.sapphire), name: 'Sapphire', cost: SAPPHIRE_GOLD, afford: me.gold >= SAPPHIRE_GOLD,
+      tip: `<span class="tip-desc">A rare gem. Special buildings and elite upgrades cost a sapphire on top of their gold.</span><br><span class="tip-meta">You start every round with ${START_SAPPHIRES}. You have ${me.sapphires ?? START_SAPPHIRES}.</span>`,
+      disabled: me.gold < SAPPHIRE_GOLD,
+      run: () => me.gold < SAPPHIRE_GOLD ? this.error('Not enough gold') : s.send({ c: 'buySapphire' }),
+    }, this.rescueButton(), {
       slot: 11, icon: svgUrl(SVG.cancel), name: 'Close shop', tip: 'Back to your builder (B / Esc).',
       run: () => s.select(s.me.builderId),
     });
@@ -776,6 +794,11 @@ export class Hud {
           this.message(`${s.playerName(ev.p)} calls a rescue strike!`, team === s.team ? 'gold' : 'error', 2500);
         }
         return;
+      case 'sapphire': {
+        if (ev.p === s.you) this.message('Sapphire bought.', 'gold', 2500);
+        else if (s.latest.players[ev.p]?.team === s.team) this.message(`${s.playerName(ev.p)} bought a sapphire.`, 'info', 2500);
+        return;
+      }
       case 'first': {
         const nth = ['First', 'Second', 'Third'][ev.place] ?? 'Early';
         if (ev.p === s.you) this.message(`${nth} building of the round! +${ev.g} gold`, 'gold', 3000);

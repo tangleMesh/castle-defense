@@ -2,6 +2,13 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.16.0
+- **Sapphires**, a rare second resource: every player starts each round with exactly 1, shown next to the gold. A further sapphire costs 1,500 gold in the castle shop (slot Z).
+- Special buildings cost a sapphire on top of their gold (this replaces the old "one per player" rule). Cancelling a construction returns the sapphire.
+- **Elite upgrades** for spawn buildings, each costing a sapphire: Ironvow Knight Stables → Paladin Chapter (Paladins: 3× charge, healing aura) and Cathedral → Sanctum of Dawn (High Saint: mighty heals, +2 armour aura); Thornwild Great Stag Den → Wild Hunt Grove (Stormhorn: huge trample, lifesteal) and Storm Lodge → Tempest Circle (Tempest Caller: venomous lightning jumping between 7 enemies).
+- Buttons of sapphire buildings carry a gem badge; tooltips list the sapphire cost. Bots buy a sapphire when rich.
+- Chain lightning of poisonous casters now poisons every enemy it hits.
+
 ## 0.15.0
 Factions now play very differently.
 - **Ironvow Order** (few but elite): Masonry (+1 armour on all buildings); the only healers; Shieldbearers project a shield wall (+3 armour to nearby allies); Halberdiers deal double damage to heavy armour; Lancers and Vow Knights charge (the first blow after marching hits 2× / 2.5×); Arbalesters ignore armour; Skyhawks deal double damage to flyers; the Bastion Tower upgrades into a splash-damage Cannon Bastion; champions carry a damage aura.
