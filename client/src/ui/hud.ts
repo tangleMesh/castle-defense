@@ -100,7 +100,7 @@ export class Hud {
     const loop = () => { this.drawMinimap(); this.raf = requestAnimationFrame(loop); };
     this.raf = requestAnimationFrame(loop);
     this.renderPause();
-    this.message(`Round ${session.latest?.round ?? 1}. Build spawners, push to the enemy castle! (F1 builder · Space center · T rescue strike)`, 'info', 6000);
+    this.message(`Round ${session.latest?.round ?? 1}. ${this.factionNote()}Build spawners, push to the enemy castle! (F1 builder · Space center · T rescue strike)`, 'info', 6000);
   }
 
   destroy() {
@@ -338,7 +338,7 @@ export class Hud {
       h('div', { class: 'center' },
         castle(0),
         h('div', { class: 'score' },
-          h('div', { class: 'round' }, `Round ${snap.round} · Best of ${snap.bestOf}`),
+          h('div', { class: 'round' }, `Round ${snap.round} · Best of ${snap.bestOf}${snap.mode === 'random' ? ' · Random' : ''}`),
           h('div', { class: 'tally' }, h('span', { style: `color:${TEAM_CSS[0]}` }, snap.score[0]), ' : ', h('span', { style: `color:${TEAM_CSS[1]}` }, snap.score[1])),
         ),
         castle(1),
@@ -716,6 +716,14 @@ export class Hud {
 
   // ---------------------------------------------------------------- messages & banners
 
+  /** Random factions mode: which faction the player commands this round (with a trailing space). */
+  private factionNote() {
+    const snap = this.session.latest;
+    if (snap?.mode !== 'random') return '';
+    const f = FACTIONS[snap.players[this.session.you]?.faction as keyof typeof FACTIONS];
+    return f ? `This round you command the ${f.name}. ` : '';
+  }
+
   private msgTimer = 0;
   message(text: string, kind: 'error' | 'info' | 'gold' = 'info', ms = 2500) {
     this.msg.textContent = text;
@@ -747,7 +755,7 @@ export class Hud {
     if (snap.phase === 'roundOver' && !this.scene.cinematic) this.renderRoundBanner(snap);
     else if (!this.banner.hidden && snap.phase === 'playing') {
       this.banner.hidden = true;
-      this.message(`Round ${snap.round} begins! New builder, fresh gold — and your rescue strike is ready.`, 'info', 5000);
+      this.message(`Round ${snap.round} begins! ${this.factionNote()}New builder, fresh gold — and your rescue strike is ready.`, 'info', 6000);
       this.scene.centerOnCastle();
     }
   }

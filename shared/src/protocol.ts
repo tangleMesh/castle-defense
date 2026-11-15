@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Snapshot } from './sim/snapshot';
 import type { FactionId } from './data/types';
 import type { AiLevel } from './ai/ai';
+import type { GameMode } from './constants';
 
 const num = z.number().finite();
 
@@ -16,11 +17,13 @@ export const CommandSchema = z.discriminatedUnion('c', [
 ]);
 
 export const FactionSchema = z.enum(['ironvow', 'thornwild']);
+export const GameModeSchema = z.enum(['standard', 'random']);
 export const AiLevelSchema = z.enum(['easy', 'normal', 'hard']);
 
 export const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('auth'), token: z.string().max(200) }),
-  z.object({ type: z.literal('lobby.create'), name: z.string().trim().min(1).max(40), bestOf: z.union([z.literal(1), z.literal(3), z.literal(5)]) }),
+  z.object({ type: z.literal('lobby.create'), name: z.string().trim().min(1).max(40), bestOf: z.union([z.literal(1), z.literal(3), z.literal(5)]), mode: GameModeSchema.optional() }),
+  z.object({ type: z.literal('lobby.setMode'), mode: GameModeSchema }),
   z.object({ type: z.literal('lobby.join'), roomId: z.string().max(64) }),
   z.object({ type: z.literal('lobby.leave') }),
   z.object({ type: z.literal('lobby.setTeam'), team: z.union([z.literal(0), z.literal(1)]) }),
@@ -75,6 +78,7 @@ export interface RoomInfo {
   name: string;
   hostId: string;
   bestOf: number;
+  mode: GameMode;
   status: 'lobby' | 'playing';
   /** Set when the room resumes a saved game: roster is locked to these users. */
   savedGameId?: string;

@@ -1,3 +1,4 @@
+import type { GameMode } from '../constants';
 import { incomeFor } from './economy';
 import type { Sim } from './sim';
 import type { EntityKind, Phase, SimEvent } from './state';
@@ -36,6 +37,7 @@ export interface Snapshot {
   phaseTicks: number;
   round: number;
   bestOf: number;
+  mode: GameMode;
   score: [number, number];
   /** Winner of the most recent finished round, if any. */
   lastWinner: 0 | 1 | null;
@@ -70,6 +72,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
     phaseTicks: s.phaseTicks,
     round: s.round,
     bestOf: s.bestOf,
+    mode: s.mode ?? 'standard',
     score: [s.score[0], s.score[1]],
     lastWinner: s.rounds.length ? s.rounds[s.rounds.length - 1].winner : null,
     incomeTicks: s.incomeTicks,

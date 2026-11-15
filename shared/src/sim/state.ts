@@ -1,4 +1,5 @@
 import type { FactionId } from '../data/types';
+import type { GameMode } from '../constants';
 
 export type Team = 0 | 1;
 export type EntityKind = 'unit' | 'building' | 'builder' | 'castle';
@@ -113,6 +114,8 @@ export interface SimState {
   roundStartTick: number;
   rng: number;
   bestOf: number;
+  /** Game mode (optional: absent in older saves = standard). */
+  mode?: GameMode;
   round: number;
   score: [number, number];
   rounds: RoundRecord[];

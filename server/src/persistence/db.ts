@@ -1,5 +1,5 @@
 import { MongoClient, type Db } from 'mongodb';
-import type { SimState, FactionId, UserStats } from '@bc/shared';
+import type { SimState, FactionId, GameMode, UserStats } from '@bc/shared';
 
 export interface UserDoc {
   _id?: import('mongodb').ObjectId;
@@ -43,6 +43,7 @@ export interface SavedGameDoc {
   name: string;
   hostId: string;
   bestOf: number;
+  mode?: GameMode;
   players: Array<{ userId: string; name: string; team: 0 | 1; faction: FactionId }>;
   userIds: string[];
   score: [number, number];

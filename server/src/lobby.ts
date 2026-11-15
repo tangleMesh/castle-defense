@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import {
   AI_LEVEL_NAMES, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
-  type AiLevel, type ClientMessage, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
+  type AiLevel, type ClientMessage, type GameMode, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
 } from '@bc/shared';
 import type { Conn } from './conn';
 import { MatchRoom } from './matchRoom';
@@ -12,6 +12,7 @@ interface Room {
   name: string;
   hostId: string;
   bestOf: number;
+  mode: GameMode;
   status: 'lobby' | 'playing';
   slots: RoomSlot[];
   savedGameId?: string;
@@ -84,10 +85,17 @@ export class Lobby {
     switch (msg.type) {
       case 'lobby.create': {
         if (room) return err('Leave your current room first');
-        const r: Room = { id: newId(), name: msg.name, hostId: conn.userId, bestOf: msg.bestOf, status: 'lobby', slots: [] };
+        const r: Room = { id: newId(), name: msg.name, hostId: conn.userId, bestOf: msg.bestOf, mode: msg.mode ?? 'standard', status: 'lobby', slots: [] };
         this.rooms.set(r.id, r);
         this.addSlot(r, conn, 0, 'ironvow');
         return this.changed(r);
+      }
+      case 'lobby.setMode': {
+        if (!room || room.status !== 'lobby' || room.roster) return;
+        if (room.hostId !== conn.userId) return err('Only the host can change the game mode');
+        room.mode = msg.mode;
+        for (const s of room.slots) if (!s.bot) s.ready = false;
+        return this.changed(room);
       }
       case 'lobby.join': {
         if (room) return err('Leave your current room first');
@@ -181,7 +189,7 @@ export class Lobby {
         if (!saved || saved.status !== 'saved' || !saved.userIds.includes(conn.userId)) return err('Saved game not found');
         if ([...this.rooms.values()].some((r) => r.savedGameId === saved._id)) return err('That game is already open in a room');
         const r: Room = {
-          id: newId(), name: `${saved.name} (resumed)`, hostId: conn.userId, bestOf: saved.bestOf, status: 'lobby',
+          id: newId(), name: `${saved.name} (resumed)`, hostId: conn.userId, bestOf: saved.bestOf, mode: saved.mode ?? 'standard', status: 'lobby',
           slots: [], savedGameId: saved._id, roster: saved.players, score: saved.score,
         };
         this.rooms.set(r.id, r);
@@ -282,11 +290,12 @@ export class Lobby {
       sim = Sim.create({
         players: players.map((p) => ({ userId: p.userId, name: p.name, team: p.team, faction: p.faction })),
         bestOf: r.bestOf,
+        mode: r.mode,
         seed: randomBytes(4).readUInt32LE(0),
       });
       matchId = newId();
       await this.db.savedGames.create({
-        _id: matchId, status: 'live', name: r.name, hostId: r.hostId, bestOf: r.bestOf,
+        _id: matchId, status: 'live', name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode,
         players: players.map(({ userId, name, team, faction }) => ({ userId, name, team, faction })),
         userIds: players.map((p) => p.userId), score: [0, 0], round: 1, tick: 0, startedAt,
       });
@@ -328,7 +337,7 @@ export class Lobby {
 
   private info(r: Room): RoomInfo {
     return {
-      id: r.id, name: r.name, hostId: r.hostId, bestOf: r.bestOf, status: r.status,
+      id: r.id, name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode, status: r.status,
       savedGameId: r.savedGameId, roster: r.roster, score: r.score, slots: r.slots,
     };
   }

@@ -1,3 +1,10 @@
+/** Game modes: 'standard' (pick your faction) or 'random' (a random faction for every player each round). */
+export type GameMode = 'standard' | 'random';
+export const GAME_MODES: Record<GameMode, { name: string; desc: string }> = {
+  standard: { name: 'Standard', desc: 'Every player picks a faction in the lobby.' },
+  random: { name: 'Random factions', desc: 'Every player gets a random faction at the start of each round.' },
+};
+
 /** Simulation ticks per second. */
 export const TICK_RATE = 20;
 /** Snapshot is broadcast every N ticks (10 Hz). */

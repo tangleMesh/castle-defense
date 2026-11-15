@@ -1,4 +1,4 @@
-import { INCOME_INTERVAL_TICKS, START_GOLD } from '../constants';
+import { INCOME_INTERVAL_TICKS, START_GOLD , type GameMode } from '../constants';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
 import type { Entity, PlayerCommand, PlayerSetup, SimEvent, SimState, Team } from './state';
@@ -18,6 +18,7 @@ export interface CreateOptions {
   players: PlayerSetup[];
   bestOf: number;
   seed: number;
+  mode?: GameMode;
 }
 
 /**
@@ -44,6 +45,7 @@ export class Sim {
       roundStartTick: 0,
       rng: opts.seed >>> 0,
       bestOf: opts.bestOf,
+      mode: opts.mode ?? 'standard',
       round: 0,
       score: [0, 0],
       rounds: [],

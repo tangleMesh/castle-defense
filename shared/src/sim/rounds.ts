@@ -1,5 +1,7 @@
 import { CASTLE_HP, CASTLE_SIZE, INCOME_INTERVAL_TICKS, ROUND_END_TICKS, START_GOLD } from '../constants';
 import { MAP, rectCenter } from '../map/map';
+import { FACTION_IDS } from '../data';
+import { nextRandom } from './rng';
 import type { Sim } from './sim';
 import type { Team } from './state';
 
@@ -8,6 +10,8 @@ export function startRound(sim: Sim) {
   const s = sim.state;
   s.round++;
   s.firstBuilds = [];
+  // Random factions mode: everyone draws a faction for this round (seeded, so deterministic).
+  if (s.mode === 'random') for (const p of s.players) p.faction = FACTION_IDS[Math.floor(nextRandom(s) * FACTION_IDS.length)];
   s.entities = [];
   s.strikes = [];
   s.phase = 'playing';

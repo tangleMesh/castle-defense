@@ -2,6 +2,9 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.14.0
+- Game modes, set by the host in the game lobby (or when creating a game): **Standard** (everyone picks a faction) and **Random factions** (every player gets a random faction at the start of each round, announced in the round message). The mode is shown in the game list, the room and the top bar, and is kept in saved games.
+
 ## 0.13.1
 - Fix: units and buildings reveal twice as much of the fog of war (12 tiles each way, a 24×24 area instead of 12×12).
 - Fix: the builder can no longer leave its own build zone; move orders beyond it stop at the border.

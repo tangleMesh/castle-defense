@@ -1,4 +1,4 @@
-import { AI_LEVELS, AI_LEVEL_NAMES, FACTIONS, FACTION_IDS, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
+import { AI_LEVELS, AI_LEVEL_NAMES, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
 import type { Socket } from '../net/socket';
 import { TEAM_CSS, TEAM_NAMES } from '../game/iso';
@@ -90,6 +90,7 @@ export class LobbyView {
   private renderBrowser() {
     const name = h('input', { placeholder: 'Game name', maxLength: 40, value: `${this.user.username}'s battle` });
     const bestOf = h('select', null, [1, 3, 5].map((n) => h('option', { value: String(n), selected: n === 3 }, `Best of ${n}`)));
+    const mode = h('select', { title: 'Game mode' }, (Object.keys(GAME_MODES) as GameMode[]).map((m) => h('option', { value: m, title: GAME_MODES[m].desc }, GAME_MODES[m].name)));
     return h('section', { class: 'panel-box' },
       h('h2', null, 'Open games'),
       this.rooms.length
@@ -102,7 +103,7 @@ export class LobbyView {
               h('b', null, r.name),
               r.roster ? h('span', { class: 'tag' }, 'resumed') : null,
               r.status === 'playing' ? h('span', { class: 'tag live' }, 'in battle') : null,
-              h('div', { class: 'dim' }, `Best of ${r.bestOf} · ${t0} vs ${t1} · ${r.slots.map((x) => x.name).join(', ')}`),
+              h('div', { class: 'dim' }, `${GAME_MODES[r.mode ?? 'standard'].name} · Best of ${r.bestOf} · ${t0} vs ${t1} · ${r.slots.map((x) => x.name).join(', ')}`),
             ),
             h('button', { class: 'btn small', disabled: !canJoin, onclick: () => this.socket.send({ type: 'lobby.join', roomId: r.id }) }, 'Join'),
           );
@@ -111,8 +112,8 @@ export class LobbyView {
       h('h2', null, 'Create a game'),
       h('form', { class: 'create-form', onsubmit: (e: Event) => {
         e.preventDefault();
-        this.socket.send({ type: 'lobby.create', name: name.value.trim() || 'Battle', bestOf: Number(bestOf.value) as 1 | 3 | 5 });
-      } }, name, bestOf, h('button', { class: 'btn', type: 'submit' }, 'Create')),
+        this.socket.send({ type: 'lobby.create', name: name.value.trim() || 'Battle', bestOf: Number(bestOf.value) as 1 | 3 | 5, mode: mode.value as GameMode });
+      } }, name, bestOf, mode, h('button', { class: 'btn', type: 'submit' }, 'Create')),
       h('div', { class: 'how' },
         h('h3', null, 'How to play'),
         h('ul', null,
@@ -133,17 +134,18 @@ export class LobbyView {
     const me = r.slots.find((s) => s.userId === this.user.id);
     const isHost = r.hostId === this.user.id;
     const locked = !!r.roster;
+    const random = r.mode === 'random';
     const team = (t: 0 | 1) => {
       const slots = r.slots.filter((s) => s.team === t);
       const expected = r.roster?.filter((p) => p.team === t) ?? [];
       const missing = expected.filter((p) => !slots.some((s) => s.userId === p.userId));
       return h('div', { class: 'team', style: `--team:${TEAM_CSS[t]}` },
         h('h3', null, `${TEAM_NAMES[t]} `, h('span', { class: 'dim' }, `${slots.length}/${MAX_PLAYERS_PER_TEAM}`)),
-        slots.map((s) => s.bot && isHost && !locked ? this.renderBotSlot(s, t) : h('div', { class: `slot ${s.ready ? 'ready' : ''}` },
-          h('span', { class: 'fac-dot', style: `background:${css(FACTIONS[s.faction].color)}` }),
+        slots.map((s) => s.bot && isHost && !locked ? this.renderBotSlot(s, t, random) : h('div', { class: `slot ${s.ready ? 'ready' : ''}` },
+          h('span', { class: 'fac-dot', style: `background:${random ? 'var(--gold-2)' : css(FACTIONS[s.faction].color)}` }),
           h('b', null, s.name), s.userId === r.hostId ? h('span', { class: 'tag' }, 'host') : null,
           s.bot ? h('span', { class: 'tag bot' }, 'AI') : null,
-          h('span', { class: 'dim' }, FACTIONS[s.faction].name),
+          h('span', { class: 'dim' }, random ? 'Random faction' : FACTIONS[s.faction].name),
           h('span', { class: 'rdy' }, s.ready ? 'Ready' : '…'),
         )),
         missing.map((p) => h('div', { class: 'slot missing' }, h('b', null, p.name), h('span', { class: 'dim' }, 'not joined yet'))),
@@ -160,6 +162,16 @@ export class LobbyView {
         h('h2', null, r.name),
         h('span', { class: 'dim' }, `Best of ${r.bestOf}${r.score ? ` · saved score ${r.score[0]} : ${r.score[1]}` : ''}`),
       ),
+      h('div', { class: 'mode-bar' },
+        h('h3', null, 'Game mode'),
+        isHost && !locked
+          ? h('div', { class: 'modes' }, (Object.keys(GAME_MODES) as GameMode[]).map((m) => h('button', {
+            class: `mode ${r.mode === m ? 'selected' : ''}`,
+            onclick: () => { if (r.mode !== m) this.socket.send({ type: 'lobby.setMode', mode: m }); },
+          }, h('b', null, GAME_MODES[m].name), h('span', null, GAME_MODES[m].desc))))
+          : h('div', { class: 'modes' }, h('div', { class: 'mode selected' },
+            h('b', null, GAME_MODES[r.mode ?? 'standard'].name), h('span', null, GAME_MODES[r.mode ?? 'standard'].desc))),
+      ),
       locked ? h('p', { class: 'note' }, 'Resuming a saved game: teams and factions are locked, and every original player must join.') : null,
       h('div', { class: 'teams' }, team(0), h('div', { class: 'vs' }, 'VS'), team(1)),
       isHost && !locked ? h('div', { class: 'bot-bar' },
@@ -170,7 +182,7 @@ export class LobbyView {
         }, AI_LEVEL_NAMES[l])),
         h('span', { class: 'dim small' }, AI_HINTS[this.botLevel]),
       ) : null,
-      !locked && me ? h('div', null,
+      !locked && me && !random ? h('div', null,
         h('h3', null, 'Your faction'),
         h('div', { class: 'factions' }, FACTION_IDS.map((id: FactionId) => {
           const f = FACTIONS[id];
@@ -188,15 +200,15 @@ export class LobbyView {
     );
   }
 
-  private renderBotSlot(s: RoomInfo['slots'][number], t: 0 | 1) {
+  private renderBotSlot(s: RoomInfo['slots'][number], t: 0 | 1, random: boolean) {
     const update = (patch: { team?: 0 | 1; faction?: FactionId; level?: AiLevel }) =>
       this.socket.send({ type: 'lobby.updateBot', userId: s.userId, ...patch });
     return h('div', { class: 'slot ready bot-slot' },
-      h('span', { class: 'fac-dot', style: `background:${css(FACTIONS[s.faction].color)}` }),
+      h('span', { class: 'fac-dot', style: `background:${random ? 'var(--gold-2)' : css(FACTIONS[s.faction].color)}` }),
       h('b', null, s.name.split(' (')[0]), h('span', { class: 'tag bot' }, 'AI'),
       h('select', { title: 'Difficulty', onchange: (e: Event) => update({ level: (e.target as HTMLSelectElement).value as AiLevel }) },
         AI_LEVELS.map((l) => h('option', { value: l, selected: s.bot === l }, AI_LEVEL_NAMES[l]))),
-      h('select', { title: 'Faction', onchange: (e: Event) => update({ faction: (e.target as HTMLSelectElement).value as FactionId }) },
+      random ? h('span', { class: 'dim' }, 'Random faction') : h('select', { title: 'Faction', onchange: (e: Event) => update({ faction: (e.target as HTMLSelectElement).value as FactionId }) },
         FACTION_IDS.map((id) => h('option', { value: id, selected: s.faction === id }, FACTIONS[id].name))),
       h('span', { class: 'rdy' },
         h('button', { class: 'btn tiny ghost', title: `Move to ${TEAM_NAMES[t === 0 ? 1 : 0]}`, onclick: () => update({ team: t === 0 ? 1 : 0 }) }, '⇄'),
