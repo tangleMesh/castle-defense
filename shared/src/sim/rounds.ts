@@ -37,7 +37,8 @@ export function startRound(sim: Sim) {
     const dir = p.team === 0 ? 1 : -1;
     const builder = sim.add({
       kind: 'builder', type: 'builder', owner: p.index, team: p.team,
-      x: c.x + dir * 3.5, y: c.y - 1.5 + slot, hp: 1, maxHp: 1, orders: [],
+      // Point-symmetric map: team 1's builders stand in the mirror image of team 0's.
+      x: c.x + dir * 3.5, y: c.y + dir * (slot - 1.5), hp: 1, maxHp: 1, orders: [],
     });
     p.builderId = builder.id;
     p.gold = START_GOLD;

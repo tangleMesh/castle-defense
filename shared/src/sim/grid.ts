@@ -37,6 +37,8 @@ const DIRS: Array<[number, number, number]> = [
   [1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10],
   [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14],
 ];
+/** DIRS rotated by 180°: team 1 breaks ties in the mirror image of team 0 (point-symmetric map). */
+const DIRS_MIRRORED: Array<[number, number, number]> = DIRS.map(([dx, dy, c]) => [-dx, -dy, c]);
 
 /** Can a ground walker step from (x,y) in direction (dx,dy) without cutting a blocked corner? */
 export function canStep(blocked: Uint8Array, x: number, y: number, dx: number, dy: number): boolean {
@@ -77,11 +79,11 @@ export function computeFlowField(blocked: Uint8Array, target: Rect): Uint16Array
 }
 
 /** Best next tile centre for a walker on (tx,ty) following `field`, or null at goal / unreachable. */
-export function flowStep(field: Uint16Array, blocked: Uint8Array, tx: number, ty: number): { x: number; y: number } | null {
+export function flowStep(field: Uint16Array, blocked: Uint8Array, tx: number, ty: number, mirrored = false): { x: number; y: number } | null {
   if (!inBounds(tx, ty)) return null;
   const here = field[idx(tx, ty)];
   let best = here, bx = -1, by = -1;
-  for (const [dx, dy] of DIRS) {
+  for (const [dx, dy] of mirrored ? DIRS_MIRRORED : DIRS) {
     if (!canStep(blocked, tx, ty, dx, dy)) continue;
     const v = field[idx(tx + dx, ty + dy)];
     if (v < best) { best = v; bx = tx + dx; by = ty + dy; }

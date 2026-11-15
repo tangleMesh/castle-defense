@@ -58,7 +58,7 @@ export class Sim {
       incomeTicks: INCOME_INTERVAL_TICKS,
       nextId: 1,
       players: opts.players.map((p, index) => ({
-        index, userId: p.userId, name: p.name, team: p.team, faction: p.faction,
+        index, userId: p.userId, name: p.name, team: p.team, faction: p.faction, ...(p.incomeMult && p.incomeMult !== 1 ? { incomeMult: p.incomeMult } : {}),
         gold: START_GOLD, sapphires: START_SAPPHIRES, rescueUsed: false, builderId: 0, connected: true,
         kills: 0, strikes: 0, goldEarned: 0, lost: 0, castleDmg: 0,
       })),
@@ -203,7 +203,8 @@ export class Sim {
       s.tick++;
       return s.events;
     }
-    for (const pc of commands) applyCommand(this, pc);
+    // Alternate which player's commands go first, so no side always gets the lower entity ids.
+    for (const pc of s.tick % 2 ? commands.slice().reverse() : commands) applyCommand(this, pc);
 
     this.hash.rebuild(s.entities.filter((e) => e.kind === 'unit' && e.hp > 0));
     stepEconomy(this);

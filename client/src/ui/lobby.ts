@@ -7,7 +7,8 @@ import { $, clear, css, h, timeAgo } from './dom';
 const AI_HINTS: Record<AiLevel, string> = {
   easy: 'Slow, builds at random, sloppy rescue strikes.',
   normal: 'Steady builder that upgrades and uses auras and towers.',
-  hard: 'Counters your army, plans its economy, saves the rescue strike for big waves.',
+  hard: 'Counters your army, builds a safe base behind its castle, plans its economy, saves the rescue strike for big waves.',
+  brutal: 'Hard, but cheating: +30% income, no fog of war, instant reactions. For veterans.',
 };
 
 /** Lobby: room list, room view (teams/factions/ready), saved games, history, chat. */

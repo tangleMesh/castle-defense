@@ -19,7 +19,7 @@ export const CommandSchema = z.discriminatedUnion('c', [
 
 export const FactionSchema = z.enum(['ironvow', 'thornwild']);
 export const GameModeSchema = z.enum(['standard', 'random']);
-export const AiLevelSchema = z.enum(['easy', 'normal', 'hard']);
+export const AiLevelSchema = z.enum(['easy', 'normal', 'hard', 'brutal']);
 
 export const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('auth'), token: z.string().max(200) }),

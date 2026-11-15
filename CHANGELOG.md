@@ -2,6 +2,24 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.17.0
+**Stronger bots**
+- New **Brutal** difficulty: Hard's brain with instant reactions, no fog of war and +30% income (an openly cheating bot for veterans).
+- Hard bots build their base behind the castle and strike early waves before they snowball (found with the new simulation lab: each change wins about 65–70% against the old Hard bot). Normal bots counter your army and aim their strikes better; Easy bots idle less and react faster.
+- Teammate bots no longer burn both rescue strikes on the same wave in the same instant.
+- Ladder now: Brutal beats Hard ~90%, Hard beats Normal ~78%, Normal beats Easy ~72%.
+
+**Fairness fixes (found by the lab's mirror-match checks)**
+- The left side won ~65% of identical matches. Causes fixed: bots on team 0 always decided a few ticks earlier; the first player's commands always applied first; units spawning exactly on tile edges took non-mirrored paths; path tie-breaks and edge collisions weren't point-symmetric; whoever acted first in a tick won even trades (now a unit killed in a tick still lands its blow). Left side now wins ~50%.
+- Kill bounties no longer have a 1-gold minimum (swarms fed the enemy far more gold than elite armies); Sproutlings give no bounty.
+
+**Balance**
+- Treants deal normal damage (×1.8 against buildings) and have medium armour; Tempest Caller, Stormcaller and Stormhorn retuned; High Saint heals less; Burrow every 25 s, Vinelings 90 HP.
+
+**Simulation lab** (`npm run lab`, see docs/balancing.md)
+- Faction matrix over every line-up (1v1, 2v2 mixed teams, …) from both sides, with 95% confidence intervals; difficulty ladder; sparring against human-style strategies (turtle, ranged, swarm, air, siege, greed, tech, scout, rush); building duels per tier; AI arena, tuning and random search over bot profiles; `--patch` for what-if balance changes without editing data. Runs on all CPU cores.
+- New generic tests for every faction's data (references, command card, opening, anti-air, sapphire gating, price ranges) and an opt-in statistical balance gate (`BALANCE=1`).
+
 ## 0.16.1
 - Tests: fixed the long-standing "flaky" AI end-to-end test. It waited to *see* 4 buildings, but under fog of war the human only sees its own team's, so a quick defeat of its bot ally left it waiting forever. It now waits for the ally's first building early in the round. The failure messages of the test bots also show the last snapshot state.
 

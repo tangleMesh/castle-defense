@@ -69,7 +69,8 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
     if (p) {
       if (target.kind === 'unit') p.kills++;
       const bounty = target.kind === 'unit'
-        ? Math.max(1, Math.round(UNITS[target.type].bounty * BOUNTY_MULT))
+        // No minimum: swarms of cheap bodies must not feed the enemy more gold than an elite army.
+        ? Math.round(UNITS[target.type].bounty * BOUNTY_MULT)
         : target.kind === 'building' ? Math.floor((target.value ?? 0) * 0.1 * BOUNTY_MULT) : 0;
       // Hunting economies (Thornwild's Trophy Totem) earn extra from every kill.
       const bonus = sim.bountyBonus[attackerOwner] ?? 0;
@@ -188,11 +189,29 @@ function tryHeal(sim: Sim, e: Entity) {
   sim.emit({ t: 'heal', a: e.id, b: best.id });
 }
 
+/**
+ * Entities in alternating order (forwards on even ticks, backwards on odd ones). Damage applies
+ * immediately, so a fixed order would let whoever was created first (usually team 0, whose
+ * commands are applied first) strike first in every even fight.
+ */
+function fairOrder(sim: Sim): Entity[] {
+  const list = sim.state.entities;
+  return sim.state.tick % 2 ? list.slice().reverse() : list;
+}
+
 /** Unit AI: regen, heal, acquire targets, attack in range or move. */
 export function stepCombatUnits(sim: Sim) {
   const tick = sim.state.tick;
-  for (const e of sim.state.entities) {
-    if (e.kind !== 'unit' || e.hp <= 0) continue;
+  // Units alive at the start of the tick all get to act, even if they are killed earlier in this
+  // loop: exchanges resolve simultaneously instead of favouring whoever happens to act first.
+  const acting = fairOrder(sim).filter((e) => e.kind === 'unit' && e.hp > 0);
+  for (const e of acting) {
+    if (e.hp <= 0) {
+      // Killed this tick: its last blow still lands (no movement, no regeneration).
+      const st = attackStats(e)!, t = sim.get(e.targetId);
+      if (!e.cd && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg);
+      continue;
+    }
     const st = attackStats(e)!;
     const mods = modsOf(sim, e.id);
     const ud = UNITS[e.type];
@@ -238,7 +257,7 @@ export function stepCombatUnits(sim: Sim) {
 
 /** Towers and attacking aura buildings shoot the nearest enemy unit. */
 export function stepStructureAttacks(sim: Sim) {
-  for (const e of sim.state.entities) {
+  for (const e of fairOrder(sim)) {
     if (!sim.isStructure(e) || e.hp <= 0 || e.buildLeft) continue;
     const st = attackStats(e);
     if (!st) continue;

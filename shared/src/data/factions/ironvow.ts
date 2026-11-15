@@ -181,7 +181,7 @@ export const IRONVOW: FactionDef = {
       aura: { stat: 'regen', value: 4, radius: 3, target: 'ally' },
       model: { shape: 'cavalry', body: 0xf4f0e0, accent: GOLD, scale: 1.35 } },
     { id: 'iv_high_saint', name: 'High Saint', hp: 600, armor: 3, armorType: 'medium', dmg: 30, attackType: 'magic', range: 5, cooldown: 1.5, speed: 2.5, radius: 0.36, bounty: 20, targetsAir: true,
-      heal: { amount: 70, range: 6, cooldown: 1.2 },
+      heal: { amount: 55, range: 6, cooldown: 1.3 },
       aura: { stat: 'armor', value: 2, radius: 4, target: 'ally' },
       model: { shape: 'caster', body: 0xffffff, accent: 0xffd84a, scale: 1.3 } },
     { id: 'iv_skyhawk', name: 'Skyhawk', hp: 200, armor: 1, armorType: 'light', dmg: 14, attackType: 'pierce', range: 2.5, cooldown: 1.1, speed: 4, radius: 0.34, bounty: 5, air: true, targetsAir: true, bonusVs: { vs: 'air', mult: 2 },

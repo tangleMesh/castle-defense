@@ -11,3 +11,8 @@ export { ROCK_GRID, isFullyConnected, computeFlowField, buildBlockedGrid } from 
 export * from './ai/ai';
 export { VISION_RANGE, baseArea, fogActive, computeVision, tileVisible, entityVisible, visionFromRows, filterSnapshot } from './sim/vision';
 export { builderBounds } from './sim/movement';
+export * from './lab/match';
+export * from './lab/matrix';
+export * from './lab/duel';
+export * from './lab/sparring';
+export * from './lab/patch';

@@ -1,6 +1,6 @@
 {
   "name": "bastion-clash",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -17,8 +17,7 @@
     "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p client --noEmit",
     "bots": "tsx server/scripts/bots.ts",
     "dev:memory": "tsx server/scripts/devMemory.ts",
-    "balance": "tsx server/scripts/balance.ts",
-    "balance:ai": "tsx server/scripts/aiBalance.ts"
+    "lab": "tsx server/scripts/lab/lab.ts"
   },
   "devDependencies": {
     "typescript": "5.8.3",

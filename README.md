@@ -22,7 +22,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Fast rounds** (about 5–7 minutes): castles have 8000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 24×24 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
 - **Best-of rounds**: a round ends when a castle falls. Each new round starts on a fresh map with a new builder, fresh gold and a refreshed rescue strike.
-- **Computer players**: the host can fill any slot with an AI at *Easy*, *Normal* or *Hard* difficulty and pick its faction and team. The AI runs on the server and sends the same commands a player would, with no gold or vision cheats. Hard counters your army composition, plans its economy, and saves the rescue strike for big waves. Every bot fires its strike to save a team building that is about to fall. Bots rejoin automatically when a saved game is resumed.
+- **Computer players**: the host can fill any slot with an AI at *Easy*, *Normal*, *Hard* or *Brutal* difficulty and pick its faction and team. The AI runs on the server and sends the same commands a player would. Easy, Normal and Hard don't cheat; Hard counters your army composition, builds a safe base behind its castle, plans its economy and strikes early waves before they snowball. *Brutal* openly cheats: +30% income, no fog of war and instant reactions. Every bot fires its strike to save a team building that is about to fall. Bots rejoin automatically when a saved game is resumed.
 - **Factions**: *Ironvow Order* (soldiers, siege, sunfire) and *Thornwild Circle* (swarms, beasts, lightning, treants).
 - **Persistence**: accounts, stats, match history, and live match snapshots in MongoDB. A host can **save & exit** and resume the match another day with the same players. Matches that a server crash or restart interrupts also become resumable.
 
@@ -63,8 +63,13 @@ No MongoDB at hand? Run `npm run build && npm run dev:memory` to get a server wi
 ```bash
 npm test             # simulation unit tests + websocket end-to-end tests (in-memory DB, accelerated ticks)
 npm run typecheck
-npm run balance      # offline bot-vs-bot win rates per faction / side
-npm run balance:ai   # offline AI difficulty ladder (easy / normal / hard)
+npm run lab -- all   # balance + AI report (faction matrix, difficulty ladder, sparring, duels) → lab-report.md
+BALANCE=1 npx vitest run shared/test/lab.test.ts   # slow statistical balance gate
+```
+
+The **simulation lab** plays thousands of headless bot matches on all CPU cores to keep factions balanced and bots strong. See [docs/balancing.md](docs/balancing.md) for the workflow, especially when adding a new faction.
+
+```bash
 ```
 
 To run the bot scenarios against a real MongoDB-backed deployment:

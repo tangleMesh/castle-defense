@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
-import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type ItemDef, type UnitDef } from '../data';
+import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
@@ -8,9 +8,11 @@ import { computeVision, entityVisible } from '../sim/vision';
 import type { Sim } from '../sim/sim';
 import type { Command, Entity, PlayerState } from '../sim/state';
 
-export type AiLevel = 'easy' | 'normal' | 'hard';
-export const AI_LEVELS: AiLevel[] = ['easy', 'normal', 'hard'];
-export const AI_LEVEL_NAMES: Record<AiLevel, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+export type AiLevel = 'easy' | 'normal' | 'hard' | 'brutal';
+export const AI_LEVELS: AiLevel[] = ['easy', 'normal', 'hard', 'brutal'];
+export const AI_LEVEL_NAMES: Record<AiLevel, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard', brutal: 'Brutal' };
+/** Income multiplier per level: Brutal openly cheats (it also sees through the fog of war). */
+export const AI_INCOME: Record<AiLevel, number> = { easy: 1, normal: 1, hard: 1, brutal: 1.3 };
 
 /** Bot players use synthetic user ids of the form `ai:<level>:<suffix>`. */
 export function isBotId(userId: string): boolean {
@@ -24,7 +26,7 @@ export function makeBotId(level: AiLevel, suffix: string): string {
   return `ai:${level}:${suffix}`;
 }
 
-interface Profile {
+export interface Profile {
   /** Ticks between decisions (reaction speed). */
   think: number;
   /** Max queued build orders. */
@@ -61,23 +63,63 @@ interface Profile {
   itemsAfterMin: number;
   /** Items in the order the bot wants them. */
   items: string[];
+  /**
+   * Strategy bias: multipliers on the scores of building categories. Used by the simulation lab
+   * to model human strategies (tower turtle, ranged mass, …) as sparring partners.
+   */
+  bias?: Partial<Record<BuildCategory, number>>;
+  /** Scouting cheat for sparring partners: judges the enemy army without fog of war. */
+  fullVision?: boolean;
+  /** Income ticks the bot may wait for a better option instead of buying another fragile-unit spawner (0 = never waits). */
+  chaffWait?: number;
+  /** Where spawn buildings go: around the castle (default), towards the front, or behind the castle. */
+  place?: Placement;
+  /** Per-faction placement (wins over `place`): each faction has its own best base layout. */
+  placeBy?: Partial<Record<FactionId, Placement>>;
 }
 
-const PROFILES: Record<AiLevel, Profile> = {
+export type Placement = 'castle' | 'front' | 'back';
+
+export type BuildCategory = 'melee' | 'ranged' | 'air' | 'swarm' | 'siege' | 'tower' | 'aura' | 'eco' | 'upgrade' | 'special';
+
+/** Category of a building for strategy biases. */
+export function buildCategory(def: BuildingDef, upgrade = false): BuildCategory {
+  if (def.special) return 'special';
+  if (upgrade) return 'upgrade';
+  if (def.incomeBonus || def.bountyBonus) return 'eco';
+  if (def.attack) return 'tower';
+  if (!def.spawn) return 'aura';
+  const u = UNITS[def.spawn.unit];
+  if (u.air) return 'air';
+  if (u.structuresOnly || u.attackType === 'siege') return 'siege';
+  if (def.spawn.count > 1 || u.hp < 150) return 'swarm';
+  return u.range >= 4 ? 'ranged' : 'melee';
+}
+
+export const PROFILES: Record<AiLevel, Profile> = {
   easy: {
-    think: 6 * TICK_RATE, maxQueue: 1, idle: 0.3, upgradeAfter: 10, specialAt: 14, planner: false, counter: false,
+    think: 4 * TICK_RATE, maxQueue: 1, idle: 0.15, upgradeAfter: 10, specialAt: 14, planner: false, counter: false,
     saves: false, tidy: false, rescueAt: 14, rescueDelay: 2 * TICK_RATE, rescueAim: 2.5, upgradeBias: 1, rangedShare: 0, safeSpots: false, saveForSpecial: 0,
     itemsAfterMin: 8, items: ['chalice', 'boots', 'hammer'],
   },
   normal: {
-    think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: false,
-    saves: false, tidy: true, rescueAt: 9, rescueDelay: TICK_RATE, rescueAim: 1, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
+    think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: true,
+    saves: false, tidy: true, rescueAt: 6, rescueDelay: TICK_RATE, rescueAim: 0.5, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
     itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'],
   },
   hard: {
-    think: Math.round(0.5 * TICK_RATE), maxQueue: 2, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
-    saves: true, tidy: true, rescueAt: 8, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
+    think: Math.round(0.5 * TICK_RATE), maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
+    saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
     itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'],
+    // Found with the simulation lab (npm run lab -- search / tune): a base behind the castle wins ~65% against one
+    // around it, and striking early at small waves (rescueAt 3 instead of 8) another ~70%.
+    place: 'back', chaffWait: 0,
+  },
+  // Hard's brain, faster, without fog of war and with +30% income (AI_INCOME): openly cheating.
+  brutal: {
+    think: 3, maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
+    saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
+    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], place: 'back', chaffWait: 0, fullVision: true,
   },
 };
 
@@ -90,6 +132,9 @@ type Option =
  * the same commands a human client would send, so it can't cheat on gold or placement.
  * It keeps almost no state of its own, so it continues seamlessly after save/resume.
  */
+/** Tick in which a team's bot last ordered a rescue strike (per simulation). */
+const RESCUE_CLAIMS = new WeakMap<Sim, Map<number, number>>();
+
 export class AiPlayer {
   readonly profile: Profile;
   private nextThink: number;
@@ -97,12 +142,14 @@ export class AiPlayer {
   private wish: string | null = null;
   private rnd: () => number;
 
-  constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17) {
-    this.profile = PROFILES[level];
+  /** `overrides` tweak the level's profile (used by the simulation lab to compare AI variants). */
+  constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17, overrides?: Partial<Profile>) {
+    this.profile = { ...PROFILES[level], ...overrides };
     let s = seed >>> 0 || 1;
     this.rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-    // Spread bots over different ticks so they don't all think at once.
-    this.nextThink = (player * 3) % this.profile.think;
+    // Spread bots over different ticks so they don't all think at once (set from the team slot on
+    // the first update, so both teams' bots think in step and neither side moves first).
+    this.nextThink = -1;
   }
 
   /** Call once per tick before `sim.step`; returns commands to queue for this player. */
@@ -110,8 +157,17 @@ export class AiPlayer {
     const s = sim.state;
     if (s.phase !== 'playing') { this.rescueSeenAt = -1; return []; }
     const out: Command[] = [];
-    const rescue = this.rescue(sim);
-    if (rescue) out.push(rescue);
+    // Teammates decide in the same tick before either strike is registered: claim it so two bots
+    // never burn both strikes on the same wave.
+    const team = s.players[this.player].team;
+    const claims = RESCUE_CLAIMS.get(sim) ?? new Map<number, number>();
+    RESCUE_CLAIMS.set(sim, claims);
+    const rescue = claims.get(team) === s.tick ? null : this.rescue(sim);
+    if (rescue) { out.push(rescue); claims.set(team, s.tick); }
+    if (this.nextThink < 0) {
+      const slot = s.players.filter((p) => p.team === team && p.index < this.player).length;
+      this.nextThink = s.tick + (slot * 3) % this.profile.think;
+    }
     if (s.tick < this.nextThink) return out;
     this.nextThink = s.tick + this.profile.think;
     if (this.rnd() < this.profile.idle) return out;
@@ -245,7 +301,9 @@ export class AiPlayer {
         for (const o of options) {
           if (o.def.cost <= me.gold) { pick = o; break; }
           if (o.def.cost <= me.gold + perTick * 1.5) return null;
-          if (chaff && o.score >= cheap!.score * 1.2 && o.def.cost <= me.gold + perTick * 3
+          // A strategy bias (sparring partners) is worth saving up for.
+          if ((P.bias?.[buildCategory(o.def, o.kind === 'upgrade')] ?? 1) >= 2 && o.def.cost <= me.gold + perTick * 10) return null;
+          if (chaff && o.score >= cheap!.score * 1.2 && o.def.cost <= me.gold + perTick * (P.chaffWait ?? 3)
             && !this.enemyProfile(sim, me).pressure) return null;
         }
       }
@@ -356,6 +414,15 @@ export class AiPlayer {
         }
       }
     }
+    if (P.bias) {
+      for (const o of out) o.score *= P.bias[buildCategory(o.def, o.kind === 'upgrade')] ?? 1;
+      // Strong preferences also lift the gates that normally hold towers / economy back.
+      for (const id of faction.build) {
+        const def = BUILDINGS[id], cat = buildCategory(def);
+        if ((P.bias[cat] ?? 1) >= 2 && (cat === 'tower' || cat === 'eco' || cat === 'aura') && !out.some((o) => o.def.id === id)
+          && (def.sapphires ?? 0) <= gems) out.push({ kind: 'build', def, score: top * (P.bias[cat] ?? 1) });
+      }
+    }
     return out;
   }
 
@@ -424,7 +491,7 @@ export class AiPlayer {
     const vision = computeVision(me.team, own);
     for (const e of sim.state.entities) {
       if (e.team === me.team || e.hp <= 0) continue;
-      if (e.kind !== 'castle' && !entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
+      if (!this.profile.fullVision && e.kind !== 'castle' && !entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
       if (e.kind === 'unit') {
         const u = UNITS[e.type];
         // Small units still count: a cloud of moths is a threat even at 85 HP each.
@@ -451,8 +518,13 @@ export class AiPlayer {
     // Allied spawn buildings (for aura placement).
     const spawners = sim.state.entities.filter((e) => e.kind === 'building' && e.team === me.team && BUILDINGS[e.type].spawn);
     const step = P.tidy ? 3 : 1;
-    for (let tx = z.x + (P.tidy ? 1 : 0); tx + n <= z.x + z.w; tx += step) {
-      for (let ty = z.y + (P.tidy ? 1 : 0); ty + n <= z.y + z.h; ty += step) {
+    // The map is point-symmetric: team 1 uses the mirror image of team 0's grid, so both sides
+    // get exactly the same base layout options.
+    const z0 = MAP.zones[0];
+    for (let lx = z0.x + (P.tidy ? 1 : 0); lx + n <= z0.x + z0.w; lx += step) {
+      for (let ly = z0.y + (P.tidy ? 1 : 0); ly + n <= z0.y + z0.h; ly += step) {
+        const tx = me.team === 0 ? lx : MAP.width - lx - n, ty = me.team === 0 ? ly : MAP.height - ly - n;
+        if (tx < z.x || tx + n > z.x + z.w) continue;
         const cx = tx + n / 2, cy = ty + n / 2;
         let score: number;
         if (!P.tidy) score = this.rnd();
@@ -467,6 +539,11 @@ export class AiPlayer {
         } else {
           // Compact base growing outwards from the castle; mild spread across lanes.
           score = Math.abs(cx - castle.x) + Math.abs(cy - castle.y) * 0.6 + this.rnd() * 1.5;
+          // Forward bases put units into the fight sooner; rear bases are safer.
+          const forward = me.team === 0 ? cx - castle.x : castle.x - cx;
+          const place = P.placeBy?.[me.faction] ?? P.place;
+          if (place === 'front') score = -forward + Math.abs(cy - castle.y) * 0.4 + this.rnd() * 1.5;
+          else if (place === 'back') score = forward + Math.abs(cy - castle.y) * 0.5 + this.rnd() * 1.5;
           // Behind the castle is safest: enemies have to get past it first.
           if (P.safeSpots && (me.team === 0 ? cx < castle.x : cx > castle.x)) score -= 6;
         }

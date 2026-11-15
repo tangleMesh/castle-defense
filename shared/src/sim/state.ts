@@ -82,6 +82,8 @@ export interface PlayerState {
   items?: string[];
   /** Sapphires (rare resource for special buildings and elite upgrades); absent in old saves = START_SAPPHIRES. */
   sapphires?: number;
+  /** Income multiplier (handicap); absent = 1. */
+  incomeMult?: number;
 }
 
 export interface PendingStrike {
@@ -150,6 +152,8 @@ export interface PlayerSetup {
   name: string;
   team: Team;
   faction: FactionId;
+  /** Income multiplier (handicap); the Brutal bot gets more than 1. */
+  incomeMult?: number;
 }
 
 export type Command =

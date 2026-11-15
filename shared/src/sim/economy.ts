@@ -10,7 +10,8 @@ export function incomeFor(sim: Sim, player: number): number {
     value += e.value ?? 0;
     if (!e.buildLeft) bonus += BUILDINGS[e.type].incomeBonus ?? 0;
   }
-  return Math.floor((BASE_INCOME + INCOME_PCT * value) * (1 + Math.min(bonus, MAX_INCOME_BONUS)));
+  const mult = sim.state.players[player]?.incomeMult ?? 1;
+  return Math.floor((BASE_INCOME + INCOME_PCT * value) * (1 + Math.min(bonus, MAX_INCOME_BONUS)) * mult);
 }
 
 export function stepEconomy(sim: Sim) {

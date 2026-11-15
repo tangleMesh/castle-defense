@@ -6,10 +6,21 @@ import { placementError } from './placement';
 import type { Sim } from './sim';
 import type { Entity, Team } from './state';
 
+/**
+ * A point exactly on a tile edge counts as blocked if either neighbouring tile is: plain flooring
+ * would treat the two halves of the point-symmetric map differently.
+ */
 const blockedAt = (g: Uint8Array, x: number, y: number) => {
-  const tx = Math.floor(x), ty = Math.floor(y);
-  return !inBounds(tx, ty) || g[idx(tx, ty)] !== 0;
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const x1 = Number.isInteger(x) ? x0 - 1 : x0, y1 = Number.isInteger(y) ? y0 - 1 : y0;
+  for (const tx of x0 === x1 ? [x0] : [x0, x1]) for (const ty of y0 === y1 ? [y0] : [y0, y1]) {
+    if (!inBounds(tx, ty) || g[idx(tx, ty)] !== 0) return true;
+  }
+  return false;
 };
+
+/** Tile of a coordinate; team 1 rounds edges the mirrored way (point-symmetric map). */
+const tileOf = (v: number, mirrored: boolean) => (mirrored ? Math.ceil(v) - 1 : Math.floor(v));
 
 export function nearestPointOn(structure: Entity, x: number, y: number) {
   const r = footprint(structure);
@@ -52,7 +63,8 @@ export function followFlow(sim: Sim, e: Entity, step: number) {
   const goal = rectCenter(MAP.castles[enemy]);
   if (sim.isAir(e)) { moveToward(sim, e, goal.x, goal.y, step); return; }
   const g = sim.blockedGrid;
-  const next = flowStep(sim.flowField(e.team), g, Math.floor(e.x), Math.floor(e.y));
+  const m = e.team === 1;
+  const next = flowStep(sim.flowField(e.team), g, tileOf(e.x, m), tileOf(e.y, m), m);
   const tx = next ? next.x : goal.x;
   const ty = next ? next.y : goal.y;
   const dx = tx - e.x, dy = ty - e.y;

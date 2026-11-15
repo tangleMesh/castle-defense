@@ -64,7 +64,9 @@ export function spawnUnit(sim: Sim, from: Entity, unitId: string, i: number, n: 
   const dir = from.team === 0 ? 1 : -1;
   const size = from.size ?? 2;
   let x = from.team === 0 ? from.tx! + size + 0.45 : from.tx! - 0.45;
-  let y = from.ty! + size / 2 + (i - (n - 1) / 2) * 0.7 + (nextRandom(sim.state) - 0.5) * 0.2;
+  // dir * 0.01 keeps spawns off exact tile boundaries in a point-symmetric way (otherwise
+  // flooring sends team 0 and team 1 units into tiles that aren't mirror images of each other).
+  let y = from.ty! + size / 2 + (i - (n - 1) / 2) * 0.7 + dir * 0.01 + (nextRandom(sim.state) - 0.5) * 0.2;
   if (!u.air) {
     const g = sim.blockedGrid;
     const tx = Math.floor(x), ty = Math.floor(y);

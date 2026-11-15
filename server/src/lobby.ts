@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
-  AI_LEVEL_NAMES, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
+  AI_INCOME, AI_LEVEL_NAMES, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
   type AiLevel, type ClientMessage, type GameMode, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
 } from '@bc/shared';
 import type { Conn } from './conn';
@@ -288,7 +288,10 @@ export class Lobby {
       const ordered = [...r.slots.filter((s) => s.team === 0), ...r.slots.filter((s) => s.team === 1)];
       players = ordered.map((s, i) => ({ i, userId: s.userId, name: s.name, team: s.team, faction: s.faction }));
       sim = Sim.create({
-        players: players.map((p) => ({ userId: p.userId, name: p.name, team: p.team, faction: p.faction })),
+        players: players.map((p) => {
+          const level = botLevel(p.userId);
+          return { userId: p.userId, name: p.name, team: p.team, faction: p.faction, incomeMult: level ? AI_INCOME[level] : 1 };
+        }),
         bestOf: r.bestOf,
         mode: r.mode,
         seed: randomBytes(4).readUInt32LE(0),
