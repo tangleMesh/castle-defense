@@ -56,6 +56,7 @@ export class Hud {
   private overlay!: HTMLElement;
   private banner!: HTMLElement;
   private menu!: HTMLElement;
+  private topLive!: HTMLElement;
   private board!: HTMLElement;
   private mini!: HTMLCanvasElement;
   private miniBase!: HTMLCanvasElement;
@@ -146,6 +147,11 @@ export class Hud {
 
   private build() {
     this.top = h('div', { class: 'topbar' });
+    this.topLive = h('div', { class: 'top-live' });
+    // Built once: the live part of the bar is re-rendered every snapshot, which would swallow clicks.
+    this.top.append(this.topLive, h('div', { class: 'top-actions' },
+      h('button', { class: 'btn small', onclick: () => this.toggleMenu() }, 'Menu (F10)'),
+    ));
     this.msg = h('div', { class: 'hud-msg' });
     this.chatLog = h('div', { class: 'chat-log' });
     this.chatInput = h('input', { class: 'chat-input', maxLength: 300, placeholder: 'Say something… (Enter to send, Esc to cancel)' });
@@ -318,8 +324,8 @@ export class Hud {
         ),
       );
     };
-    clear(this.top);
-    this.top.append(
+    clear(this.topLive);
+    this.topLive.append(
       h('div', { class: 'res' },
         h('span', { class: 'gold-ico' }),
         h('b', { class: 'gold' }, me.gold),
@@ -336,9 +342,6 @@ export class Hud {
           h('div', { class: 'tally' }, h('span', { style: `color:${TEAM_CSS[0]}` }, snap.score[0]), ' : ', h('span', { style: `color:${TEAM_CSS[1]}` }, snap.score[1])),
         ),
         castle(1),
-      ),
-      h('div', { class: 'top-actions' },
-        h('button', { class: 'btn small', onclick: () => this.toggleMenu() }, 'Menu (F10)'),
       ),
     );
   }

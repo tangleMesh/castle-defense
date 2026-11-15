@@ -2,6 +2,9 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.12.1
+- Fix: the Menu button in the top bar now opens the menu on click (the bar was redrawn several times a second, which swallowed clicks; F10 still works).
+
 ## 0.12.0
 - Countryside: painted ponds with reeds, lily pads and glinting water; trees sway in the wind; fireflies drift along the forest edge.
 - The ruined castle is repainted: jagged masonry walls, broken towers, the stump of the keep, heaps of stone blocks and charred beams.

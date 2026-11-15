@@ -138,6 +138,7 @@ input:focus, select:focus { border-color: var(--gold-2); }
   background: linear-gradient(#2c2820, #1a1814); border-bottom: 2px solid var(--edge);
   box-shadow: 0 3px 10px rgba(0, 0, 0, .6);
 }
+.top-live { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; height: 100%; }
 .topbar .res { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .gold-ico { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2a0, #e0a820 55%, #8a5a10); box-shadow: 0 0 0 1px #5a3a08; }
 .gold { font-size: 18px; color: var(--gold); font-family: var(--head); min-width: 44px; }
