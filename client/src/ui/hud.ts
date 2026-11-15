@@ -879,7 +879,7 @@ export class Hud {
         h('div', null, 'B: castle shop (builder items)'),
         h('div', null, 'Arrows / screen edge / middle-drag: camera · Wheel: zoom · Alt: show all building health bars · Hold Tab: scoreboard'),
         h('div', null, 'Enter: chat'),
-        h('div', null, 'Fog of war: you see your own base, plus 6 tiles around each of your team\'s units'),
+        h('div', null, 'Fog of war: you see your own base, plus 12 tiles around each of your team\'s units'),
       ),
     ));
   }

@@ -19,6 +19,12 @@ export function nearestPointOn(structure: Entity, x: number, y: number) {
   };
 }
 
+/** Area a builder may walk in: its team's build zone (tile rect, inclusive) with a small inset. */
+export function builderBounds(team: number) {
+  const z = MAP.zones[team];
+  return { x0: z.x + 0.3, x1: z.x + z.w - 0.3, y0: z.y + 0.3, y1: z.y + z.h - 0.3 };
+}
+
 /** Move `e` toward (x,y) by up to `step` tiles, sliding along blocked tiles (ground units). */
 export function moveToward(sim: Sim, e: Entity, x: number, y: number, step: number) {
   const dx = x - e.x, dy = y - e.y;
@@ -26,7 +32,12 @@ export function moveToward(sim: Sim, e: Entity, x: number, y: number, step: numb
   if (d < 1e-6) return;
   const k = Math.min(step, d) / d;
   const nx = e.x + dx * k, ny = e.y + dy * k;
-  if (sim.isAir(e) || e.kind === 'builder') { e.x = nx; e.y = ny; return; }
+  if (e.kind === 'builder') {
+    const z = builderBounds(e.team);
+    e.x = Math.min(z.x1, Math.max(z.x0, nx)); e.y = Math.min(z.y1, Math.max(z.y0, ny));
+    return;
+  }
+  if (sim.isAir(e)) { e.x = nx; e.y = ny; return; }
   const g = sim.blockedGrid;
   if (!blockedAt(g, nx, ny)) { e.x = nx; e.y = ny; return; }
   // Path blocked: if chasing something, fall back to the flow field which knows a way around.

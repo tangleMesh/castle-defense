@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
+  BUILDINGS, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -322,7 +322,9 @@ export class GameScene extends Phaser.Scene {
       if (p.rightButtonDown()) {
         if (s.mode.kind !== 'none') { s.setMode({ kind: 'none' }); return; }
         s.send({ c: 'move', x: t.x, y: t.y });
-        this.moveMarker(t.x, t.y);
+        // The builder can't leave its build zone: show where it will actually stop.
+        const z = builderBounds(s.team);
+        this.moveMarker(Math.min(z.x1, Math.max(z.x0, t.x)), Math.min(z.y1, Math.max(z.y0, t.y)));
         return;
       }
       // left button

@@ -8,7 +8,7 @@ const players: PlayerSetup[] = [
 ];
 
 describe('fog of war', () => {
-  it('sees the own base area and a 12×12 square around own entities', () => {
+  it('sees the own base area and a 24×24 square around own entities', () => {
     const b = baseArea(0);
     expect(b.x).toBe(0);
     expect(b.w).toBe(MAP.zones[0].x + MAP.zones[0].w);
@@ -16,12 +16,13 @@ describe('fog of war', () => {
     expect(tileVisible(grid, 5, 0)).toBe(true); // own base, far corner
     expect(tileVisible(grid, 60, 14)).toBe(false); // enemy base
     let count = 0;
-    for (let y = 0; y < MAP.height; y++) for (let x = 30; x < 50; x++) if (tileVisible(grid, x + 0.5, y + 0.5)) count++;
-    expect(count).toBe(144);
-    expect(tileVisible(grid, 34.5, 14.5)).toBe(true);
-    expect(tileVisible(grid, 33.5, 14.5)).toBe(false);
-    expect(tileVisible(grid, 45.5, 8.5)).toBe(true);
-    expect(tileVisible(grid, 46.5, 14.5)).toBe(false);
+    for (let y = 0; y < MAP.height; y++) for (let x = 28; x < 60; x++) if (tileVisible(grid, x + 0.5, y + 0.5)) count++;
+    expect(count).toBe(24 * 24);
+    expect(tileVisible(grid, 28.5, 14.5)).toBe(true);
+    expect(tileVisible(grid, 51.5, 14.5)).toBe(true);
+    expect(tileVisible(grid, 52.5, 14.5)).toBe(false);
+    expect(tileVisible(grid, 51.5, 2.5)).toBe(true);
+    expect(tileVisible(grid, 51.5, 1.5)).toBe(false);
   });
 
   it('filters enemy entities and orders per team, keeps castles, reveals all between rounds', () => {
@@ -46,5 +47,26 @@ describe('fog of war', () => {
     sim.state.phase = 'roundOver';
     mine.x = 20;
     expect(filterSnapshot(makeSnapshot(sim, []), 0).ents.some((e) => e[0] === scout.id)).toBe(true);
+  });
+});
+
+describe('builder bounds', () => {
+  it('the builder cannot leave its own build zone', async () => {
+    const { builderBounds } = await import('../src/index');
+    for (const team of [0, 1] as const) {
+      const sim = Sim.create({ players, bestOf: 3, seed: 3 });
+      const p = sim.state.players[team];
+      const b = sim.get(p.builderId)!;
+      const z = builderBounds(team);
+      sim.step([{ player: team, cmd: { c: 'move', x: team === 0 ? 70 : 5, y: 0 } }]);
+      for (let i = 0; i < 400; i++) sim.step([]);
+      expect(b.x).toBeCloseTo(team === 0 ? z.x1 : z.x0, 5);
+      expect(b.y).toBeCloseTo(z.y0, 5);
+      // Even a position forced outside is pulled back on the next move.
+      b.x = 40;
+      sim.step([{ player: team, cmd: { c: 'move', x: 40, y: 14 } }]);
+      for (let i = 0; i < 400; i++) sim.step([]);
+      expect(b.x).toBeGreaterThanOrEqual(z.x0); expect(b.x).toBeLessThanOrEqual(z.x1);
+    }
   });
 });

@@ -6,9 +6,9 @@ import type { EntRow, Snapshot } from './snapshot';
 
 /**
  * Fog of war. A team always sees its own base area (its half up to the end of its build zone).
- * Beyond that, every own-team entity reveals a 12×12 tile square around itself (6 tiles each way).
+ * Beyond that, every own-team entity reveals a 24×24 tile square around itself (12 tiles each way).
  */
-export const VISION_RANGE = 6;
+export const VISION_RANGE = 12;
 
 const W = MAP.width, H = MAP.height;
 
@@ -29,7 +29,7 @@ export function computeVision(team: Team, sources: Iterable<{ x: number; y: numb
   const b = baseArea(team);
   for (let y = b.y; y < b.y + b.h; y++) grid.fill(1, y * W + b.x, y * W + b.x + b.w);
   for (const s of sources) {
-    // Tiles whose centre lies in [pos − 6, pos + 6) on both axes: always exactly 12×12 tiles.
+    // Tiles whose centre lies in [pos − R, pos + R) on both axes: always exactly 2R×2R tiles (clipped at the map edge).
     const x0 = Math.max(0, Math.ceil(s.x - VISION_RANGE - 0.5)), x1 = Math.min(W - 1, Math.ceil(s.x + VISION_RANGE - 0.5) - 1);
     const y0 = Math.max(0, Math.ceil(s.y - VISION_RANGE - 0.5)), y1 = Math.min(H - 1, Math.ceil(s.y + VISION_RANGE - 0.5) - 1);
     for (let y = y0; y <= y1; y++) if (x1 >= x0) grid.fill(1, y * W + x0, y * W + x1 + 1);

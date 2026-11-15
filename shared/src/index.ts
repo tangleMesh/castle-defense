@@ -10,3 +10,4 @@ export { incomeFor } from './sim/economy';
 export { ROCK_GRID, isFullyConnected, computeFlowField, buildBlockedGrid } from './sim/grid';
 export * from './ai/ai';
 export { VISION_RANGE, baseArea, fogActive, computeVision, tileVisible, entityVisible, visionFromRows, filterSnapshot } from './sim/vision';
+export { builderBounds } from './sim/movement';

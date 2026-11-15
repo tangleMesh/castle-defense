@@ -4,6 +4,7 @@ import { MAP, rectCenter } from '../map/map';
 import type { Sim } from './sim';
 import type { Entity, PlayerCommand } from './state';
 import { placementError } from './placement';
+import { builderBounds } from './movement';
 
 function refundOrders(sim: Sim, builder: Entity) {
   const p = sim.state.players[builder.owner];
@@ -24,8 +25,10 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
     case 'move': {
       if (!builder || !finite(cmd.x, cmd.y)) return;
       refundOrders(sim, builder);
-      builder.moveX = clamp(cmd.x, 0.3, MAP.width - 0.3);
-      builder.moveY = clamp(cmd.y, 0.3, MAP.height - 0.3);
+      // The builder stays inside its team's build zone; targets beyond it stop at the border.
+      const z = builderBounds(p.team);
+      builder.moveX = clamp(cmd.x, z.x0, z.x1);
+      builder.moveY = clamp(cmd.y, z.y0, z.y1);
       return;
     }
     case 'stop': {
