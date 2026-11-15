@@ -2,6 +2,11 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.9.0
+- Visual overhaul, part 2: every unit repainted (shaded figures with outlines, faction gear: shields, halberds, crossbows, bows, staves, lances, champion halo, treants, boulder rams, moths and hawks) with 4-frame walk cycles and an attack pose for melee, ranged, casters and healers.
+- Micro-animations: idle breathing, fallen units topple and fade, arrows follow their arc, magic orbs leave glowing trails, boulders tumble and raise dust, construction sites throw dust and sparks.
+- Ambient life: grass swaying in passing gusts, flocks of birds with shadows racing over the ground, butterflies, slow shafts of sunlight.
+
 ## 0.8.0
 - Visual overhaul, part 1: a hand-painted battlefield (no tile grid) with meadow colour variation, grass strokes, wildflower drifts and a winding dirt road with wheel ruts, pebbles and puddles.
 - Buildings and castles repainted with real materials: masonry, half-timbering, planks, slate, shingle and thatch roofs, glowing windows, chimneys, domes, round towers and a castle with keep, gatehouse, courtyard and team banner.

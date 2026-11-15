@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { BUILDINGS, CASTLE_SIZE, UNITS, type UnitDef } from '@bc/shared';
+import { BUILDINGS, CASTLE_SIZE, UNITS } from '@bc/shared';
 import { TH, TW } from './iso';
 import { blurred, paper, radial, softEllipse, rng as prng } from './paint';
+import { UNIT_CANVAS, UNIT_FRAMES, outline, paintBuilder, paintUnit } from './units';
 import { PROP_SIZE, paintBush, paintOak, paintPine, paintRock } from './props';
 import { buildingCanvasSize, castleCanvasSize, paintBuilding, paintCastle, paintRuin, takeAnchors, type Anchors } from './structures';
 
@@ -204,136 +205,18 @@ function genFlags(scene: Phaser.Scene) {
 
 // ------------------------------------------------------------------ units
 
-export const UNIT_TEX = { w: 64, h: 72, footY: 64 };
+export const UNIT_TEX = { w: UNIT_CANVAS.w, h: UNIT_CANVAS.h, footY: UNIT_CANVAS.footY };
 
-function drawUnit(g: G, u: UnitDef) {
-  const m = u.model;
-  const s = m.scale;
-  const cx = UNIT_TEX.w / 2, fy = UNIT_TEX.footY;
-  const skin = 0xe0b890;
-  const dark = shade(m.body, 0.6);
-  const S = (v: number) => v * s;
-  const humanoid = (h: number, robe = false) => {
-    if (robe) {
-      poly(g, m.body, [[cx - S(7), fy], [cx + S(7), fy], [cx + S(4), fy - S(h * 0.65)], [cx - S(4), fy - S(h * 0.65)]]);
-      poly(g, dark, [[cx + S(1), fy], [cx + S(7), fy], [cx + S(4), fy - S(h * 0.65)], [cx + S(1), fy - S(h * 0.65)]], 0.5);
-    } else {
-      g.fillStyle(0x3a3028); g.fillRect(cx - S(4), fy - S(h * 0.35), S(3), S(h * 0.35)); g.fillRect(cx + S(1), fy - S(h * 0.35), S(3), S(h * 0.35));
-      g.fillStyle(m.body); g.fillRoundedRect(cx - S(5), fy - S(h * 0.72), S(10), S(h * 0.42), S(2));
-      g.fillStyle(dark, 0.5); g.fillRect(cx + S(1), fy - S(h * 0.72), S(4), S(h * 0.42));
-    }
-    g.fillStyle(skin); g.fillCircle(cx, fy - S(h * 0.82), S(3.6));
-    g.fillStyle(m.accent); g.slice(cx, fy - S(h * 0.82), S(4), Math.PI, 0, false); g.fillPath();
-    return fy - S(h * 0.6);
+/** Every unit (and the builder) in idle/walk/attack frames, outlined for readability. */
+function genUnits(scene: Phaser.Scene) {
+  const add = (key: string, paint: (c: CanvasRenderingContext2D) => void) => {
+    const p = paper(UNIT_CANVAS.w, UNIT_CANVAS.h, TEX_RES);
+    paint(p.ctx);
+    if (scene.textures.exists(key)) scene.textures.remove(key);
+    scene.textures.addCanvas(key, outline(p.canvas, TEX_RES * 0.9));
   };
-  switch (m.shape) {
-    case 'infantry': {
-      const hy = humanoid(26);
-      g.lineStyle(S(2), 0xd8dce0); g.lineBetween(cx + S(6), hy, cx + S(14), hy - S(10));
-      g.fillStyle(m.accent); g.fillRect(cx - S(10), hy - S(4), S(5), S(9));
-      break;
-    }
-    case 'shield': {
-      const hy = humanoid(27);
-      g.lineStyle(S(2), 0xd8dce0); g.lineBetween(cx + S(6), hy, cx + S(13), hy - S(9));
-      g.fillStyle(m.accent); g.fillRoundedRect(cx - S(12), hy - S(9), S(10), S(16), S(3));
-      g.fillStyle(0xe0b84a); g.fillCircle(cx - S(7), hy - S(1), S(2));
-      break;
-    }
-    case 'polearm': {
-      const hy = humanoid(27);
-      g.lineStyle(S(1.5), 0x6a4a2a); g.lineBetween(cx + S(7), fy - S(2), cx + S(7), fy - S(40));
-      poly(g, 0xd8dce0, [[cx + S(7), fy - S(40)], [cx + S(13), fy - S(34)], [cx + S(7), fy - S(31)]]);
-      g.fillStyle(m.accent); g.fillRect(cx - S(5), hy - S(2), S(10), S(3));
-      break;
-    }
-    case 'archer': {
-      const hy = humanoid(25);
-      g.lineStyle(S(1.5), 0x7a5228); g.beginPath(); g.arc(cx + S(6), hy - S(3), S(9), -1.2, 1.2); g.strokePath();
-      g.lineStyle(1, 0xe8e0d0); g.lineBetween(cx + S(9.3), hy - S(11.4), cx + S(9.3), hy + S(5.4));
-      g.fillStyle(m.accent); g.fillRect(cx - S(8), hy - S(8), S(3), S(10));
-      break;
-    }
-    case 'caster': {
-      const hy = humanoid(27, true);
-      g.lineStyle(S(1.5), 0x6a4a2a); g.lineBetween(cx + S(8), fy, cx + S(8), fy - S(34));
-      g.fillStyle(m.accent, 0.35); g.fillCircle(cx + S(8), fy - S(36), S(6));
-      g.fillStyle(m.accent); g.fillCircle(cx + S(8), fy - S(36), S(3));
-      void hy;
-      break;
-    }
-    case 'cavalry': {
-      // horse / stag
-      g.fillStyle(shade(m.body, 0.6));
-      for (const lx of [-9, -5, 5, 9]) g.fillRect(cx + S(lx), fy - S(9), S(2), S(9));
-      g.fillStyle(m.body); g.fillEllipse(cx, fy - S(12), S(26), S(10));
-      g.fillStyle(shade(m.body, 0.8)); g.fillEllipse(cx + S(13), fy - S(18), S(8), S(10));
-      g.fillStyle(m.body); g.fillEllipse(cx + S(16), fy - S(21), S(7), S(5));
-      // rider
-      g.fillStyle(m.accent); g.fillRoundedRect(cx - S(4), fy - S(30), S(8), S(13), S(2));
-      g.fillStyle(skin); g.fillCircle(cx, fy - S(33), S(3.4));
-      g.fillStyle(m.accent); g.slice(cx, fy - S(33), S(3.8), Math.PI, 0, false); g.fillPath();
-      g.lineStyle(S(1.5), 0xd8d0c0); g.lineBetween(cx - S(6), fy - S(20), cx + S(22), fy - S(30));
-      break;
-    }
-    case 'siege': {
-      g.fillStyle(0x5a3a20); g.fillRect(cx - S(14), fy - S(12), S(28), S(5));
-      g.fillStyle(0x3a2a1a); g.fillCircle(cx - S(9), fy - S(4), S(4)); g.fillCircle(cx + S(9), fy - S(4), S(4));
-      g.fillStyle(m.body); g.fillRect(cx - S(4), fy - S(22), S(8), S(12));
-      g.lineStyle(S(2), shade(m.body, 1.2)); g.lineBetween(cx, fy - S(20), cx - S(14), fy - S(34));
-      g.fillStyle(0x6a6a62); g.fillCircle(cx - S(15), fy - S(35), S(3.5));
-      break;
-    }
-    case 'flyer': {
-      const y = fy - S(30);
-      poly(g, shade(m.body, 0.8), [[cx, y], [cx - S(18), y - S(8)], [cx - S(12), y + S(3)]]);
-      poly(g, m.body, [[cx, y], [cx + S(18), y - S(10)], [cx + S(12), y + S(3)]]);
-      g.fillStyle(m.accent); g.fillEllipse(cx, y + S(1), S(8), S(12));
-      g.fillStyle(shade(m.accent, 1.2)); g.fillCircle(cx + S(2), y - S(5), S(3));
-      break;
-    }
-    case 'beast': {
-      g.fillStyle(shade(m.body, 0.6));
-      for (const lx of [-6, -2, 3, 7]) g.fillRect(cx + S(lx), fy - S(6), S(2), S(6));
-      g.fillStyle(m.body); g.fillEllipse(cx, fy - S(9), S(20), S(9));
-      g.fillStyle(shade(m.body, 1.1)); g.fillEllipse(cx + S(10), fy - S(12), S(9), S(8));
-      g.fillStyle(m.accent);
-      for (let i = 0; i < 4; i++) poly(g, m.accent, [[cx - S(7) + i * S(4), fy - S(12)], [cx - S(5) + i * S(4), fy - S(19)], [cx - S(3) + i * S(4), fy - S(12)]]);
-      g.fillStyle(0xffe060); g.fillCircle(cx + S(12), fy - S(13), S(1.2));
-      break;
-    }
-    case 'ram': {
-      g.fillStyle(0x3a2a1a);
-      for (const lx of [-8, 6]) g.fillRect(cx + S(lx), fy - S(7), S(3), S(7));
-      g.fillStyle(m.body); g.fillCircle(cx, fy - S(14), S(12));
-      g.fillStyle(shade(m.body, 1.2)); g.fillCircle(cx - S(4), fy - S(18), S(5));
-      g.fillStyle(shade(m.body, 0.7)); g.fillCircle(cx + S(5), fy - S(10), S(4));
-      g.lineStyle(S(3), m.accent); g.beginPath(); g.arc(cx + S(10), fy - S(18), S(6), -1.5, 1.5); g.strokePath();
-      break;
-    }
-    case 'giant': {
-      g.fillStyle(shade(m.body, 0.55)); g.fillRect(cx - S(6), fy - S(12), S(5), S(12)); g.fillRect(cx + S(2), fy - S(12), S(5), S(12));
-      g.fillStyle(m.body); g.fillRoundedRect(cx - S(9), fy - S(28), S(18), S(17), S(4));
-      g.fillStyle(shade(m.body, 0.75)); g.fillRect(cx + S(2), fy - S(28), S(7), S(17));
-      g.fillStyle(m.body); g.fillCircle(cx - S(11), fy - S(22), S(4)); g.fillCircle(cx + S(11), fy - S(22), S(4));
-      g.fillStyle(m.accent); g.fillCircle(cx, fy - S(32), S(5));
-      g.fillStyle(m.accent, 0.3); g.fillCircle(cx, fy - S(26), S(16));
-      g.lineStyle(S(2.5), shade(m.accent, 1.1)); g.lineBetween(cx + S(12), fy - S(20), cx + S(18), fy - S(38));
-      break;
-    }
-  }
-}
-
-function drawBuilder(g: G) {
-  const cx = UNIT_TEX.w / 2, fy = UNIT_TEX.footY;
-  g.fillStyle(0x3a3028); g.fillRect(cx - 4, fy - 8, 3, 8); g.fillRect(cx + 1, fy - 8, 3, 8);
-  g.fillStyle(0x8a6a40); g.fillRoundedRect(cx - 6, fy - 20, 12, 13, 3);
-  g.fillStyle(0x6a4a2a); g.fillRect(cx - 6, fy - 11, 12, 2);
-  g.fillStyle(0xe0b890); g.fillCircle(cx, fy - 23, 4);
-  g.fillStyle(0xe0c050); g.slice(cx, fy - 24, 5, Math.PI, 0, false); g.fillPath();
-  g.lineStyle(2, 0x6a4a2a); g.lineBetween(cx + 7, fy - 12, cx + 12, fy - 24);
-  g.fillStyle(0x9aa0a8); g.fillRect(cx + 9, fy - 28, 8, 5);
-  g.fillStyle(0x7a5a30); g.fillRect(cx - 10, fy - 18, 5, 8);
+  for (const u of Object.values(UNITS)) for (const f of UNIT_FRAMES) add(`u_${u.id}${f}`, (c) => paintUnit(c, u, f));
+  for (const f of UNIT_FRAMES) add(`builder${f}`, (c) => paintBuilder(c, f));
 }
 
 // ------------------------------------------------------------------ misc / fx
@@ -379,13 +262,6 @@ export function generateTextures(scene: Phaser.Scene) {
   genFlags(scene);
   genSoftFx(scene);
   const g = hiGraphics(scene);
-  for (const u of Object.values(UNITS)) {
-    g.clear();
-    drawUnit(g, u);
-    gen(g, `u_${u.id}`, UNIT_TEX.w, UNIT_TEX.h);
-  }
-  g.clear();
-  drawBuilder(g);
-  gen(g, 'builder', UNIT_TEX.w, UNIT_TEX.h);
+  genUnits(scene);
   g.destroy();
 }

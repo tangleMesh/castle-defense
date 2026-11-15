@@ -9,6 +9,7 @@ import type { MatchSession } from './session';
 import { OUTER_MARGIN, OUTER_TILES, outerDecor } from './landscape';
 import { paintGround, paintOuterTile } from './ground';
 import { Atmosphere } from './atmosphere';
+import { Ambient } from './ambient';
 
 /** Ground paintings are low-frequency; 1.5× is plenty even on Retina and saves GPU memory. */
 const GROUND_RES = Math.min(TEX_RES, 1.5);
@@ -38,6 +39,8 @@ interface View {
   facing: 1 | -1;
   moving: boolean;
   lunge: number;
+  /** ms left in the attack pose (melee and ranged). */
+  atk: number;
   flash: number;
   /** Ticks until the next spawn (spawn buildings). */
   spawn: number;
@@ -46,6 +49,7 @@ interface View {
 }
 
 const KIND_UNIT = 0, KIND_BUILDING = 1, KIND_BUILDER = 2, KIND_CASTLE = 3;
+const WALK = ['', '_w1', '_w2', '_w3'];
 const AIR_LIFT = 22;
 /** Units are drawn slightly larger than their footprint for readability. */
 const UNIT_SCALE = 1.25;
@@ -79,6 +83,7 @@ export class GameScene extends Phaser.Scene {
   onReady?: () => void;
   shiftHeld = false;
   private atmosphere!: Atmosphere;
+  private ambient!: Ambient;
   showAllBars = false;
 
   constructor() { super('game'); }
@@ -104,6 +109,7 @@ export class GameScene extends Phaser.Scene {
     cam.setBounds(WORLD.minX - 300, WORLD.minY - 300, WORLD.maxX - WORLD.minX + 600, WORLD.maxY - WORLD.minY + 520);
     this.centerOnCastle();
     this.atmosphere = new Atmosphere(this, TEX_RES);
+    this.ambient = new Ambient(this, TEX_RES);
 
     this.fog = this.add.graphics().setDepth(4.5e6);
     this.overlay = this.add.graphics().setDepth(5e6);
@@ -348,7 +354,7 @@ export class GameScene extends Phaser.Scene {
     if (ghost) { this.destroyView(ghost); this.ghosts.delete(id); }
     const v: View = {
       id, kind, type, owner, team: team as Team, x, y, hp, maxHp, extra,
-      spawn: 0, sprite: null!, air: false, facing: team === 0 ? 1 : -1, moving: false, lunge: 0, flash: 0,
+      spawn: 0, sprite: null!, air: false, facing: team === 0 ? 1 : -1, moving: false, lunge: 0, atk: 0, flash: 0,
     };
     if (kind === KIND_UNIT || kind === KIND_BUILDER) {
       const u = kind === KIND_UNIT ? UNITS[type] : null;
@@ -421,11 +427,19 @@ export class GameScene extends Phaser.Scene {
     if (v.kind === KIND_UNIT || v.kind === KIND_BUILDER) {
       const p = toScreen(v.x, v.y);
       const d = this.unitDepth(v.x, v.y);
-      const bob = v.air ? Math.sin(time / 260 + v.id) * 3 : v.moving ? -Math.abs(Math.sin(time / 90 + v.id)) * 2 : 0;
+      const bob = v.air ? Math.sin(time / 260 + v.id) * 3 : 0;
       const lungeOff = v.lunge > 0 ? Math.sin((v.lunge / 160) * Math.PI) * 5 * v.facing : 0;
       v.sprite.setPosition(p.x + lungeOff, p.y - (v.air ? AIR_LIFT : 0) + bob).setDepth(d + (v.air ? 5000 : 0));
+      // Animation: walk cycle while moving (flyers always flap), attack pose while striking.
+      const base = v.kind === KIND_UNIT ? `u_${v.type}` : 'builder';
+      const step = Math.floor(time / (v.air ? 90 : 120) + v.id * 0.37) % 4;
+      const frame = v.atk > 0 ? '_a' : v.moving || v.air ? WALK[step] : '';
+      if (v.sprite.texture.key !== base + frame) v.sprite.setTexture(base + frame);
       v.sprite.setFlipX(v.facing < 0);
-      if (v.kind === KIND_UNIT) v.sprite.setScale(sc(UNIT_SCALE));
+      // Idle units breathe; walking ones don't (their frames carry the motion).
+      const breathe = !v.moving && !v.air ? 1 + 0.018 * Math.sin(time / 520 + v.id) : 1;
+      if (v.kind === KIND_UNIT) v.sprite.setScale(sc(UNIT_SCALE), sc(UNIT_SCALE * breathe));
+      else v.sprite.setScale(sc(1.1), sc(1.1 * breathe));
       if (v.flash > 0) v.sprite.setTint(0xffaaaa); else v.sprite.clearTint();
       v.shadow?.setPosition(p.x, p.y).setDepth(d - 0.5);
       v.ring?.setPosition(p.x, p.y).setDepth(d - 0.4);
@@ -463,6 +477,15 @@ export class GameScene extends Phaser.Scene {
       const fl = 0.75 + 0.25 * Math.sin(time / 90 + v.id + i * 3) * Math.sin(time / 37 + i);
       g.setVisible(true).setPosition(foot.x + p.x, foot.y + p.y).setDepth(d + 0.15).setAlpha(0.55 * fl).setScale(sc(0.9 + 0.15 * fl));
     });
+    // Building site: dust and hammer sparks while under construction (or being upgraded).
+    if (v.kind === KIND_BUILDING && (constructing || v.extra < 0) && time > (v.nextSmoke ?? 0)) {
+      v.nextSmoke = time + 380 + Math.random() * 420;
+      if (this.cameras.main.worldView.contains(foot.x, foot.y)) {
+        const hx = foot.x + (Math.random() - 0.5) * size * 34, hy = foot.y - size * 10 - Math.random() * 26;
+        this.spark(hx, hy, 0xffd890, 2);
+        this.puff(foot.x + (Math.random() - 0.5) * size * 40, foot.y - 4 - Math.random() * size * 12, 0xa89878, 5, 16);
+      }
+    }
     if (a?.smoke.length && !gone && !constructing && time > (v.nextSmoke ?? 0)) {
       v.nextSmoke = time + 650 + Math.random() * 500;
       const view = this.cameras.main.worldView;
@@ -482,6 +505,7 @@ export class GameScene extends Phaser.Scene {
   update(time: number, dt: number) {
     this.updateCamera(Math.min(100, this.game.loop.rawDelta || dt));
     this.atmosphere.update(Math.min(100, dt));
+    this.ambient.update(time, Math.min(100, dt));
     const f = this.session.frames();
     if (!f) return;
     const { a, b, alpha } = f;
@@ -514,6 +538,7 @@ export class GameScene extends Phaser.Scene {
         else if (!v.ruined && src[7] <= 0 && !this.collapsing.has(v.id)) this.setRuin(v);
       }
       v.lunge = Math.max(0, v.lunge - dt);
+      v.atk = Math.max(0, v.atk - dt);
       v.flash = Math.max(0, v.flash - dt);
       this.placeView(v, time);
       if (v.ruined && Math.random() < dt / 220) {
@@ -780,17 +805,31 @@ export class GameScene extends Phaser.Scene {
     if (u?.attackType === 'magic') { key = 'orb'; tint = u.model.accent; }
     if (u?.attackType === 'siege') key = 'boulder';
     const obj = this.img(a.x, ay, key).setTint(tint).setDepth(8e6);
+    if (key === 'orb') obj.setBlendMode(Phaser.BlendModes.ADD).setScale(sc(1.3));
     const dist = Math.hypot(b.x - a.x, by - ay);
     const dur = Math.min(500, 120 + dist * 0.9);
-    obj.setRotation(Math.atan2(by - ay, b.x - a.x));
     const arc = key === 'boulder' ? 60 : 12;
+    const pos = (t: number) => ({ x: a.x + (b.x - a.x) * t, y: ay + (by - ay) * t - Math.sin(t * Math.PI) * arc });
+    let lastTrail = 0;
     this.tweens.addCounter({
       from: 0, to: 1, duration: dur,
       onUpdate: (tw) => {
         const t = tw.getValue() ?? 0;
-        obj.setPosition(a.x + (b.x - a.x) * t, ay + (by - ay) * t - Math.sin(t * Math.PI) * arc);
+        const p = pos(t), q = pos(Math.min(1, t + 0.02));
+        obj.setPosition(p.x, p.y);
+        // Arrows and bolts follow the tangent of their arc; boulders tumble.
+        if (key === 'boulder') obj.setRotation(t * 8); else obj.setRotation(Math.atan2(q.y - p.y, q.x - p.x));
+        if (key === 'orb' && t - lastTrail > 0.08) {
+          lastTrail = t;
+          const tr = this.img(p.x, p.y, 'spark').setTint(tint).setBlendMode(Phaser.BlendModes.ADD).setDepth(8e6).setScale(sc(0.7)).setAlpha(0.7);
+          this.tweens.add({ targets: tr, alpha: 0, scale: sc(0.2), duration: 260, onComplete: () => tr.destroy() });
+        }
       },
-      onComplete: () => { obj.destroy(); this.spark(b.x, by, tint === 0xffffff ? 0xffe0a0 : tint, 3); },
+      onComplete: () => {
+        obj.destroy();
+        this.spark(b.x, by, tint === 0xffffff ? 0xffe0a0 : tint, key === 'orb' ? 6 : 3);
+        if (key === 'boulder') this.puff(b.x, b.y - 4, 0x8a7a62, 10, 26);
+      },
     });
   }
 
@@ -919,9 +958,9 @@ export class GameScene extends Phaser.Scene {
 
   private puff(x: number, y: number, color: number, n: number, spread: number) {
     for (let i = 0; i < n; i++) {
-      const s = this.img(x, y, 'dot').setTint(color).setDepth(7.5e6).setAlpha(0.8).setScale(sc(1 + Math.random()));
+      const s = this.img(x, y, 'puff').setTint(color).setDepth(7.5e6).setAlpha(0.7).setScale(sc(0.12 + Math.random() * 0.12));
       const ang = Math.random() * Math.PI * 2, r = spread * (0.4 + Math.random() * 0.6);
-      this.tweens.add({ targets: s, x: x + Math.cos(ang) * r, y: y + Math.sin(ang) * r * 0.5 - 10 - Math.random() * 14, alpha: 0, scale: sc(0.3), duration: 500 + Math.random() * 400, onComplete: () => s.destroy() });
+      this.tweens.add({ targets: s, x: x + Math.cos(ang) * r, y: y + Math.sin(ang) * r * 0.5 - 10 - Math.random() * 14, alpha: 0, scale: sc(0.3 + Math.random() * 0.2), duration: 600 + Math.random() * 500, onComplete: () => s.destroy() });
     }
   }
 
@@ -931,6 +970,8 @@ export class GameScene extends Phaser.Scene {
       case 'atk': {
         const a = this.views.get(ev.a), b = this.views.get(ev.b);
         if (!a || !b) return;
+        a.atk = 260;
+        if (b.x !== a.x) a.facing = b.x - b.y > a.x - a.y ? 1 : -1;
         if (ev.r) this.projectile(a, b);
         else {
           a.lunge = 160;
@@ -940,6 +981,8 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       case 'chain': {
+        const caster = this.views.get(ev.ids[0]);
+        if (caster) caster.atk = 300;
         const pts = ev.ids.map((id) => this.views.get(id)).filter((v): v is View => !!v)
           .map((v) => { const p = toScreen(v.x, v.y); return { x: p.x, y: p.y - (v.air ? AIR_LIFT : 0) - 14 }; });
         if (pts.length < 2) return;
@@ -966,6 +1009,8 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       case 'heal': {
+        const healer = this.views.get(ev.a);
+        if (healer && healer.kind === KIND_UNIT) healer.atk = 300;
         const b = this.views.get(ev.b);
         if (!b) return;
         const p = toScreen(b.x, b.y);
@@ -982,6 +1027,15 @@ export class GameScene extends Phaser.Scene {
           this.puff(p.x, p.y - 20, 0xff9a40, 8, 30);
           this.cameras.main.shake(140, 0.003);
         } else {
+          const v = this.views.get(ev.id);
+          if (v && v.kind === KIND_UNIT && this.cameras.main.worldView.contains(v.sprite.x, v.sprite.y)) {
+            // The fallen unit topples over and fades into the grass.
+            const body = this.img(v.sprite.x, v.sprite.y, v.sprite.texture.key).setOrigin(v.sprite.originX, v.sprite.originY)
+              .setFlipX(v.sprite.flipX).setScale(v.sprite.scaleX, v.sprite.scaleY).setDepth(v.sprite.depth - 1);
+            const dir = v.facing > 0 ? -1 : 1;
+            this.tweens.add({ targets: body, angle: v.air ? 0 : 82 * dir, y: body.y + (v.air ? AIR_LIFT : 2), duration: v.air ? 420 : 320, ease: 'Quad.easeIn' });
+            this.tweens.add({ targets: body, alpha: 0, delay: 650, duration: 900, onComplete: () => body.destroy() });
+          }
           this.puff(p.x, p.y - 8, 0x7a1a12, 6, 12);
           this.puff(p.x, p.y - 4, 0x8a8070, 4, 14);
         }
