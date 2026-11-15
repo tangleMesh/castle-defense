@@ -1110,48 +1110,84 @@ function crownTower(ctx: Ctx, cx: number, ty: number, rx: number, stone: number,
   A.flags.push(coneRoof(ctx, cx, ty - 4, rx + 4, rx * 2.3, roof, seed));
 }
 
-/** Collapsed castle: broken walls, tower stumps, rubble and charred beams. Same canvas size as the castle. */
+/** Collapsed castle: jagged masonry walls, broken towers, the stump of the keep, heaps of blocks and charred beams. */
 export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   const s = CASTLE_SIZE;
   const ox = w / 2, oy = h - 6;
-  const stone = 0x8a8476, roof = mix(TEAM_COLORS[team], 0x30343c, 0.5);
+  const stone = 0x8e8676, roof = mix(TEAM_COLORS[team], 0x30343c, 0.55);
   const r = rng(900 + team);
-  softEllipse(ctx, ox, oy - s * HH, s * HW * 1.1, s * HH * 1.1, 0x14100a, 0.6);
+  // scorched ground and the old base
+  softEllipse(ctx, ox, oy - s * HH, s * HW * 1.15, s * HH * 1.15, 0x14100a, 0.65);
   const base = boxGeo(ox, oy, s, s, 6);
   faceLeft(ctx, base, stoneWall(0x6a6458, 9, 3)); faceRight(ctx, base, stoneWall(0x6a6458, 10, 3));
-  stoneTop(ctx, base, 0x5a5448);
+  faceTop(ctx, base, (c, U, W) => {
+    c.fillStyle = css(lit(0x5a5246, 1)); c.fillRect(0, 0, U, W);
+    for (let i = 0; i < 160; i++) { c.fillStyle = css(r() < 0.5 ? 0x2a2218 : 0x7a7060, 0.4); c.fillRect(r() * U, r() * W, 0.08 + r() * 0.1, 0.06); }
+  });
   const k = s - 0.35;
-  const c = boxGeo(ox, oy - 6, k, k, 0);
-  // jagged wall stubs along the back edges
-  const stub = (a: Pt, b: Pt, n: number, light: number) => {
-    for (let i = 0; i < n; i++) {
-      const p = lerp(a, b, i / n), q = lerp(a, b, (i + 1) / n);
-      const h0 = 6 + r() * 30, h1 = 6 + r() * 30;
-      fillPoly(ctx, [[p.x, p.y], [q.x, q.y], [q.x, q.y - h1], [p.x, p.y - h0]], css(lit(mix(stone, 0x5a5448, r() * 0.4), light * (0.8 + r() * 0.3))));
-      ctx.strokeStyle = css(0x000000, 0.25); ctx.lineWidth = 0.8;
-      for (let v = 5; v < Math.min(h0, h1); v += 5.5) { ctx.beginPath(); ctx.moveTo(p.x, p.y - v); ctx.lineTo(q.x, q.y - v); ctx.stroke(); }
+  const yW = oy - 6 - (TH * 0.35) / 2;
+  const c = boxGeo(ox, yW, k, k, 0);
+  /** A wall segment whose top edge is broken off (clip with a jagged polygon, then paint masonry). */
+  const brokenWall = (from: Pt, to: Pt, mat: FacePainter, light: number, dir: 'L' | 'R', hMax: number) => {
+    const n = 10;
+    const top: Pt[] = [];
+    for (let i = 0; i <= n; i++) {
+      const p = lerp(from, to, i / n);
+      const hh = i === 0 || i === n ? hMax * (0.6 + r() * 0.4) : Math.max(4, hMax * Math.pow(r(), 1.4));
+      top.push(pt(p.x, p.y - hh));
     }
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y);
+    for (let i = n; i >= 0; i--) ctx.lineTo(top[i].x, top[i].y);
+    ctx.closePath(); ctx.clip();
+    if (dir === 'L') ctx.transform(HW, HH, 0, -1, from.x, from.y); else ctx.transform(HW, -HH, 0, -1, from.x, from.y);
+    mat(ctx, k, hMax, light);
+    ctx.restore();
+    // broken edge highlight
+    ctx.strokeStyle = css(0xfff0d0, 0.2); ctx.lineWidth = 1;
+    ctx.beginPath(); top.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
   };
-  stub(c.L, c.B, 7, 0.75);
-  stub(c.B, c.R, 7, 0.95);
-  for (const p of [c.B, c.L, c.R]) roundTower(ctx, p.x, p.y + 2, 14, 10 + r() * 24, shade(stone, 0.9), 33);
-  // rubble heap where the keep stood
-  const cx = c.c.x, cy = c.c.y + 10;
-  for (let i = 0; i < 90; i++) {
+  const sw = stoneWall(stone, 31, 6);
+  brokenWall(c.L, c.B, sw, 0.62, 'R', 46);
+  brokenWall(c.B, c.R, sw, 0.92, 'L', 46);
+  // broken tower stumps (back and sides)
+  for (const [p, hh] of [[c.B, 34], [c.L, 22], [c.R, 26]] as Array<[Pt, number]>) {
+    roundTower(ctx, p.x, p.y + 2, 15, hh + r() * 10, shade(stone, 0.95), 33 + hh);
+    ctx.fillStyle = css(0x1a1610); ctx.beginPath(); ctx.ellipse(p.x, p.y + 2 - hh - 4, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // stump of the keep
+  const keep = boxGeo(c.c.x, c.c.y + 1.7 * HH, 1.7, 1.7, 0);
+  brokenWall(keep.L, keep.F, stoneWall(stone, 41, 6), 1, 'L', 38);
+  brokenWall(keep.F, keep.R, stoneWall(stone, 42, 6), 0.66, 'R', 30);
+  // heaps of fallen blocks: little lit cuboids, back to front
+  const blocks: Array<[number, number, number]> = [];
+  for (let i = 0; i < 70; i++) {
     const a = r() * Math.PI * 2, d = Math.sqrt(r());
-    const x = cx + Math.cos(a) * d * 80, y = cy + Math.sin(a) * d * 38 - (1 - d) * 26;
-    const rw = 5 + r() * 12, rh = 3 + r() * 7;
-    ctx.fillStyle = css(lit(r() > 0.2 ? stone : 0x3a3630, 0.55 + r() * 0.6));
-    ctx.beginPath(); ctx.ellipse(x, y, rw, rh, r() * Math.PI, 0, Math.PI * 2); ctx.fill();
+    blocks.push([c.c.x + Math.cos(a) * d * 96, c.c.y + 10 + Math.sin(a) * d * 46, 0.08 + r() * 0.12]);
   }
-  for (let i = 0; i < 12; i++) {
-    const x = cx + (r() - 0.5) * 120, y = cy + (r() - 0.3) * 44;
-    fillPoly(ctx, [[x, y], [x + 8 + r() * 6, y - 3], [x + 4, y - 8 - r() * 5]], css(lit(roof, 0.8 + r() * 0.4)));
+  blocks.sort((p, q) => p[1] - q[1]);
+  for (const [x, y, sz] of blocks) {
+    const b = boxGeo(x, y, sz, sz * (0.8 + r() * 0.6), 3 + r() * 5);
+    const col = shade(mix(stone, r() < 0.4 ? 0x4a443a : 0x9a9080, r() * 0.5), 0.85);
+    fillPoly(ctx, [[b.L.x, b.L.y], [b.F.x, b.F.y], [b.tF.x, b.tF.y], [b.tL.x, b.tL.y]], css(lit(col, 0.95)));
+    fillPoly(ctx, [[b.F.x, b.F.y], [b.R.x, b.R.y], [b.tR.x, b.tR.y], [b.tF.x, b.tF.y]], css(lit(col, 0.62)));
+    fillPoly(ctx, [[b.tL.x, b.tL.y], [b.tF.x, b.tF.y], [b.tR.x, b.tR.y], [b.tB.x, b.tB.y]], css(lit(col, 1.15)));
   }
-  ctx.strokeStyle = css(0x1a120a); ctx.lineWidth = 3;
-  for (let i = 0; i < 6; i++) { const x = cx + (r() - 0.5) * 90, y = cy + (r() - 0.5) * 28; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 14 + r() * 10, y - 12 - r() * 12); ctx.stroke(); }
-  // embers
-  for (let i = 0; i < 14; i++) softEllipse(ctx, cx + (r() - 0.5) * 100, cy + (r() - 0.5) * 30, 3, 1.5, 0xff7020, 0.6);
+  // slate shards from the roofs (team colour, dulled)
+  for (let i = 0; i < 14; i++) {
+    const x = c.c.x + (r() - 0.5) * 150, y = c.c.y + 10 + (r() - 0.5) * 60;
+    fillPoly(ctx, [[x, y], [x + 4 + r() * 4, y - 1.5], [x + 2, y - 4 - r() * 2]], css(lit(roof, 0.7 + r() * 0.4)));
+  }
+  // charred beams with a lit edge
+  for (let i = 0; i < 6; i++) {
+    const x = c.c.x + (r() - 0.5) * 100, y = c.c.y + 10 + (r() - 0.5) * 30;
+    const dx = 16 + r() * 12, dy = -10 - r() * 14;
+    ctx.strokeStyle = css(0x140c06); ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+    ctx.strokeStyle = css(0x5a3a1a, 0.8); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 1, y - 1.5); ctx.lineTo(x + dx - 1, y + dy - 1.5); ctx.stroke();
+  }
+  // embers and ash
+  for (let i = 0; i < 18; i++) softEllipse(ctx, c.c.x + (r() - 0.5) * 120, c.c.y + 10 + (r() - 0.5) * 40, 2.5, 1.3, 0xff7020, 0.7);
+  for (let i = 0; i < 10; i++) softEllipse(ctx, c.c.x + (r() - 0.5) * 140, c.c.y + 10 + (r() - 0.5) * 50, 10, 4, 0x2a2622, 0.35);
 }
 
 export { lerp as lerpPt };

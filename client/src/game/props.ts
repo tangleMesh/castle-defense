@@ -130,3 +130,42 @@ export function paintRock(ctx: Ctx, seed: number) {
     ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + (r() - 0.5) * 2, gy - 3 - r() * 3); ctx.stroke();
   }
 }
+
+/** A small pond: muddy bank, dark water reflecting the sky, reeds and lily pads. Centre at (w/2, h/2). */
+export function paintPond(ctx: Ctx, w: number, h: number, seed: number) {
+  const r = rng(seed);
+  const cx = w / 2, cy = h / 2, rx = w * 0.42, ry = h * 0.4;
+  const shape = (k: number) => {
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const a = (i / 24) * Math.PI * 2, j = 1 + Math.sin(a * 3 + seed) * 0.06 + Math.sin(a * 5) * 0.04;
+      const x = cx + Math.cos(a) * rx * k * j, y = cy + Math.sin(a) * ry * k * j;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  };
+  softEllipse(ctx, cx, cy, rx * 1.25, ry * 1.3, 0x3a3018, 0.6);
+  shape(1.08); ctx.fillStyle = css(0x5a4a2c); ctx.fill();
+  shape(1.0); ctx.fillStyle = grad(ctx, cx, cy - ry, cx, cy + ry, [[0, 0x1e3a40], [0.5, 0x2a5058], [1, 0x3a6870]]); ctx.fill();
+  ctx.save(); shape(1.0); ctx.clip();
+  // sky reflection and shoreline shade
+  ctx.fillStyle = grad(ctx, cx - rx, cy - ry, cx + rx, cy + ry, [[0, 0xd8e8f0, 0.28], [0.5, 0xd8e8f0, 0.06], [1, 0xffe0a0, 0.18]]);
+  ctx.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
+  ctx.strokeStyle = css(0x0a1418, 0.5); ctx.lineWidth = 3; shape(1.0); ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    const lx = cx + (r() - 0.5) * rx * 1.2, ly = cy + (r() - 0.5) * ry * 1.1;
+    ctx.fillStyle = css(0x4a7a30); ctx.beginPath(); ctx.ellipse(lx, ly, 4, 2.2, 0, 0.3, Math.PI * 2 - 0.1); ctx.lineTo(lx, ly); ctx.fill();
+    if (r() < 0.4) { ctx.fillStyle = css(0xf0d8e8); ctx.beginPath(); ctx.arc(lx + 1, ly - 1, 1.2, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+  // reeds and cattails along the bank
+  for (let i = 0; i < 70; i++) {
+    const a = r() * Math.PI * 2;
+    if (Math.sin(a) < -0.2 && r() < 0.6) continue;
+    const x = cx + Math.cos(a) * rx * (0.95 + r() * 0.12), y = cy + Math.sin(a) * ry * (0.95 + r() * 0.12);
+    const hgt = 6 + r() * 9;
+    ctx.strokeStyle = css(r() < 0.5 ? 0x5a7a30 : 0x7a8a40, 0.95); ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + (r() - 0.5) * 2, y - hgt * 0.6, x + (r() - 0.5) * 3, y - hgt); ctx.stroke();
+    if (r() < 0.25) { ctx.fillStyle = css(0x5a3a1a); ctx.fillRect(x - 0.8, y - hgt - 2, 1.6, 4); }
+  }
+}

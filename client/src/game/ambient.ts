@@ -14,6 +14,9 @@ export class Ambient {
   private nextFlock = 4000;
   private flies: Array<{ img: Phaser.GameObjects.Image; hx: number; hy: number; ph: number }> = [];
   private shafts: Phaser.GameObjects.Image[] = [];
+  private fireflies: Array<{ img: Phaser.GameObjects.Image; hx: number; hy: number; ph: number }> = [];
+  /** Forest trees to sway (set by the scene). */
+  trees: Phaser.GameObjects.Image[] = [];
 
   constructor(private scene: Phaser.Scene, private res: number) {
     this.textures();
@@ -34,6 +37,16 @@ export class Ambient {
       const p = toScreen(tx, ty);
       const img = scene.add.image(p.x, p.y, 'butterfly').setScale(1 / res).setTint([0xfff0a0, 0xffffff, 0xc8d8ff, 0xffb0d0][i % 4]);
       this.flies.push({ img, hx: p.x, hy: p.y - 14, ph: r() * 10 });
+    }
+    // Fireflies along the forest edge, just outside the battlefield.
+    for (let i = 0; i < 40; i++) {
+      const side = i % 4;
+      const t = r();
+      const [tx, ty] = side === 0 ? [t * MAP.width, -1.5 - r() * 3] : side === 1 ? [-1.5 - r() * 3, t * MAP.height]
+        : side === 2 ? [t * MAP.width, MAP.height + 2 + r() * 3] : [MAP.width + 2 + r() * 3, t * MAP.height];
+      const p = toScreen(tx, ty);
+      const img = scene.add.image(p.x, p.y, 'mote').setBlendMode(Phaser.BlendModes.ADD).setDepth(9.1e6).setTint(0xd8ff80).setScale(0.8 / res);
+      this.fireflies.push({ img, hx: p.x, hy: p.y - 14, ph: r() * 20 });
     }
     // Light shafts follow the camera (screen-space feel), additive and faint.
     for (let i = 0; i < 4; i++) {
@@ -91,6 +104,16 @@ export class Ambient {
       const x = f.hx + Math.sin(t * 0.7 + f.ph) * 26 + Math.sin(t * 1.9 + f.ph * 2) * 8;
       const y = f.hy + Math.cos(t * 0.9 + f.ph) * 10 + Math.sin(t * 2.7 + f.ph) * 4;
       f.img.setPosition(x, y).setDepth(y + 24).setScale((0.4 + 0.6 * Math.abs(Math.sin(t * 14 + f.ph))) / this.res, 1 / this.res);
+    }
+    // Trees sway a little in the wind.
+    for (const tr of this.trees) {
+      if (tr.x < v.x - 60 || tr.x > v.right + 60 || tr.y < v.y - 20 || tr.y > v.bottom + 140) continue;
+      const ph = tr.getData('ph') as number;
+      tr.setRotation(Math.sin(t * 0.9 + ph) * 0.012 + Math.max(0, Math.sin(t * 0.6 - ph * 0.08)) ** 3 * 0.025);
+    }
+    for (const f of this.fireflies) {
+      const x = f.hx + Math.sin(t * 0.4 + f.ph) * 30, y = f.hy + Math.cos(t * 0.53 + f.ph) * 12;
+      f.img.setPosition(x, y).setAlpha(Math.max(0, Math.sin(t * 1.7 + f.ph)) ** 2 * 0.9);
     }
     // A flock of birds every so often.
     this.nextFlock -= dt;

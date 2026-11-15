@@ -2,6 +2,11 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.12.0
+- Countryside: painted ponds with reeds, lily pads and glinting water; trees sway in the wind; fireflies drift along the forest edge.
+- The ruined castle is repainted: jagged masonry walls, broken towers, the stump of the keep, heaps of stone blocks and charred beams.
+- Smaller, warmer hit sparks; the round label in the top bar no longer wraps on narrow windows.
+
 ## 0.11.0
 - Rescue strike: a glowing rune circle burns into the ground while the strike charges, golden motes rise, the sunbeam fades softly into the ground, and the strike leaves scorched earth with dying embers and a ring of dust.
 - Thornwild units polished: the dusk moth spreads four patterned wings, the boulder ram has a proper horned head, treants wear a painted leaf crown.

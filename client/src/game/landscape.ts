@@ -28,6 +28,14 @@ function clump(x: number, y: number) {
   return top * (1 - ty) + bot * ty;
 }
 
+/** Ponds in the countryside (tile coords, radius in tiles); kept clear of trees. */
+export const PONDS: Array<{ x: number; y: number; r: number }> = [
+  { x: 20, y: -6, r: 3.2 },
+  { x: MAP.width + 5, y: 20, r: 2.6 },
+  { x: 58, y: MAP.height + 6, r: 3 },
+];
+const inPond = (x: number, y: number) => PONDS.some((p) => Math.hypot((x - p.x) / 1.15, y - p.y) < p.r + 1.2);
+
 let cache: Decor[] | null = null;
 
 /**
@@ -42,6 +50,7 @@ export function outerDecor(): Decor[] {
   for (let y = -B; y < H + B; y++) {
     for (let x = -B; x < W + B; x++) {
       if (x >= 0 && y >= 0 && x < W && y < H) continue;
+      if (inPond(x + 0.5, y + 0.5)) continue;
       const c = toScreen(x + 0.5, y + 0.5);
       if (c.x < view.x0 || c.x > view.x1 || c.y < view.y0 || c.y > view.y1) continue;
       const front = Math.max(x - W + 1, y - H + 1, 0);

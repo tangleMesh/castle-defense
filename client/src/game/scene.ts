@@ -6,7 +6,9 @@ import {
 import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
 import { ANCHORS, FLAG_FRAMES, TEX_RES, UNIT_TEX, generateTextures, originOf, texHeight } from './textures';
 import type { MatchSession } from './session';
-import { OUTER_MARGIN, OUTER_TILES, outerDecor } from './landscape';
+import { OUTER_MARGIN, OUTER_TILES, PONDS, outerDecor } from './landscape';
+import { paintPond } from './props';
+import { paper } from './paint';
 import { paintGround, paintOuterTile } from './ground';
 import { Atmosphere } from './atmosphere';
 import { Ambient } from './ambient';
@@ -84,6 +86,8 @@ export class GameScene extends Phaser.Scene {
   shiftHeld = false;
   private atmosphere!: Atmosphere;
   /** Painted ground chunks in world coordinates (the minimap reuses them). */
+  /** Forest trees around the map (they sway in the wind). */
+  trees: Phaser.GameObjects.Image[] = [];
   groundChunks: Array<{ canvas: HTMLCanvasElement; x: number; y: number; w: number; h: number }> = [];
   private ambient!: Ambient;
   showAllBars = false;
@@ -112,6 +116,7 @@ export class GameScene extends Phaser.Scene {
     this.centerOnCastle();
     this.atmosphere = new Atmosphere(this, TEX_RES);
     this.ambient = new Ambient(this, TEX_RES);
+    this.ambient.trees = this.trees;
 
     this.fog = this.add.graphics().setDepth(4.5e6);
     this.overlay = this.add.graphics().setDepth(5e6);
@@ -156,6 +161,22 @@ export class GameScene extends Phaser.Scene {
     const w = WORLD.maxX + M - x0, h = WORLD.maxY + M - y0;
     this.add.tileSprite(x0, y0, w * GROUND_RES, h * GROUND_RES, 'outerGround').setOrigin(0, 0).setScale(1 / GROUND_RES).setDepth(-1.1e7);
 
+    // Ponds in the meadows, with glints dancing on the water.
+    PONDS.forEach((pd, i) => {
+      const key = `pond${i}`;
+      const w = pd.r * 2 * 46, h = w / 2;
+      const pp = paper(w, h, GROUND_RES);
+      paintPond(pp.ctx, w, h, 300 + i);
+      if (this.textures.exists(key)) this.textures.remove(key);
+      this.textures.addCanvas(key, pp.canvas);
+      const c = toScreen(pd.x, pd.y);
+      this.add.image(c.x, c.y, key).setScale(1 / GROUND_RES).setDepth(-1.05e7);
+      for (let k = 0; k < 6; k++) {
+        const gl = this.img(c.x + (Math.random() - 0.5) * w * 0.6, c.y + (Math.random() - 0.5) * h * 0.5, 'spark')
+          .setBlendMode(Phaser.BlendModes.ADD).setDepth(-1.04e7).setScale(sc(0.35)).setAlpha(0).setTint(0xfff8e0);
+        this.tweens.add({ targets: gl, alpha: 0.7, duration: 500 + Math.random() * 500, yoyo: true, repeat: -1, delay: Math.random() * 3000, repeatDelay: 1500 + Math.random() * 3000 });
+      }
+    });
     for (const d of outerDecor()) {
       const p = toScreen(d.x, d.y);
       const depth = depthAt(d.x, d.y);
@@ -163,7 +184,11 @@ export class GameScene extends Phaser.Scene {
         const o = originOf(d.key);
         const img = this.img(p.x, p.y + (d.kind === 'tree' ? 4 : 0), d.key).setOrigin(o.x, o.y).setDepth(depth).setScale(sc(d.scale));
         // Slight hue variation between trees.
-        if (d.kind === 'tree') img.setTint(Phaser.Display.Color.GetColor(225 + Math.floor(d.r * 30), 235, 225 + Math.floor(d.r2 * 30)));
+        if (d.kind === 'tree') {
+          img.setTint(Phaser.Display.Color.GetColor(225 + Math.floor(d.r * 30), 235, 225 + Math.floor(d.r2 * 30)));
+          img.setData('ph', d.x * 0.4 + d.y * 0.25);
+          this.trees.push(img);
+        }
       } else {
         this.img(p.x, p.y, d.key).setDepth(-8e6).setAlpha(0.9);
       }
@@ -854,15 +879,15 @@ export class GameScene extends Phaser.Scene {
       },
       onComplete: () => {
         obj.destroy();
-        this.spark(b.x, by, tint === 0xffffff ? 0xffe0a0 : tint, key === 'orb' ? 6 : 3);
+        this.spark(b.x, by, tint === 0xffffff ? 0xffe0a0 : tint, key === 'orb' ? 6 : 3, key === 'orb' ? 0.5 : 0.35);
         if (key === 'boulder') this.puff(b.x, b.y - 4, 0x8a7a62, 10, 26);
       },
     });
   }
 
-  private spark(x: number, y: number, color: number, n: number) {
+  private spark(x: number, y: number, color: number, n: number, size = 0.5) {
     for (let i = 0; i < n; i++) {
-      const s = this.img(x, y, 'spark').setTint(color).setDepth(8e6).setScale(sc(0.5)).setBlendMode(Phaser.BlendModes.ADD);
+      const s = this.img(x, y, 'spark').setTint(color).setDepth(8e6).setScale(sc(size)).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.85);
       const ang = Math.random() * Math.PI * 2, r = 6 + Math.random() * 10;
       this.tweens.add({ targets: s, x: x + Math.cos(ang) * r, y: y + Math.sin(ang) * r * 0.5 - 6, alpha: 0, scale: sc(0.15), duration: 300 + Math.random() * 200, onComplete: () => s.destroy() });
     }
@@ -1003,7 +1028,7 @@ export class GameScene extends Phaser.Scene {
         else {
           a.lunge = 160;
           const h = this.hitPoint(a, b);
-          this.spark(h.x, h.y, 0xffffff, 2);
+          this.spark(h.x, h.y, 0xffd8a0, 2, 0.32);
         }
         return;
       }
