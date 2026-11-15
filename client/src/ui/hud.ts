@@ -110,12 +110,37 @@ export class Hud {
 
   // ---------------------------------------------------------------- layout
 
+  /** Data URL of a texture cropped to its opaque art (skips baked shadows and empty canvas). */
   private icon(key: string): string {
     let url = this.icons.get(key);
-    if (!url) {
+    if (url) return url;
+    const src = this.scene.textures.get(key).getSourceImage() as HTMLCanvasElement | HTMLImageElement;
+    try {
+      const w = src.width, h = src.height;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d', { willReadFrequently: true })!;
+      ctx.drawImage(src, 0, 0);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] < 200) continue;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      if (x1 < 0) throw new Error('empty');
+      // square crop with a little padding
+      const side = Math.max(x1 - x0, y1 - y0) * 1.08 + 4;
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const out = document.createElement('canvas');
+      out.width = out.height = Math.min(256, Math.ceil(side));
+      const o = out.getContext('2d')!;
+      o.imageSmoothingQuality = 'high';
+      o.drawImage(src, cx - side / 2, cy - side / 2, side, side, 0, 0, out.width, out.height);
+      url = out.toDataURL();
+    } catch {
       url = this.scene.textures.getBase64(key);
-      this.icons.set(key, url);
     }
+    this.icons.set(key, url);
     return url;
   }
 
@@ -616,11 +641,19 @@ export class Hud {
       g.moveTo(...P(x, y)); g.lineTo(...P(x + w, y)); g.lineTo(...P(x + w, y + hh)); g.lineTo(...P(x, y + hh));
       g.closePath(); g.fill();
     };
-    quad(0, 0, MAP.width, MAP.height, '#3f6a2c');
-    quad(MAP.zones[0].x, MAP.zones[0].y, MAP.zones[0].w, MAP.zones[0].h, '#3d5f4a');
-    quad(MAP.zones[1].x, MAP.zones[1].y, MAP.zones[1].w, MAP.zones[1].h, '#5a4a38');
-    const c0 = MAP.castles[0], c1 = MAP.castles[1];
-    quad(c0.x + c0.w, c0.y, c1.x - c0.x - c0.w, c0.h, '#7a6a48');
+    if (this.scene.groundChunks.length) {
+      // The minimap is a small copy of the painted battlefield.
+      g.imageSmoothingQuality = 'high';
+      for (const ch of this.scene.groundChunks) g.drawImage(ch.canvas, (ch.x - WORLD.minX) * sx, (ch.y - WORLD.minY) * sy, ch.w * sx, ch.h * sy);
+      g.globalAlpha = 0.18;
+      quad(MAP.zones[0].x, MAP.zones[0].y, MAP.zones[0].w, MAP.zones[0].h, '#4f9bff');
+      quad(MAP.zones[1].x, MAP.zones[1].y, MAP.zones[1].w, MAP.zones[1].h, '#ff5a48');
+      g.globalAlpha = 1;
+    } else {
+      quad(0, 0, MAP.width, MAP.height, '#3f6a2c');
+      const c0 = MAP.castles[0], c1 = MAP.castles[1];
+      quad(c0.x + c0.w, c0.y, c1.x - c0.x - c0.w, c0.h, '#7a6a48');
+    }
     for (let y = 0; y < MAP.height; y++) for (let x = 0; x < MAP.width; x++) if (ROCK_GRID[y * MAP.width + x]) quad(x, y, 1, 1, '#8a8478');
     this.miniBase = c;
   }

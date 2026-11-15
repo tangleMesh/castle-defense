@@ -83,6 +83,8 @@ export class GameScene extends Phaser.Scene {
   onReady?: () => void;
   shiftHeld = false;
   private atmosphere!: Atmosphere;
+  /** Painted ground chunks in world coordinates (the minimap reuses them). */
+  groundChunks: Array<{ canvas: HTMLCanvasElement; x: number; y: number; w: number; h: number }> = [];
   private ambient!: Ambient;
   showAllBars = false;
 
@@ -182,6 +184,7 @@ export class GameScene extends Phaser.Scene {
         chunk.getContext('2d')!.drawImage(painting.canvas, cx, cy, w, h, 0, 0, w, h);
         if (this.textures.exists(key)) this.textures.remove(key);
         this.textures.addCanvas(key, chunk);
+        this.groundChunks.push({ canvas: chunk, x: painting.x0 + cx / GROUND_RES, y: painting.y0 + cy / GROUND_RES, w: w / GROUND_RES, h: h / GROUND_RES });
         this.add.image(painting.x0 + cx / GROUND_RES, painting.y0 + cy / GROUND_RES, key)
           .setOrigin(0, 0).setScale(1 / GROUND_RES).setDepth(-1e7);
       }
@@ -365,6 +368,12 @@ export class GameScene extends Phaser.Scene {
       if (kind === KIND_BUILDER) {
         v.ring.setScale(sc(0.6)).setAlpha(0.9);
         v.sprite.setScale(sc(1.1));
+      } else if (this.session.latest?.phase === 'playing' && this.cameras.main.worldView.contains(toScreen(x, y).x, toScreen(x, y).y)) {
+        // Freshly spawned: fade in with a little dust at the feet.
+        v.sprite.setAlpha(0);
+        this.tweens.add({ targets: v.sprite, alpha: 1, duration: 380, ease: 'Quad.easeOut' });
+        const p = toScreen(x, y);
+        this.puff(p.x, p.y - 2, 0xb0a080, 4, 12);
       }
     } else {
       const size = kind === KIND_CASTLE ? CASTLE_SIZE : BUILDINGS[type].size;
@@ -673,8 +682,13 @@ export class GameScene extends Phaser.Scene {
         w = size * 22; x = p.x - w / 2; y = Math.max(top + 4, p.y - 140);
       }
       const r = Math.max(0, v.hp / v.maxHp);
-      g.fillStyle(0x000000, 0.7); g.fillRect(x - 1, y - 1, w + 2, 5);
-      g.fillStyle(r > 0.6 ? 0x3ad04a : r > 0.3 ? 0xe0c030 : 0xe03a2a); g.fillRect(x, y, w * r, 3);
+      // Framed bar: dark case, glossy two-tone fill, a team-coloured cap on the left.
+      const col = r > 0.6 ? 0x3ad04a : r > 0.3 ? 0xe0c030 : 0xe03a2a;
+      g.fillStyle(0x0c0a08, 0.85); g.fillRect(x - 1.5, y - 1.5, w + 3, 6);
+      g.fillStyle(0x2a2218, 0.9); g.fillRect(x, y, w, 3);
+      g.fillStyle(col); g.fillRect(x, y, w * r, 3);
+      g.fillStyle(0xffffff, 0.28); g.fillRect(x, y, w * r, 1);
+      g.fillStyle(TEAM_COLORS[v.team]); g.fillRect(x - 1.5, y - 1.5, 2, 6);
       const sp = v.kind === KIND_BUILDING && !constructing && v.id === sel ? BUILDINGS[v.type].spawn : undefined;
       if (sp) {
         // next-unit timer of the selected spawn building
@@ -710,7 +724,7 @@ export class GameScene extends Phaser.Scene {
     const sel = s.selection !== null ? this.views.get(s.selection) : undefined;
     if (sel) {
       const col = sel.owner === s.you ? 0x40ff60 : sel.team === s.team ? 0xffe040 : 0xff4040;
-      g.lineStyle(2, col, 0.9);
+      g.lineStyle(2, col, 0.65 + 0.3 * Math.sin(time / 180));
       if (sel.kind === KIND_UNIT || sel.kind === KIND_BUILDER) {
         const p = toScreen(sel.x, sel.y);
         const r = sel.kind === KIND_UNIT ? UNITS[sel.type].radius + 0.15 : 0.45;
@@ -796,11 +810,24 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: m, scale: sc(0.2), alpha: 0, duration: 450, onComplete: () => m.destroy() });
   }
 
+  /** Where a hit lands on the target: units at their body, structures on the face towards the attacker. */
+  private hitPoint(from: View, to: View) {
+    if (to.kind === KIND_UNIT || to.kind === KIND_BUILDER) {
+      const p = toScreen(to.x, to.y);
+      return { x: p.x, y: p.y - (to.air ? AIR_LIFT : 0) - 10 };
+    }
+    const s = (to.kind === KIND_CASTLE ? CASTLE_SIZE : BUILDINGS[to.type].size) / 2;
+    const nx = Math.max(to.x - s, Math.min(to.x + s, from.x)), ny = Math.max(to.y - s, Math.min(to.y + s, from.y));
+    const p = toScreen(nx, ny);
+    return { x: p.x, y: p.y - 14 - Math.random() * 12 };
+  }
+
   private projectile(from: View, to: View) {
     const u = from.kind === KIND_UNIT ? UNITS[from.type] : null;
-    const a = toScreen(from.x, from.y), b = toScreen(to.x, to.y);
+    const a = toScreen(from.x, from.y);
     const ay = a.y - (from.air ? AIR_LIFT : 0) - (from.kind === KIND_UNIT || from.kind === KIND_BUILDER ? 16 : from.kind === KIND_CASTLE ? 90 : 40);
-    const by = b.y - (to.air ? AIR_LIFT : 0) - (to.kind === KIND_UNIT ? 10 : 20);
+    const hp = this.hitPoint(from, to);
+    const b = { x: hp.x, y: hp.y }, by = hp.y;
     let key = 'arrow', tint = 0xffffff;
     if (u?.attackType === 'magic') { key = 'orb'; tint = u.model.accent; }
     if (u?.attackType === 'siege') key = 'boulder';
@@ -975,8 +1002,8 @@ export class GameScene extends Phaser.Scene {
         if (ev.r) this.projectile(a, b);
         else {
           a.lunge = 160;
-          const p = toScreen(b.x, b.y);
-          this.spark(p.x, p.y - 12, 0xffffff, 2);
+          const h = this.hitPoint(a, b);
+          this.spark(h.x, h.y, 0xffffff, 2);
         }
         return;
       }

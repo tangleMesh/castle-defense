@@ -2,6 +2,11 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.10.0
+- Visual overhaul, part 3 (interface): dark tooled-leather console and top bar with gilded trim, filigree-cornered panels, bronze command buttons, parchment tooltips, engraved buttons, restyled scoreboard, dialogs, lobby and login.
+- Command-card and portrait icons are cropped to the painted art; the minimap shows the painted battlefield.
+- Framed health bars with a team-colour cap; hits land on the side of a building facing the attacker; new units fade in with a puff of dust; the selection ring pulses.
+
 ## 0.9.0
 - Visual overhaul, part 2: every unit repainted (shaded figures with outlines, faction gear: shields, halberds, crossbows, bows, staves, lances, champion halo, treants, boulder rams, moths and hawks) with 4-frame walk cycles and an attack pose for melee, ranged, casters and healers.
 - Micro-animations: idle breathing, fallen units topple and fade, arrows follow their arc, magic orbs leave glowing trails, boulders tumble and raise dust, construction sites throw dust and sparks.
