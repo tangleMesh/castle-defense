@@ -43,12 +43,13 @@ export function stepBuildings(sim: Sim) {
         delete e.upgrading;
         sim.emit({ t: 'built', id: e.id });
         if (fresh) firstBuildBonus(sim, e);
-        if (def.spawn) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE * 0.5);
+        // Each building runs its own training cycle, starting from zero when it is finished.
+        if (def.spawn) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
       }
       continue;
     }
     if (!def.spawn) continue;
-    if (e.spawnTimer === undefined) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE * 0.5);
+    if (e.spawnTimer === undefined) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
     e.spawnTimer -= step[e.team];
     if (e.spawnTimer > 0) continue;
     e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);

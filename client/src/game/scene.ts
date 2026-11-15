@@ -296,10 +296,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupPointer() {
-    this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+    // Keep a touchpad pinch (ctrl+wheel) from zooming the whole page instead of the map.
+    this.game.canvas.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+    this.input.on('wheel', (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
       if (this.cinematic) return;
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.45 * DPR, 1.6 * DPR));
+      // Zoom in proportion to the scroll distance: a mouse-wheel notch (~100 px) zooms ~10%,
+      // while a touchpad's stream of tiny deltas zooms smoothly instead of racing.
+      const ev = p.event as WheelEvent | undefined;
+      let d = dy * (ev?.deltaMode === 1 ? 33 : ev?.deltaMode === 2 ? 400 : 1);
+      if (ev?.ctrlKey) d *= 2.5; // touchpad pinch (reported as ctrl+wheel) sends small deltas
+      d = Phaser.Math.Clamp(d, -120, 120);
+      cam.setZoom(Phaser.Math.Clamp(cam.zoom * Math.exp(-d * 0.001), 0.45 * DPR, 1.6 * DPR));
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       const t = this.worldTile(p);

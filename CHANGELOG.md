@@ -2,6 +2,11 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.14.1
+- Fix: zooming with a touchpad (e.g. MacBook) is smooth instead of far too fast: zoom now follows the scroll distance, and pinch-to-zoom zooms the map rather than the page.
+- Fix: a newly finished (or upgraded) spawn building starts its training bar from zero and runs its own full cycle, instead of starting half-way; each building keeps its own rhythm.
+- Lobby: mode cards get more room; faction dots are neutral in Random factions mode.
+
 ## 0.14.0
 - Game modes, set by the host in the game lobby (or when creating a game): **Standard** (everyone picks a faction) and **Random factions** (every player gets a random faction at the start of each round, announced in the round message). The mode is shown in the game list, the room and the top bar, and is kept in saved games.
 

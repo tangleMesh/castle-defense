@@ -175,8 +175,23 @@ describe('spawning & combat', () => {
     sim.step([{ player: 0, cmd: { c: 'upgrade', id: b.id, to: 'iv_shield_hall' } }]);
     expect(b.type).toBe('iv_shield_hall');
     expect(b.upgrading).toBe(true);
-    for (let i = 0; i < 20 * 25; i++) sim.step();
+    for (let i = 0; i < 20 * 28; i++) sim.step(); // 8 s upgrade + a full 18 s training cycle
     expect(sim.state.entities.some((e) => e.type === 'iv_shieldbearer')).toBe(true);
+  });
+
+  it('a finished building starts its own training cycle from zero', () => {
+    const sim = newSim();
+    sim.state.players[0].gold = 1000;
+    const b = placeNow(sim, 0, 'iv_militia_hall', 20, 12);
+    b.buildLeft = 1;
+    sim.step();
+    const interval = BUILDINGS.iv_militia_hall.spawn!.interval * 20;
+    expect(b.spawnTimer).toBe(interval);
+    const units = () => sim.state.entities.filter((e) => e.kind === 'unit').length;
+    for (let i = 0; i < interval - 1; i++) sim.step();
+    expect(units()).toBe(0);
+    sim.step();
+    expect(units()).toBe(BUILDINGS.iv_militia_hall.spawn!.count);
   });
 
   it('opposing units fight and kills pay bounty', () => {
