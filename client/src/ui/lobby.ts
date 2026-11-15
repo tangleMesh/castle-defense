@@ -67,7 +67,7 @@ export class LobbyView {
     const s = this.user.stats;
     this.root.append(...[
       h('header', { class: 'lobby-head' },
-        h('h1', { class: 'title small' }, 'Bastion Clash'),
+        h('h1', { class: 'title small' }, 'Castle Defense'),
         h('div', { class: 'me' },
           h('b', null, this.user.username),
           h('span', { class: 'dim' }, ` · ${s.wins}W ${s.losses}L · ${s.roundsWon} rounds won · ${s.unitsKilled} kills · ${s.rescueStrikesUsed} strikes`),

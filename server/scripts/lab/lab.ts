@@ -42,7 +42,7 @@ const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
 const patch = JSON.parse(arg('patch', '{}')) as Record<string, unknown>;
 const pool = new LabPool(undefined, patch);
 const problems: string[] = [];
-const out: string[] = [`# Bastion Clash balance report`, '', `${new Date().toISOString()} · factions: ${FACTION_IDS.join(', ')}${Object.keys(patch).length ? ` · patch ${JSON.stringify(patch)}` : ''}`, ''];
+const out: string[] = [`# Castle Defense balance report`, '', `${new Date().toISOString()} · factions: ${FACTION_IDS.join(', ')}${Object.keys(patch).length ? ` · patch ${JSON.stringify(patch)}` : ''}`, ''];
 
 async function runJobs(label: string, jobs: MatrixJob[]) {
   pool.done = 0; pool.total = 0;

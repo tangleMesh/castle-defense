@@ -1,4 +1,4 @@
-# Bastion Clash
+# Castle Defense
 
 A multiplayer browser game in the style of the classic WC3 *castle* custom maps. Two teams, with up to 4 players each, defend their own castle. Every player commands one builder. Your buildings train units, and those units march on the enemy castle by themselves.
 

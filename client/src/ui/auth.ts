@@ -36,7 +36,7 @@ export function renderAuth(onAuthed: (token: string, user: PublicUser) => void) 
   sync();
   root.append(h('div', { class: 'auth-card' },
     h('div', { class: 'crest' }),
-    h('h1', { class: 'title' }, 'Bastion Clash'),
+    h('h1', { class: 'title' }, 'Castle Defense'),
     h('p', { class: 'tagline' }, 'Raise your war camp. Let your armies march. Bring down the enemy castle.'),
     form,
   ));

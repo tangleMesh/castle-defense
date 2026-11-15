@@ -1,6 +1,9 @@
 # Changelog
 
-Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
+Castle Defense follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
+
+## 0.18.1
+- Renamed the game to **Castle Defense** (title, login/lobby screens, README, package name). The MongoDB database keeps its name `bastion_clash`, so existing accounts and saved games stay intact.
 
 ## 0.18.0
 **Rescue strike pays out**

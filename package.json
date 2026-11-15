@@ -1,6 +1,6 @@
 {
-  "name": "bastion-clash",
-  "version": "0.18.0",
+  "name": "castle-defense",
+  "version": "0.18.1",
   "private": true,
   "type": "module",
   "workspaces": [
