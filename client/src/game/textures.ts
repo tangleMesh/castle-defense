@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BUILDINGS, CASTLE_SIZE, UNITS } from '@bc/shared';
 import { TH, TW } from './iso';
-import { blurred, paper, radial, softEllipse, rng as prng } from './paint';
+import { blurred, grad, paper, radial, softEllipse, rng as prng } from './paint';
 import { UNIT_CANVAS, UNIT_FRAMES, outline, paintBuilder, paintUnit } from './units';
 import { PROP_SIZE, paintBush, paintOak, paintPine, paintRock } from './props';
 import { buildingCanvasSize, castleCanvasSize, paintBuilding, paintCastle, paintRuin, takeAnchors, type Anchors } from './structures';
@@ -177,6 +177,48 @@ function genSoftFx(scene: Phaser.Scene) {
   const r = prng(3);
   for (let i = 0; i < 6; i++) softEllipse(puff.ctx, 12 + r() * 16, 10 + r() * 10, 8 + r() * 6, 6 + r() * 4, 0xd8d4cc, 0.5);
   add('puff', puff);
+  // Rescue-strike rune circle (already squashed to the iso ground plane).
+  const rc = paper(256, 128, TEX_RES);
+  const c = rc.ctx;
+  c.save(); c.translate(128, 64); c.scale(1, 0.5);
+  c.strokeStyle = 'rgba(255,236,160,0.95)'; c.lineWidth = 3;
+  c.beginPath(); c.arc(0, 0, 120, 0, Math.PI * 2); c.stroke();
+  c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, 108, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.arc(0, 0, 62, 0, Math.PI * 2); c.stroke();
+  // rune marks between the outer rings
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    c.save(); c.rotate(a); c.translate(114, 0);
+    c.lineWidth = 2; c.beginPath();
+    if (i % 3 === 0) { c.moveTo(-4, -5); c.lineTo(4, 0); c.lineTo(-4, 5); }
+    else if (i % 3 === 1) { c.moveTo(0, -5); c.lineTo(0, 5); c.moveTo(-3, -2); c.lineTo(3, 2); }
+    else { c.arc(0, 0, 3.5, 0, Math.PI * 2); }
+    c.stroke(); c.restore();
+  }
+  // sun star in the middle
+  c.lineWidth = 2;
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; c.beginPath(); c.moveTo(Math.cos(a) * 20, Math.sin(a) * 20); c.lineTo(Math.cos(a) * (i % 2 ? 52 : 100), Math.sin(a) * (i % 2 ? 52 : 100)); c.stroke(); }
+  c.fillStyle = 'rgba(255,240,180,0.9)'; c.beginPath(); c.arc(0, 0, 14, 0, Math.PI * 2); c.fill();
+  c.restore();
+  add('runeCircle', rc);
+  // Light beam: bright core, soft edges, fading out at the top and into the ground at the bottom.
+  const bm = paper(32, 256, 1);
+  bm.ctx.fillStyle = grad(bm.ctx, 0, 0, 32, 0, [[0, 0xffffff, 0], [0.3, 0xffffff, 0.55], [0.5, 0xffffff, 1], [0.7, 0xffffff, 0.55], [1, 0xffffff, 0]]);
+  bm.ctx.fillRect(0, 0, 32, 256);
+  bm.ctx.globalCompositeOperation = 'destination-in';
+  bm.ctx.fillStyle = grad(bm.ctx, 0, 0, 0, 256, [[0, 0xffffff, 0], [0.35, 0xffffff, 0.9], [0.86, 0xffffff, 1], [1, 0xffffff, 0]]);
+  bm.ctx.fillRect(0, 0, 32, 256);
+  add('beam', bm);
+  // Scorched earth left behind by a strike.
+  const sc = paper(200, 100, TEX_RES);
+  const r2 = prng(9);
+  softEllipse(sc.ctx, 100, 50, 96, 46, 0x1a1208, 0.75);
+  softEllipse(sc.ctx, 100, 50, 60, 28, 0x0a0604, 0.6);
+  for (let i = 0; i < 40; i++) {
+    const a = r2() * Math.PI * 2, d = Math.sqrt(r2()) * 80;
+    softEllipse(sc.ctx, 100 + Math.cos(a) * d, 50 + Math.sin(a) * d * 0.5, 3 + r2() * 4, 1.5 + r2() * 2, r2() < 0.5 ? 0xff8030 : 0x2a1a0a, 0.6);
+  }
+  add('scorch', sc);
 }
 
 /** Pennant on a short pole, in several wave phases (tinted with the team colour at runtime). */
@@ -234,9 +276,6 @@ function genFx(scene: Phaser.Scene) {
   make('orb', 16, 16, () => { g.fillStyle(0xffffff, 0.3); g.fillCircle(8, 8, 8); g.fillStyle(0xffffff); g.fillCircle(8, 8, 4); });
   make('boulder', 12, 12, () => { g.fillStyle(0x6a6a62); g.fillCircle(6, 6, 5); g.fillStyle(0x8a8a82); g.fillCircle(4, 4, 2); });
   make('flag', 16, 12, () => { g.fillStyle(0xffffff); g.fillTriangle(0, 0, 16, 4, 0, 11); });
-  make('beam', 32, 256, () => {
-    for (let i = 0; i < 16; i++) { g.fillStyle(0xffffff, 0.06 + i * 0.03); g.fillRect(i, 0, 32 - i * 2, 256); }
-  });
   make('coin', 14, 14, () => {
     g.fillStyle(0x6b4a10); g.fillCircle(7, 7, 7);
     g.fillStyle(0xe0a820); g.fillCircle(7, 7, 6);

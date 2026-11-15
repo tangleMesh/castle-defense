@@ -2,6 +2,10 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.11.0
+- Rescue strike: a glowing rune circle burns into the ground while the strike charges, golden motes rise, the sunbeam fades softly into the ground, and the strike leaves scorched earth with dying embers and a ring of dust.
+- Thornwild units polished: the dusk moth spreads four patterned wings, the boulder ram has a proper horned head, treants wear a painted leaf crown.
+
 ## 0.10.0
 - Visual overhaul, part 3 (interface): dark tooled-leather console and top bar with gilded trim, filigree-cornered panels, bronze command buttons, parchment tooltips, engraved buttons, restyled scoreboard, dialogs, lobby and login.
 - Command-card and portrait icons are cropped to the painted art; the minimap shows the painted battlefield.

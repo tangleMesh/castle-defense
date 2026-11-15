@@ -1,5 +1,6 @@
 import type { UnitDef } from '@bc/shared';
 import { css, grad, lit, mix, radial, shade, softEllipse, type Ctx } from './paint';
+import { foliage } from './structures';
 
 /**
  * Painted unit sprites, side-on (facing right; the scene mirrors them), with walk and attack
@@ -337,33 +338,61 @@ export function paintUnit(c: Ctx, u: UnitDef, frame: Frame) {
       // rock plates
       c.strokeStyle = css(0x2a2620, 0.5); c.lineWidth = S(0.8);
       for (let i = 0; i < 4; i++) { const a = roll + i * 1.6; c.beginPath(); c.moveTo(cx + Math.cos(a) * S(10), fy - S(14) + Math.sin(a) * S(9) + bounce); c.lineTo(cx + Math.cos(a + 0.6) * S(4), fy - S(14) + Math.sin(a + 0.6) * S(4) + bounce); c.stroke(); }
-      c.strokeStyle = css(lit(m.accent, 1.1)); c.lineWidth = S(3.2);
-      c.beginPath(); c.arc(cx + S(atk ? 13 : 10), fy - S(17) + bounce, S(5.5), -1.6, 1.4); c.stroke();
-      c.fillStyle = css(0xffd060); c.beginPath(); c.arc(cx + S(8), fy - S(15) + bounce, S(1), 0, Math.PI * 2); c.fill();
+      // ram head butting forward, with a curled horn
+      const hx = cx + S(atk ? 15 : 11), hy = fy - S(11) + bounce;
+      blob(c, hx, hy, S(6), S(4.8), mix(m.body, 0x6a5a48, 0.4), 1.05);
+      c.fillStyle = css(lit(mix(m.body, 0x6a5a48, 0.4), 0.8)); c.beginPath(); c.ellipse(hx + S(4.8), hy + S(1.4), S(2.8), S(2.2), 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = css(lit(0xd8c8a0, 1)); c.lineWidth = S(3);
+      c.beginPath(); c.arc(hx - S(1.5), hy - S(1), S(4.6), -2.6, 1.3); c.stroke();
+      c.strokeStyle = css(0x000000, 0.25); c.lineWidth = S(0.6);
+      for (let k = 0; k < 4; k++) { const a = -2.4 + k * 0.9; c.beginPath(); c.moveTo(hx - S(1) + Math.cos(a) * S(2.3), hy - S(1) + Math.sin(a) * S(2.3)); c.lineTo(hx - S(1) + Math.cos(a) * S(4.5), hy - S(1) + Math.sin(a) * S(4.5)); c.stroke(); }
+      c.fillStyle = css(0xffd060); c.beginPath(); c.arc(hx + S(1.6), hy - S(1), S(0.8), 0, Math.PI * 2); c.fill();
       break;
     }
     case 'flyer': {
-      const flap = pose.attack ? 0.2 : Math.sin(pose.ph * Math.PI * 2 + (pose.moving ? 0 : 1.2));
+      const flap = pose.attack ? 0.3 : Math.sin(pose.ph * Math.PI * 2 + (pose.moving ? 0 : 1.2));
       const y = fy - S(30);
-      const moth = tw;
+      if (tw) {
+        // dusk moth: broad rounded fore- and hindwings with eye spots, fuzzy body, soft glow
+        c.save(); c.globalCompositeOperation = 'lighter';
+        c.fillStyle = radial(c, cx, y, S(12), [[0, m.accent, 0.25], [1, m.accent, 0]]);
+        c.beginPath(); c.arc(cx, y, S(12), 0, Math.PI * 2); c.fill(); c.restore();
+        // seen from above: four wings spread to both sides; the wingbeat narrows them
+        const spread = 0.35 + 0.65 * (0.5 + 0.5 * flap);
+        const wing = (side: number, fore: boolean) => {
+          c.save(); c.translate(cx, y); c.scale(side * spread, 1);
+          const l = side > 0 ? 1.05 : 0.8;
+          if (fore) {
+            c.fillStyle = grad(c, 0, 0, S(14), -S(6), [[0, lit(m.body, l * 0.85)], [0.6, lit(m.body, l * 1.15)], [1, lit(mix(m.body, m.accent, 0.4), l)]]);
+            c.beginPath(); c.moveTo(0, -S(2)); c.bezierCurveTo(S(6), -S(10), S(15), -S(9), S(14), -S(3)); c.bezierCurveTo(S(13), S(1), S(5), S(1), 0, S(0.5)); c.fill();
+            c.fillStyle = css(m.accent, 0.95); c.beginPath(); c.arc(S(9), -S(4), S(1.8), 0, Math.PI * 2); c.fill();
+            c.fillStyle = css(0x1a0e1a, 0.85); c.beginPath(); c.arc(S(9), -S(4), S(0.8), 0, Math.PI * 2); c.fill();
+          } else {
+            c.fillStyle = grad(c, 0, 0, S(9), S(6), [[0, lit(m.body, l * 0.75)], [1, lit(m.body, l * 1.0)]]);
+            c.beginPath(); c.moveTo(0, S(0.5)); c.bezierCurveTo(S(5), S(0.5), S(10), S(4), S(8), S(8)); c.bezierCurveTo(S(5), S(9), S(1), S(5), 0, S(3)); c.fill();
+          }
+          c.restore();
+        };
+        wing(-1, false); wing(1, false); wing(-1, true); wing(1, true);
+        blob(c, cx, y + S(1.5), S(2), S(5), mix(m.body, 0x3a2a3a, 0.45));
+        c.strokeStyle = css(0x2a1a2a); c.lineWidth = S(0.6);
+        c.beginPath(); c.moveTo(cx - S(0.6), y - S(3)); c.quadraticCurveTo(cx - S(2), y - S(7), cx - S(4), y - S(8)); c.moveTo(cx + S(0.6), y - S(3)); c.quadraticCurveTo(cx + S(2), y - S(7), cx + S(4), y - S(8)); c.stroke();
+        break;
+      }
       const wing = (dir: number, light: number) => {
         const tipY = y - S(10) * flap * dir - S(2);
-        c.fillStyle = grad(c, cx, y, cx + S(18) * dir, tipY, [[0, lit(m.body, light * 1.1)], [1, lit(moth ? m.accent : m.body, light * 0.85)]]);
+        c.fillStyle = grad(c, cx, y, cx + S(18) * dir, tipY, [[0, lit(m.body, light * 1.1)], [1, lit(m.body, light * 0.85)]]);
         c.beginPath(); c.moveTo(cx - S(2), y - S(1)); c.quadraticCurveTo(cx + S(4), tipY - S(6), cx + S(18), tipY); c.quadraticCurveTo(cx + S(8), y + S(4), cx - S(2), y + S(2)); c.fill();
-        if (moth) { c.fillStyle = css(m.accent, 0.8); c.beginPath(); c.arc(cx + S(10), (y + tipY) / 2 - S(1), S(2), 0, Math.PI * 2); c.fill(); }
+        // feather tips
+        c.strokeStyle = css(lit(m.body, light * 0.6)); c.lineWidth = S(0.5);
+        for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(cx + S(4 + k * 3), (y + tipY) / 2 + S(1)); c.lineTo(cx + S(6 + k * 3), (y + tipY) / 2 + S(3)); c.stroke(); }
       };
       wing(1, 0.75);
-      blob(c, cx + S(1), y + S(1), S(moth ? 3 : 5), S(moth ? 6 : 3.4), moth ? m.body : m.body);
-      if (!moth) {
-        blob(c, cx + S(6), y - S(1), S(2.6), S(2.4), m.body, 1.05);
-        c.fillStyle = css(0xe8b040); c.beginPath(); c.moveTo(cx + S(8), y - S(1.5)); c.lineTo(cx + S(11), y - S(0.5)); c.lineTo(cx + S(8), y + S(0.3)); c.fill();
-        c.fillStyle = css(lit(m.accent, 0.9)); c.beginPath(); c.moveTo(cx - S(4), y + S(1)); c.lineTo(cx - S(10), y - S(1)); c.lineTo(cx - S(9), y + S(3)); c.fill();
-      } else {
-        c.strokeStyle = css(0x2a1a2a); c.lineWidth = S(0.6);
-        c.beginPath(); c.moveTo(cx + S(2), y - S(5)); c.lineTo(cx + S(5), y - S(9)); c.moveTo(cx, y - S(5)); c.lineTo(cx + S(1), y - S(9)); c.stroke();
-      }
+      blob(c, cx + S(1), y + S(1), S(5), S(3.4), m.body);
+      blob(c, cx + S(6), y - S(1), S(2.6), S(2.4), m.body, 1.05);
+      c.fillStyle = css(0xe8b040); c.beginPath(); c.moveTo(cx + S(8), y - S(1.5)); c.lineTo(cx + S(11), y - S(0.5)); c.lineTo(cx + S(8), y + S(0.3)); c.fill();
+      c.fillStyle = css(lit(m.accent, 0.9)); c.beginPath(); c.moveTo(cx - S(4), y + S(1)); c.lineTo(cx - S(10), y - S(1)); c.lineTo(cx - S(9), y + S(3)); c.fill();
       wing(-1, 1.05);
-      if (moth) { c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = radial(c, cx, y, S(8), [[0, m.accent, 0.4], [1, m.accent, 0]]); c.beginPath(); c.arc(cx, y, S(8), 0, Math.PI * 2); c.fill(); c.restore(); }
       break;
     }
     case 'siege': {
@@ -421,12 +450,8 @@ function treant(c: Ctx, cx: number, fy: number, S: (v: number) => number, bark: 
   limb(c, cx + S(4), fy - S(28) + bob, cx + S(15), fy - S(22) + bob + raise, S(3), bark, 1.05);
   c.strokeStyle = css(lit(bark, 0.9)); c.lineWidth = S(1.2);
   c.beginPath(); c.moveTo(cx + S(15), fy - S(22) + bob + raise); c.lineTo(cx + S(19), fy - S(25) + bob + raise); c.moveTo(cx + S(15), fy - S(22) + bob + raise); c.lineTo(cx + S(19), fy - S(19) + bob + raise); c.stroke();
-  // leafy crown
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    blob(c, cx + Math.cos(a) * S(7), fy - S(38) + Math.sin(a) * S(4) + bob, S(5.5), S(4.5), shade(leaf, 0.85 + (Math.sin(a) < 0 ? 0.25 : 0)));
-  }
-  blob(c, cx - S(1), fy - S(41) + bob, S(6), S(4.5), leaf, 1.15);
+  // leafy crown, painted like the forest trees
+  foliage(c, cx - S(1), fy - S(44) + bob, S(12), S(7.5), leaf, 31);
 }
 
 function champion(c: Ctx, cx: number, fy: number, S: (v: number) => number, body: number, accent: number, pose: Pose) {

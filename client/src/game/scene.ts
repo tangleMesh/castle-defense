@@ -1095,11 +1095,21 @@ export class GameScene extends Phaser.Scene {
         const p = toScreen(ev.x, ev.y);
         const e = isoEllipse(RESCUE_RADIUS);
         if (!ev.hit) {
-          const disc = this.img(p.x, p.y, 'disc').setDisplaySize(e.w, e.h).setTint(0xffe060).setDepth(-7e6).setAlpha(0.3);
+          const disc = this.img(p.x, p.y, 'disc').setDisplaySize(e.w, e.h).setTint(0xffe060).setDepth(-7e6).setAlpha(0.18);
           this.telegraphs.push({ x: ev.x, y: ev.y, until: this.time.now + 1100, obj: disc });
+          // A rune circle burns into the ground while the strike charges.
+          const rune = this.img(p.x, p.y, 'runeCircle').setDisplaySize(e.w * 0.6, e.h * 0.6).setDepth(-6.9e6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+          this.tweens.add({ targets: rune, displayWidth: e.w, displayHeight: e.h, alpha: 0.95, duration: 900, ease: 'Cubic.easeOut' });
+          this.tweens.add({ targets: rune, alpha: 0, delay: 1000, duration: 700, onComplete: () => rune.destroy() });
+          for (let i = 0; i < 14; i++) {
+            const a = Math.random() * Math.PI * 2, d = Math.random();
+            const m = this.img(p.x + Math.cos(a) * e.w * 0.45 * d, p.y + Math.sin(a) * e.h * 0.45 * d, 'spark').setTint(0xfff0a0)
+              .setBlendMode(Phaser.BlendModes.ADD).setDepth(8.4e6).setScale(sc(0.6)).setAlpha(0);
+            this.tweens.add({ targets: m, alpha: { from: 0.9, to: 0 }, y: m.y - 40 - Math.random() * 40, delay: Math.random() * 600, duration: 700, onComplete: () => m.destroy() });
+          }
           return;
         }
-        const beam = this.img(p.x, p.y, 'beam').setOrigin(0.5, 1).setDisplaySize(e.w * 0.9, 900).setTint(0xfff0a0)
+        const beam = this.img(p.x, p.y + e.h * 0.3, 'beam').setOrigin(0.5, 1).setDisplaySize(e.w * 0.9, 900).setTint(0xfff0a0)
           .setBlendMode(Phaser.BlendModes.ADD).setDepth(8.5e6);
         this.tweens.add({ targets: beam, displayWidth: 10, alpha: 0, duration: 700, ease: 'Quad.easeIn', onComplete: () => beam.destroy() });
         const ring = this.img(p.x, p.y, 'ringthin').setDisplaySize(e.w * 0.2, e.h * 0.2).setTint(0xffffff).setDepth(7e6);
@@ -1107,6 +1117,13 @@ export class GameScene extends Phaser.Scene {
         const flash = this.img(p.x, p.y, 'disc').setDisplaySize(e.w, e.h).setTint(0xffffff).setDepth(-6e6).setBlendMode(Phaser.BlendModes.ADD);
         this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
         this.spark(p.x, p.y - 20, 0xfff0a0, 24);
+        // Scorched earth with dying embers, a ring of dust thrown outwards.
+        const scorch = this.img(p.x, p.y, 'scorch').setDisplaySize(e.w * 1.05, e.h * 1.05).setDepth(-6.8e6).setAlpha(0.9);
+        this.tweens.add({ targets: scorch, alpha: 0, delay: 3500, duration: 4000, onComplete: () => scorch.destroy() });
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2;
+          this.puff(p.x + Math.cos(a) * e.w * 0.48, p.y + Math.sin(a) * e.h * 0.48, 0xb8a888, 2, 18);
+        }
         this.cameras.main.shake(320, 0.008);
         this.cameras.main.flash(160, 255, 250, 210);
         if (ev.kills) {
