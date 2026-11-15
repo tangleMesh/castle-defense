@@ -4,9 +4,14 @@ import {
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
-import { TEX_RES, UNIT_TEX, buildingTexSize, generateTextures, texHeight } from './textures';
+import { ANCHORS, FLAG_FRAMES, TEX_RES, UNIT_TEX, generateTextures, originOf, texHeight } from './textures';
 import type { MatchSession } from './session';
 import { OUTER_MARGIN, OUTER_TILES, outerDecor } from './landscape';
+import { paintGround, paintOuterTile } from './ground';
+import { Atmosphere } from './atmosphere';
+
+/** Ground paintings are low-frequency; 1.5× is plenty even on Retina and saves GPU memory. */
+const GROUND_RES = Math.min(TEX_RES, 1.5);
 
 interface View {
   id: number;
@@ -22,7 +27,12 @@ interface View {
   sprite: Phaser.GameObjects.Image;
   shadow?: Phaser.GameObjects.Image;
   ring?: Phaser.GameObjects.Image;
-  flag?: Phaser.GameObjects.Image;
+  /** Waving team pennants at the structure's flag anchors. */
+  flags?: Phaser.GameObjects.Image[];
+  /** Flickering light sources (windows, braziers, torches). */
+  glows?: Phaser.GameObjects.Image[];
+  /** Next time (ms) a chimney puffs smoke. */
+  nextSmoke?: number;
   scaffold?: Phaser.GameObjects.Image;
   air: boolean;
   facing: 1 | -1;
@@ -68,6 +78,7 @@ export class GameScene extends Phaser.Scene {
   private collapsing = new Set<number>();
   onReady?: () => void;
   shiftHeld = false;
+  private atmosphere!: Atmosphere;
   showAllBars = false;
 
   constructor() { super('game'); }
@@ -82,13 +93,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    const t0 = performance.now();
     generateTextures(this);
+    const t1 = performance.now();
     this.buildGround();
+    if (location.search.includes('debug')) console.info(`[perf] textures ${Math.round(t1 - t0)} ms, ground ${Math.round(performance.now() - t1)} ms`);
     const cam = this.cameras.main;
     cam.setBackgroundColor('#16210f');
     cam.setZoom(DPR);
     cam.setBounds(WORLD.minX - 300, WORLD.minY - 300, WORLD.maxX - WORLD.minX + 600, WORLD.maxY - WORLD.minY + 520);
     this.centerOnCastle();
+    this.atmosphere = new Atmosphere(this, TEX_RES);
 
     this.fog = this.add.graphics().setDepth(4.5e6);
     this.overlay = this.add.graphics().setDepth(5e6);
@@ -124,39 +139,23 @@ export class GameScene extends Phaser.Scene {
    * beyond the map edges, plus forest, bushes and rocks so the border reads as a natural edge.
    */
   private buildOuterLand() {
-    // The diamond lattice repeats every (64k × 32k) px for k×k tile variants.
-    const K = 8, PW = TW * K, PH = TH * K;
+    // A painted, seamlessly repeating meadow.
+    const PW = 512, PH = 512;
     if (this.textures.exists('outerGround')) this.textures.remove('outerGround');
-    const tex = this.textures.createCanvas('outerGround', PW * TEX_RES, PH * TEX_RES)!;
-    const ctx = tex.getContext();
-    const hash = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
-    const srcs = [0, 1, 2, 3].map((i) => this.textures.get(`w${i}`).getSourceImage() as CanvasImageSource);
-    for (let a = -K; a <= 2 * K; a++) {
-      for (let b = -2 * K; b <= K; b++) {
-        const p = toScreen(a, b);
-        const left = p.x - TW / 2, top = p.y;
-        if (left >= PW || left + TW <= 0 || top >= PH || top + TH <= 0) continue;
-        const hv = hash(((a % K) + K) % K, ((b % K) + K) % K);
-        ctx.drawImage(srcs[hv % 4], left * TEX_RES, top * TEX_RES);
-      }
-    }
-    tex.refresh();
+    this.textures.addCanvas('outerGround', paintOuterTile(PW, GROUND_RES));
     const M = OUTER_MARGIN;
     const x0 = Math.floor((WORLD.minX - M) / PW) * PW, y0 = Math.floor((WORLD.minY - M) / PH) * PH;
     const w = WORLD.maxX + M - x0, h = WORLD.maxY + M - y0;
-    this.add.tileSprite(x0, y0, w * TEX_RES, h * TEX_RES, 'outerGround').setOrigin(0, 0).setScale(1 / TEX_RES).setDepth(-1.1e7);
+    this.add.tileSprite(x0, y0, w * GROUND_RES, h * GROUND_RES, 'outerGround').setOrigin(0, 0).setScale(1 / GROUND_RES).setDepth(-1.1e7);
 
     for (const d of outerDecor()) {
       const p = toScreen(d.x, d.y);
       const depth = depthAt(d.x, d.y);
-      if (d.kind === 'tree') {
-        this.img(p.x, p.y + 4, d.key).setOrigin(0.5, 1).setDepth(depth).setFlipX(d.r2 * 1000 % 2 < 1).setScale(sc(d.scale))
-          .setTint(Phaser.Display.Color.GetColor(225 + Math.floor(d.r * 30), 235, 225 + Math.floor(d.r2 * 30)));
-      } else if (d.kind === 'bush') {
-        this.img(p.x, p.y + 2, d.key).setOrigin(0.5, 1).setDepth(depth);
-      } else if (d.kind === 'rock') {
-        const th = texHeight(this, d.key);
-        this.img(p.x, p.y, d.key).setOrigin(0.5, (th - TH / 2 - 2) / th).setDepth(depth).setScale(sc(d.scale));
+      if (d.kind === 'tree' || d.kind === 'bush' || d.kind === 'rock') {
+        const o = originOf(d.key);
+        const img = this.img(p.x, p.y + (d.kind === 'tree' ? 4 : 0), d.key).setOrigin(o.x, o.y).setDepth(depth).setScale(sc(d.scale));
+        // Slight hue variation between trees.
+        if (d.kind === 'tree') img.setTint(Phaser.Display.Color.GetColor(225 + Math.floor(d.r * 30), 235, 225 + Math.floor(d.r2 * 30)));
       } else {
         this.img(p.x, p.y, d.key).setDepth(-8e6).setAlpha(0.9);
       }
@@ -165,47 +164,46 @@ export class GameScene extends Phaser.Scene {
 
   private buildGround() {
     this.buildOuterLand();
-    const w = WORLD.maxX - WORLD.minX + TW, h = WORLD.maxY - WORLD.minY + TH;
-    const rt = this.add.renderTexture(WORLD.minX - TW / 2, WORLD.minY, w * TEX_RES, h * TEX_RES).setOrigin(0, 0).setDepth(-1e7).setScale(1 / TEX_RES);
-    const hash = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
-    const c0 = MAP.castles[0], c1 = MAP.castles[1];
-    const road = (x: number, y: number) => y >= c0.y && y < c0.y + c0.h && x >= c0.x + c0.w && x < c1.x;
-    // One batched pass: per-call draw() would flush the whole framebuffer 2240 times.
-    rt.beginDraw();
-    for (let y = 0; y < MAP.height; y++) {
-      for (let x = 0; x < MAP.width; x++) {
-        const hv = hash(x, y);
-        let key = `g${hv % 4}`;
-        if (inRect(MAP.zones[0], x, y) || inRect(MAP.zones[1], x, y)) key = `z${hv % 2}`;
-        if (road(x, y) || (road(x, y - 1) && hv % 3 === 0) || (road(x, y + 1) && hv % 3 === 0)) key = `d${hv % 2}`;
-        const p = toScreen(x, y);
-        rt.batchDraw(key, (p.x - WORLD.minX) * TEX_RES, (p.y - WORLD.minY) * TEX_RES);
+    // The battlefield is one continuous painting, uploaded in chunks (GPU texture size limits).
+    const painting = paintGround(GROUND_RES);
+    const CH = 2048;
+    for (let cy = 0; cy < painting.canvas.height; cy += CH) {
+      for (let cx = 0; cx < painting.canvas.width; cx += CH) {
+        const key = `ground_${cx}_${cy}`;
+        const w = Math.min(CH, painting.canvas.width - cx), h = Math.min(CH, painting.canvas.height - cy);
+        const chunk = document.createElement('canvas');
+        chunk.width = w; chunk.height = h;
+        chunk.getContext('2d')!.drawImage(painting.canvas, cx, cy, w, h, 0, 0, w, h);
+        if (this.textures.exists(key)) this.textures.remove(key);
+        this.textures.addCanvas(key, chunk);
+        this.add.image(painting.x0 + cx / GROUND_RES, painting.y0 + cy / GROUND_RES, key)
+          .setOrigin(0, 0).setScale(1 / GROUND_RES).setDepth(-1e7);
       }
     }
-    rt.endDraw();
-    // build zone tint + border
+    // Build zone borders: a faint dashed line in team colour.
     const g = this.add.graphics().setDepth(-9e6);
     for (const team of [0, 1] as const) {
       const z = MAP.zones[team];
       const pts = [toScreen(z.x, z.y), toScreen(z.x + z.w, z.y), toScreen(z.x + z.w, z.y + z.h), toScreen(z.x, z.y + z.h)];
-      g.fillStyle(TEAM_COLORS[team], 0.07);
-      g.fillPoints(pts.map((p) => new Phaser.Geom.Point(p.x, p.y)), true);
-      g.lineStyle(2, TEAM_COLORS[team], 0.35);
-      g.strokePoints(pts.map((p) => new Phaser.Geom.Point(p.x, p.y)), true);
+      g.lineStyle(1.5, TEAM_COLORS[team], 0.3);
+      for (let i = 0; i < 4; i++) {
+        const p = pts[i], q = pts[(i + 1) % 4];
+        const len = Math.hypot(q.x - p.x, q.y - p.y), n = Math.floor(len / 14);
+        for (let k = 0; k < n; k += 2) {
+          const t0 = k / n, t1 = (k + 1) / n;
+          g.lineBetween(p.x + (q.x - p.x) * t0, p.y + (q.y - p.y) * t0, p.x + (q.x - p.x) * t1, p.y + (q.y - p.y) * t1);
+        }
+      }
     }
-    // rocks & decorations
+    // rocks
+    const hash = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
     for (let y = 0; y < MAP.height; y++) {
       for (let x = 0; x < MAP.width; x++) {
         const hv = hash(x + 1000, y);
         if (ROCK_GRID[y * MAP.width + x]) {
-          const p = toScreen(x + 1, y + 1);
           const c = toScreen(x + 0.5, y + 0.5);
-          const th = texHeight(this, `rock${hv % 6}`);
-          this.img(c.x, c.y, `rock${hv % 6}`).setOrigin(0.5, (th - TH / 2 - 2) / th)
-            .setDepth(depthAt(x + 1, y + 1)).setFlipX(hv % 2 === 0);
-        } else if (!inRect(MAP.zones[0], x, y) && !inRect(MAP.zones[1], x, y) && hv % 7 === 0 && !road(x, y)) {
-          const p = toScreen(x + 0.3 + (hv % 5) / 10, y + 0.3 + (hv % 3) / 10);
-          this.img(p.x, p.y, hv % 2 ? 'tuft' : 'flowers').setDepth(-8e6).setAlpha(0.9);
+          const o = originOf(`rock${hv % 6}`);
+          this.img(c.x, c.y + 6, `rock${hv % 6}`).setOrigin(o.x, o.y).setDepth(depthAt(x + 1, y + 1)).setScale(sc(1.15 + (hv % 5) * 0.08));
         }
       }
     }
@@ -365,13 +363,16 @@ export class GameScene extends Phaser.Scene {
     } else {
       const size = kind === KIND_CASTLE ? CASTLE_SIZE : BUILDINGS[type].size;
       const key = kind === KIND_CASTLE ? `castle${team}` : `b_${type}`;
-      const th = texHeight(this, key);
-      v.ring = this.img(0, 0, 'tile_hl').setTint(TEAM_COLORS[team]).setAlpha(0.22).setScale(sc(size), sc(size));
-      v.sprite = this.img(0, 0, key).setOrigin(0.5, (th - 4) / th);
+      const o = originOf(key);
+      v.ring = this.img(0, 0, 'tile_hl').setTint(TEAM_COLORS[team]).setAlpha(0.16).setScale(sc(size), sc(size));
+      v.sprite = this.img(0, 0, key).setOrigin(o.x, o.y);
+      const anchors = ANCHORS.get(key);
+      // Buildings fly one pennant; the castle one on every tower.
+      const flagPts = kind === KIND_CASTLE ? anchors?.flags ?? [] : (anchors?.flags ?? []).slice(0, 1);
+      v.flags = flagPts.map(() => this.img(0, 0, 'flag0').setTint(TEAM_COLORS[team]).setOrigin(1.8 / 26, 1));
+      v.glows = (anchors?.glow ?? []).map(() => this.img(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD));
+      v.nextSmoke = 0;
       if (kind === KIND_BUILDING) {
-        const h = buildingTexSize(size, BUILDINGS[type].model.height).h;
-        v.flag = this.img(0, 0, 'flag').setTint(TEAM_COLORS[team]).setOrigin(0, 1);
-        v.flag.setData('dy', -Math.min(h - 30, size * TH + BUILDINGS[type].model.height * 0.6));
         v.scaffold = this.img(0, 0, 'scaffold').setOrigin(0.5, 1).setVisible(false);
       }
     }
@@ -381,7 +382,8 @@ export class GameScene extends Phaser.Scene {
 
   private destroyView(v: View) {
     this.tweens.killTweensOf(v.sprite);
-    v.sprite.destroy(); v.shadow?.destroy(); v.ring?.destroy(); v.flag?.destroy(); v.scaffold?.destroy();
+    v.sprite.destroy(); v.shadow?.destroy(); v.ring?.destroy(); v.scaffold?.destroy();
+    v.flags?.forEach((f) => f.destroy()); v.glows?.forEach((g) => g.destroy());
     this.views.delete(v.id);
   }
 
@@ -433,25 +435,53 @@ export class GameScene extends Phaser.Scene {
     const foot = toScreen(v.x + size / 2, v.y + size / 2);
     const d = depthAt(v.x + size / 2, v.y + size / 2) - 2;
     // The collapse cinematic animates the castle sprite itself.
-    if (this.collapsing.has(v.id)) { v.sprite.setDepth(d); return; }
-    v.sprite.setPosition(foot.x, foot.y).setDepth(d);
+    const gone = this.collapsing.has(v.id) || !!v.ruined;
+    if (this.collapsing.has(v.id)) { v.sprite.setDepth(d); }
+    else v.sprite.setPosition(foot.x, foot.y).setDepth(d);
     const c = toScreen(v.x, v.y);
     v.ring?.setPosition(c.x, c.y).setDepth(-8e6);
+    const constructing = v.kind === KIND_BUILDING && v.extra >= 0 && v.extra < 100;
     if (v.kind === KIND_BUILDING) {
-      const constructing = v.extra >= 0 && v.extra < 100;
       v.sprite.setAlpha(constructing ? 0.35 + (v.extra / 100) * 0.4 : 1);
       v.sprite.setTint(v.flash > 0 ? 0xffbbbb : 0xffffff);
-      v.flag!.setPosition(foot.x - size * 14, foot.y + (v.flag!.getData('dy') as number)).setDepth(d + 0.1).setVisible(!constructing);
       v.scaffold!.setVisible(constructing || v.extra < 0).setPosition(foot.x, foot.y).setDepth(d + 0.2).setAlpha(0.9);
-    } else if (!v.ruined) {
-      v.sprite.setTint(v.flash > 0 ? 0xffcccc : 0xffffff);
+    } else if (!v.ruined && !this.collapsing.has(v.id)) {
+      // A brief warm flicker when hit (a full tint would turn the whole castle pink).
+      v.sprite.setTint(v.flash > 60 ? 0xfff0e4 : 0xffffff);
     }
+    const a = ANCHORS.get(v.kind === KIND_CASTLE ? `castle${v.team}` : `b_${v.type}`);
+    // Pennants wave (each with its own phase), lights flicker, chimneys smoke.
+    v.flags?.forEach((f, i) => {
+      const p = a?.flags[i];
+      if (!p || gone || constructing) { f.setVisible(false); return; }
+      const frame = Math.floor(time / 110 + v.id * 1.7 + i * 2.3) % FLAG_FRAMES;
+      f.setTexture(`flag${frame}`).setVisible(true).setPosition(foot.x + p.x, foot.y + p.y).setDepth(d + 0.1);
+    });
+    v.glows?.forEach((g, i) => {
+      const p = a?.glow[i];
+      if (!p || gone || constructing) { g.setVisible(false); return; }
+      const fl = 0.75 + 0.25 * Math.sin(time / 90 + v.id + i * 3) * Math.sin(time / 37 + i);
+      g.setVisible(true).setPosition(foot.x + p.x, foot.y + p.y).setDepth(d + 0.15).setAlpha(0.55 * fl).setScale(sc(0.9 + 0.15 * fl));
+    });
+    if (a?.smoke.length && !gone && !constructing && time > (v.nextSmoke ?? 0)) {
+      v.nextSmoke = time + 650 + Math.random() * 500;
+      const view = this.cameras.main.worldView;
+      if (view.contains(foot.x, foot.y - 40)) for (const p of a.smoke) this.chimneyPuff(foot.x + p.x, foot.y + p.y, d + 0.3);
+    }
+  }
+
+  private chimneyPuff(x: number, y: number, depth: number) {
+    const s = this.img(x, y, 'puff').setDepth(Math.max(depth, 7.9e6 - 1)).setAlpha(0).setScale(sc(0.35));
+    const drift = 14 + Math.random() * 10;
+    this.tweens.add({ targets: s, alpha: { from: 0.55, to: 0 }, x: x + drift, y: y - 34 - Math.random() * 14, scale: sc(1.1 + Math.random() * 0.4),
+      duration: 2600 + Math.random() * 900, ease: 'Sine.easeOut', onComplete: () => s.destroy() });
   }
 
   // ---------------------------------------------------------------- frame
 
   update(time: number, dt: number) {
     this.updateCamera(Math.min(100, this.game.loop.rawDelta || dt));
+    this.atmosphere.update(Math.min(100, dt));
     const f = this.session.frames();
     if (!f) return;
     const { a, b, alpha } = f;
@@ -527,38 +557,72 @@ export class GameScene extends Phaser.Scene {
   private toGhost(v: View) {
     this.views.delete(v.id);
     v.ring?.destroy(); v.ring = undefined;
-    v.flag?.setVisible(false);
+    v.flags?.forEach((f) => f.setVisible(false)); v.glows?.forEach((g) => g.setVisible(false));
     v.scaffold?.setVisible(false);
     v.sprite.setTint(0x7c8aa0).setAlpha(0.75);
     this.ghosts.set(v.id, v);
   }
 
   /** Dark veil over every tile the team can't see; tiles bordering vision get a lighter edge. */
+  /**
+   * Soft fog: the hidden/visible grid is blurred, then every tile is drawn as two triangles
+   * whose corners carry their own alpha, so the fog fades out over two or three tiles.
+   */
   private drawFog() {
     const g = this.fog;
     g.clear();
     const grid = this.vision;
     if (!grid) return;
     const W = MAP.width, H = MAP.height, B = OUTER_TILES;
+    const GW = W + 2 * B, GH = H + 2 * B;
     // Outside the map, a tile shares the visibility of the nearest map tile, so the fog runs on into the countryside.
-    const at = (x: number, y: number) => grid[Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))];
-    const level = (x: number, y: number) => {
-      if (at(x, y)) return 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (at(x + dx, y + dy)) return 1;
-      return 2;
+    let f = new Float32Array(GW * GH);
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+      const mx = Math.min(W - 1, Math.max(0, x - B)), my = Math.min(H - 1, Math.max(0, y - B));
+      f[y * GW + x] = grid[my * W + mx] ? 0 : 1;
+    }
+    // Two separable box-blur passes ≈ a soft gaussian edge.
+    const tmp = new Float32Array(GW * GH);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+        const l = f[y * GW + Math.max(0, x - 1)], c = f[y * GW + x], r = f[y * GW + Math.min(GW - 1, x + 1)];
+        tmp[y * GW + x] = (l + c + r) / 3;
+      }
+      for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+        const u = tmp[Math.max(0, y - 1) * GW + x], c = tmp[y * GW + x], d = tmp[Math.min(GH - 1, y + 1) * GW + x];
+        f[y * GW + x] = (u + c + d) / 3;
+      }
+    }
+    // Corner values = average of the four tiles sharing that corner.
+    const cv = (cx: number, cy: number) => {
+      const x0 = Math.max(0, cx - 1), x1 = Math.min(GW - 1, cx), y0 = Math.max(0, cy - 1), y1 = Math.min(GH - 1, cy);
+      return (f[y0 * GW + x0] + f[y0 * GW + x1] + f[y1 * GW + x0] + f[y1 * GW + x1]) / 4;
     };
-    const ALPHA = [0, 0.42, 0.66];
-    for (let y = -B; y < H + B; y++) {
-      let x = -B;
-      while (x < W + B) {
-        const l = level(x, y);
-        let x1 = x + 1;
-        while (x1 < W + B && level(x1, y) === l) x1++;
-        if (l) {
-          g.fillStyle(0x05080c, ALPHA[l]);
-          g.fillPoints(this.diamond(g, x, y, x1 - x, 1), true);
+    const MAXA = 0.7, COL = 0x080c14;
+    const corners = new Float32Array((GW + 1) * (GH + 1));
+    for (let y = 0; y <= GH; y++) for (let x = 0; x <= GW; x++) corners[y * (GW + 1) + x] = cv(x, y);
+    const C = (x: number, y: number) => corners[y * (GW + 1) + x];
+    for (let y = 0; y < GH; y++) {
+      let x = 0;
+      while (x < GW) {
+        const a = C(x, y), b = C(x + 1, y), c = C(x + 1, y + 1), d = C(x, y + 1);
+        if (a < 0.01 && b < 0.01 && c < 0.01 && d < 0.01) { x++; continue; }
+        // Runs of fully fogged tiles are merged into one strip.
+        if (a > 0.995 && b > 0.995 && c > 0.995 && d > 0.995) {
+          let x1 = x + 1;
+          while (x1 < GW && C(x1 + 1, y) > 0.995 && C(x1 + 1, y + 1) > 0.995) x1++;
+          g.fillStyle(COL, MAXA);
+          g.fillPoints(this.diamond(g, x - B, y - B, x1 - x, 1), true);
+          x = x1;
+          continue;
         }
-        x = x1;
+        const tx = x - B, ty = y - B;
+        const p0 = toScreen(tx, ty), p1 = toScreen(tx + 1, ty), p2 = toScreen(tx + 1, ty + 1), p3 = toScreen(tx, ty + 1);
+        g.fillGradientStyle(COL, COL, COL, COL, a * MAXA, b * MAXA, c * MAXA, c * MAXA);
+        g.fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+        g.fillGradientStyle(COL, COL, COL, COL, a * MAXA, c * MAXA, d * MAXA, d * MAXA);
+        g.fillTriangle(p0.x, p0.y, p2.x, p2.y, p3.x, p3.y);
+        x++;
       }
     }
   }
@@ -655,8 +719,8 @@ export class GameScene extends Phaser.Scene {
       g.fillStyle(ok ? 0x40ff60 : 0xff3030, 0.28);
       g.fillPoints(this.diamond(g, tx, ty, def.size, def.size), true);
       const foot = toScreen(tx + def.size, ty + def.size);
-      const th = texHeight(this, `b_${def.id}`);
-      this.ghost.setTexture(`b_${def.id}`).setOrigin(0.5, (th - 4) / th).setPosition(foot.x, foot.y)
+      const o = originOf(`b_${def.id}`);
+      this.ghost.setTexture(`b_${def.id}`).setOrigin(o.x, o.y).setPosition(foot.x, foot.y)
         .setTint(ok ? 0xaaffaa : 0xff8888).setVisible(true);
       // own zone outline
       const z = MAP.zones[s.team];
@@ -743,8 +807,8 @@ export class GameScene extends Phaser.Scene {
   private setRuin(v: View) {
     v.ruined = true;
     const key = `ruin${v.team}`;
-    const th = texHeight(this, key);
-    v.sprite.setTexture(key).setOrigin(0.5, (th - 4) / th).setScale(sc(1)).setAlpha(1).clearTint();
+    const o = originOf(key);
+    v.sprite.setTexture(key).setOrigin(o.x, o.y).setScale(sc(1)).setAlpha(1).clearTint();
     v.ring?.setVisible(false);
   }
 

@@ -2,6 +2,12 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.8.0
+- Visual overhaul, part 1: a hand-painted battlefield (no tile grid) with meadow colour variation, grass strokes, wildflower drifts and a winding dirt road with wheel ruts, pebbles and puddles.
+- Buildings and castles repainted with real materials: masonry, half-timbering, planks, slate, shingle and thatch roofs, glowing windows, chimneys, domes, round towers and a castle with keep, gatehouse, courtyard and team banner.
+- Soft cast shadows (late-afternoon sun), waving team pennants, flickering braziers and torches, chimney smoke.
+- Painted forest, bushes and boulders; soft-edged fog of war; warm colour grade, vignette, drifting cloud shadows and pollen motes.
+
 ## 0.7.0
 - Builder items cost 3× as much (420–720 gold): true late-game purchases.
 - Mason's Hammer repairs 10 HP/s (was 30).

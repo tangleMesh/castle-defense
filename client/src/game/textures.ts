@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
-import { BUILDINGS, CASTLE_SIZE, UNITS, type BuildingDef, type UnitDef } from '@bc/shared';
-import { TEAM_COLORS, TH, TW } from './iso';
+import { BUILDINGS, CASTLE_SIZE, UNITS, type UnitDef } from '@bc/shared';
+import { TH, TW } from './iso';
+import { blurred, paper, radial, softEllipse, rng as prng } from './paint';
+import { PROP_SIZE, paintBush, paintOak, paintPine, paintRock } from './props';
+import { buildingCanvasSize, castleCanvasSize, paintBuilding, paintCastle, paintRuin, takeAnchors, type Anchors } from './structures';
 
 type G = Phaser.GameObjects.Graphics;
 
@@ -9,11 +12,6 @@ export function shade(c: number, f: number): number {
   const g = Math.min(255, Math.max(0, Math.round(((c >> 8) & 255) * f)));
   const b = Math.min(255, Math.max(0, Math.round((c & 255) * f)));
   return (r << 16) | (g << 8) | b;
-}
-
-function mix(a: number, b: number, t: number): number {
-  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t) << s;
-  return ch(16) | ch(8) | ch(0);
 }
 
 /** Small deterministic PRNG for texture noise. */
@@ -27,70 +25,6 @@ const P = (x: number, y: number) => new Phaser.Geom.Point(x, y);
 function poly(g: G, color: number, pts: Array<[number, number]>, alpha = 1) {
   g.fillStyle(color, alpha);
   g.fillPoints(pts.map(([x, y]) => P(x, y)), true);
-}
-
-/**
- * Iso box whose bottom (front) corner sits at (ox, oy); footprint a×b tiles, height h px.
- * Returns the top-face points for further decoration.
- */
-function box(g: G, ox: number, oy: number, a: number, b: number, h: number, top: number, wall: number) {
-  const hw = TW / 2, hh = TH / 2;
-  const bottom: [number, number] = [ox, oy];
-  const right: [number, number] = [ox + b * hw, oy - b * hh];
-  const left: [number, number] = [ox - a * hw, oy - a * hh];
-  const topv: [number, number] = [ox + (b - a) * hw, oy - (a + b) * hh];
-  const up = ([x, y]: [number, number]): [number, number] => [x, y - h];
-  poly(g, shade(wall, 0.85), [left, bottom, up(bottom), up(left)]);
-  poly(g, shade(wall, 0.62), [bottom, right, up(right), up(bottom)]);
-  poly(g, top, [up(topv), up(right), up(bottom), up(left)]);
-  // edge highlights
-  g.lineStyle(1, shade(wall, 1.15), 0.6);
-  g.lineBetween(bottom[0], bottom[1] - h, bottom[0], bottom[1]);
-  return { left: up(left), right: up(right), bottom: up(bottom), top: up(topv), cx: ox + ((b - a) * hw) / 2, cy: oy - ((a + b) * hh) / 2 - h };
-}
-
-function pyramid(g: G, f: ReturnType<typeof box>, rise: number, color: number) {
-  const apex: [number, number] = [f.cx, f.cy - rise];
-  poly(g, shade(color, 0.7), [f.left, f.top, apex]);
-  poly(g, shade(color, 0.8), [f.top, f.right, apex]);
-  poly(g, shade(color, 1.05), [f.left, f.bottom, apex]);
-  poly(g, shade(color, 0.78), [f.bottom, f.right, apex]);
-}
-
-function cylinder(g: G, cx: number, by: number, rx: number, h: number, color: number, topColor?: number) {
-  const ry = rx / 2;
-  g.fillStyle(shade(color, 0.7));
-  g.fillEllipse(cx, by, rx * 2, ry * 2);
-  g.fillRect(cx - rx, by - h, rx * 2, h);
-  // lit left half
-  g.fillStyle(shade(color, 0.9));
-  g.fillRect(cx - rx, by - h, rx * 0.9, h);
-  g.fillStyle(topColor ?? shade(color, 1.1));
-  g.fillEllipse(cx, by - h, rx * 2, ry * 2);
-}
-
-function cone(g: G, cx: number, by: number, rx: number, h: number, color: number) {
-  g.fillStyle(shade(color, 0.75));
-  g.fillEllipse(cx, by, rx * 2, rx);
-  poly(g, shade(color, 1.05), [[cx - rx, by], [cx, by + rx / 2], [cx, by - h]]);
-  poly(g, shade(color, 0.8), [[cx, by + rx / 2], [cx + rx, by], [cx, by - h]]);
-}
-
-function crenels(g: G, f: ReturnType<typeof box>, color: number) {
-  const n = 4;
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    for (const [a, b] of [[f.left, f.bottom], [f.bottom, f.right]] as const) {
-      const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
-      g.fillStyle(shade(color, 0.95));
-      g.fillRect(x - 2, y - 5, 4, 5);
-    }
-  }
-}
-
-function flagPole(g: G, x: number, y: number, h: number) {
-  g.lineStyle(2, 0x3a2a1a);
-  g.lineBetween(x, y, x, y - h);
 }
 
 // ------------------------------------------------------------------ resolution
@@ -142,85 +76,23 @@ function genTerrain(scene: Phaser.Scene) {
   tile('z0', 0x5a7a3a, 41, [0x6a8a45, 0x47652c]);
   tile('z1', 0x5c7838, 42, [0x6a8a45, 0x47652c]);
 
-  // rocks: irregular boulders, several variants so outcrops look natural
-  for (let i = 0; i < 6; i++) {
-    g.clear();
-    const r = rng(77 + i * 13);
-    const W = TW + 8, H = TH + 44;
-    const cx = W / 2, by = H - TH / 2 - 2;
-    const base = mix(0x7d7a70, 0x6a6458, r());
-    g.fillStyle(0x000000, 0.25);
-    g.fillEllipse(cx + 3, by + 3, TW * 0.95, TH * 0.8);
-    const lumps = 2 + Math.floor(r() * 3);
-    for (let k = 0; k < lumps; k++) {
-      const lx = cx + (r() - 0.5) * 26, ly = by - 4 - r() * 6;
-      const lw = 22 + r() * 22, lh = 16 + r() * 24;
-      const c = shade(base, 0.85 + r() * 0.25);
-      // body
-      g.fillStyle(shade(c, 0.62)); g.fillEllipse(lx + 3, ly - lh / 2 + 3, lw, lh);
-      g.fillStyle(c); g.fillEllipse(lx, ly - lh / 2, lw, lh);
-      // lit top-left facet
-      g.fillStyle(shade(c, 1.22)); g.fillEllipse(lx - lw * 0.15, ly - lh * 0.7, lw * 0.55, lh * 0.4);
-      // crack
-      g.lineStyle(1, shade(c, 0.5), 0.7);
-      g.lineBetween(lx + lw * 0.1, ly - lh * 0.8, lx + lw * 0.2 - r() * 6, ly - lh * 0.3);
-    }
-    // moss tufts
-    g.fillStyle(0x5a7a3a, 0.8);
-    for (let k = 0; k < 3; k++) g.fillEllipse(cx + (r() - 0.5) * 40, by - r() * 4, 6 + r() * 6, 3);
-    gen(g, `rock${i}`, W, H);
-  }
-
   // Wild grass outside the battlefield: a bit darker and lusher than the playable map.
   const wild = [0x48782f, 0x4b7a31, 0x44722c, 0x507f35];
   wild.forEach((c, i) => tile(`w${i}`, c, 51 + i, [0x5f9040, 0x365c22, 0x6c9c48], 18));
 
-  // Trees for the forest around the map: pines and broadleaf trees, plus low bushes.
+  // Painted forest props and boulders (with baked soft shadows).
   for (let i = 0; i < 3; i++) {
-    g.clear();
-    const r = rng(201 + i * 7);
-    const W = 56, H = 96, cx = W / 2, by = H - 8;
-    g.fillStyle(0x000000, 0.28); g.fillEllipse(cx + 4, by + 1, 40, 14);
-    g.fillStyle(0x5a3e24); g.fillRect(cx - 3, by - 16, 6, 16);
-    const base = mix(0x2f5a2a, 0x24502e, r());
-    const tiers = 4;
-    for (let k = 0; k < tiers; k++) {
-      const w = 44 - k * 9 + r() * 4, top = by - 14 - (k + 1) * 18 - r() * 3, bot = by - 10 - k * 18;
-      poly(g, shade(base, 0.7), [[cx, top], [cx + w / 2, bot], [cx - w / 2, bot]]);
-      poly(g, shade(base, 1 + k * 0.06), [[cx, top], [cx - w / 2, bot], [cx - w / 2 + w * 0.42, bot - 2]]);
-    }
-    gen(g, `tree_p${i}`, W, H);
-  }
-  for (let i = 0; i < 3; i++) {
-    g.clear();
-    const r = rng(301 + i * 11);
-    const W = 64, H = 84, cx = W / 2, by = H - 8;
-    g.fillStyle(0x000000, 0.28); g.fillEllipse(cx + 5, by + 1, 48, 16);
-    g.fillStyle(0x5e4228); g.fillRect(cx - 3, by - 24, 6, 24);
-    const base = mix(0x3f7a2c, 0x5a8a30, r());
-    for (let k = 0; k < 7; k++) {
-      const bx = cx + (r() - 0.5) * 30, byy = by - 40 + (r() - 0.5) * 22, rr = 11 + r() * 8;
-      g.fillStyle(shade(base, 0.68)); g.fillCircle(bx + 3, byy + 3, rr);
-    }
-    for (let k = 0; k < 7; k++) {
-      const bx = cx + (r() - 0.5) * 28, byy = by - 42 + (r() - 0.5) * 20, rr = 10 + r() * 8;
-      g.fillStyle(shade(base, 0.9 + r() * 0.2)); g.fillCircle(bx, byy, rr);
-      g.fillStyle(shade(base, 1.25), 0.8); g.fillCircle(bx - rr * 0.35, byy - rr * 0.35, rr * 0.4);
-    }
-    gen(g, `tree_o${i}`, W, H);
+    const P = PROP_SIZE.pine, O = PROP_SIZE.oak;
+    bakeStructure(scene, `tree_p${i}`, P.w, P.h, P.footY, P.footY, (c) => paintPine(c, 201 + i * 7));
+    bakeStructure(scene, `tree_o${i}`, O.w, O.h, O.footY, O.footY, (c) => paintOak(c, 301 + i * 11));
   }
   for (let i = 0; i < 2; i++) {
-    g.clear();
-    const r = rng(401 + i * 5);
-    const W = 36, H = 26, cx = W / 2, by = H - 5;
-    g.fillStyle(0x000000, 0.25); g.fillEllipse(cx + 3, by, 30, 9);
-    const base = i ? 0x3f6e2c : 0x4a7a30;
-    for (let k = 0; k < 5; k++) {
-      const bx = cx + (r() - 0.5) * 18, byy = by - 8 + (r() - 0.5) * 6, rr = 5 + r() * 4;
-      g.fillStyle(shade(base, 0.75 + r() * 0.35)); g.fillCircle(bx, byy, rr);
-    }
-    if (i === 0) { g.fillStyle(0xd04a5a); g.fillCircle(cx - 4, by - 10, 1.5); g.fillCircle(cx + 5, by - 7, 1.5); }
-    gen(g, `bush${i}`, W, H);
+    const B = PROP_SIZE.bush;
+    bakeStructure(scene, `bush${i}`, B.w, B.h, B.footY, B.footY, (c) => paintBush(c, 401 + i * 5, i === 0));
+  }
+  for (let i = 0; i < 6; i++) {
+    const R = PROP_SIZE.rock;
+    bakeStructure(scene, `rock${i}`, R.w, R.h, R.footY, R.footY - 8, (c) => paintRock(c, 77 + i * 13));
   }
 
   // decorative tufts / flowers
@@ -237,204 +109,97 @@ function genTerrain(scene: Phaser.Scene) {
   g.destroy();
 }
 
-// ------------------------------------------------------------------ buildings
+// ------------------------------------------------------------------ painted structures
 
-export function buildingTexSize(size: number, height: number) {
-  return { w: size * TW + 8, h: size * TH + height + 60 };
+/** Normalised sprite origin (the front ground corner) of baked structure textures. */
+export const ORIGINS = new Map<string, { x: number; y: number }>();
+/** Flag / smoke / light anchor points of structure textures, relative to the origin (logical px). */
+export const ANCHORS = new Map<string, Anchors>();
+
+export function originOf(key: string): { x: number; y: number } {
+  return ORIGINS.get(key) ?? { x: 0.5, y: 1 };
 }
 
-function drawBuilding(g: G, def: BuildingDef) {
-  const m = def.model;
-  const { w, h } = buildingTexSize(def.size, m.height);
-  const ox = w / 2, oy = h - 4;
-  const s = def.size;
-  const wall = m.wall, roof = m.roof;
-  // foundation slab
-  box(g, ox, oy, s, s, 3, shade(0x6a6458, 1.05), 0x5a5448);
-  const inset = (k: number) => [ox, oy - 3 - (TH * (s - k)) / 2] as const;
-
-  switch (m.style) {
-    case 'hall': {
-      const [x, y] = inset(1.6);
-      const f = box(g, x, y, 1.6, 1.6, m.height * 0.6, shade(wall, 1.1), wall);
-      pyramid(g, f, m.height * 0.75, roof);
-      g.fillStyle(0x2a1e14); g.fillRect(x - 14, y - 16, 7, 12); // door (left face)
-      break;
-    }
-    case 'workshop': {
-      const [x, y] = inset(1.7);
-      const f = box(g, x, y, 1.7, 1.7, m.height * 0.55, shade(roof, 1), wall);
-      poly(g, shade(roof, 0.8), [f.left, f.top, [f.top[0], f.top[1] - 10], [f.left[0], f.left[1] - 10]]);
-      g.fillStyle(0x4a3424); g.fillRect(f.right[0] - 12, f.right[1] - 20, 5, 16); // chimney
-      g.fillStyle(0x2a1e14); g.fillRect(x + 6, y - 14, 10, 10);
-      break;
-    }
-    case 'stable': {
-      const [x, y] = inset(1.75);
-      const f = box(g, x, y, 1.75, 1.3, m.height * 0.6, shade(wall, 1.05), wall);
-      pyramid(g, f, m.height * 0.5, roof);
-      g.lineStyle(2, 0x5a3a20);
-      g.lineBetween(x - 40, y - 10, x - 6, y + 4);
-      break;
-    }
-    case 'tower': {
-      const [x, y] = inset(1.1);
-      const f = box(g, x, y, 1.1, 1.1, m.height, shade(wall, 1.15), wall);
-      crenels(g, f, wall);
-      g.fillStyle(0x1a1410); g.fillRect(x - 10, y - m.height * 0.6, 3, 7); g.fillRect(x + 7, y - m.height * 0.65, 3, 7);
-      break;
-    }
-    case 'temple': {
-      const [x, y] = inset(1.6);
-      const f = box(g, x, y, 1.6, 1.6, m.height * 0.55, shade(wall, 1.1), wall);
-      g.fillStyle(shade(roof, 0.85)); g.fillCircle(f.cx, f.cy - 4, 15);
-      g.fillStyle(shade(roof, 1.15)); g.fillCircle(f.cx - 4, f.cy - 8, 7);
-      g.lineStyle(2, roof); g.lineBetween(f.cx, f.cy - 18, f.cx, f.cy - 34);
-      g.lineBetween(f.cx - 5, f.cy - 28, f.cx + 5, f.cy - 28);
-      g.fillStyle(0x3a64b8, 0.8); g.fillRect(x - 18, y - 22, 6, 10);
-      break;
-    }
-    case 'nest': {
-      const [x, y] = inset(1);
-      const f = box(g, x, y, 1, 1, m.height, shade(wall, 1.1), wall);
-      g.fillStyle(shade(0x7a5a30, 0.9)); g.fillEllipse(f.cx, f.cy, 44, 18);
-      g.fillStyle(shade(roof, 1)); g.fillEllipse(f.cx, f.cy - 4, 30, 11);
-      g.lineStyle(1, 0x4a3018); g.strokeEllipse(f.cx, f.cy, 44, 18);
-      break;
-    }
-    case 'banner': {
-      const [x, y] = inset(1);
-      box(g, x, y, 1, 1, 8, shade(wall, 1.1), wall);
-      flagPole(g, x, y - 12, m.height + 10);
-      poly(g, roof, [[x, y - m.height - 20], [x + 26, y - m.height - 14], [x + 22, y - m.height + 2], [x, y - m.height - 4]]);
-      g.fillStyle(0xe0b84a); g.fillCircle(x + 12, y - m.height - 10, 3);
-      break;
-    }
-    case 'citadel': {
-      const [x, y] = inset(1.8);
-      const f = box(g, x, y, 1.8, 1.8, m.height * 0.45, shade(wall, 1.05), wall);
-      crenels(g, f, wall);
-      const [kx, ky] = [f.cx, f.cy + 14];
-      const k = box(g, kx, ky, 0.9, 0.9, m.height * 0.55, shade(wall, 1.1), shade(wall, 1.02));
-      g.fillStyle(shade(roof, 0.85)); g.fillCircle(k.cx, k.cy - 4, 13);
-      g.fillStyle(shade(roof, 1.2)); g.fillCircle(k.cx - 4, k.cy - 8, 6);
-      cylinder(g, f.left[0] + 6, f.left[1] + 8, 7, 26, wall, roof);
-      cylinder(g, f.right[0] - 6, f.right[1] + 8, 7, 26, wall, roof);
-      g.fillStyle(0xffe890, 0.35); g.fillCircle(k.cx, k.cy - 8, 22);
-      break;
-    }
-    case 'tree': {
-      const [x, y] = inset(1.4);
-      box(g, x, y, 1.4, 1.4, 4, shade(0x4a6a30, 1), 0x3a5428);
-      g.fillStyle(shade(wall, 0.9)); g.fillRect(x - 6, y - m.height * 0.55 - 6, 12, m.height * 0.55);
-      g.fillStyle(shade(wall, 0.7)); g.fillRect(x + 1, y - m.height * 0.55 - 6, 5, m.height * 0.55);
-      const top = y - m.height * 0.55 - 6;
-      const r = 12 + m.height * 0.22;
-      g.fillStyle(shade(roof, 0.7)); g.fillCircle(x + 8, top + 2, r * 0.8);
-      g.fillStyle(shade(roof, 0.85)); g.fillCircle(x - 10, top, r * 0.85);
-      g.fillStyle(roof); g.fillCircle(x, top - r * 0.5, r);
-      g.fillStyle(shade(roof, 1.25)); g.fillCircle(x - r * 0.35, top - r * 0.8, r * 0.45);
-      break;
-    }
-    case 'hut': {
-      const [x, y] = inset(1.4);
-      cylinder(g, x, y - 18, 30, m.height * 0.45, wall);
-      cone(g, x, y - 18 - m.height * 0.45, 36, m.height * 0.9, roof);
-      g.fillStyle(0x1a1410); g.fillRect(x - 8, y - 18 - 14, 9, 13);
-      g.lineStyle(2, 0xd0d0e0); g.lineBetween(x + 2, y - 18 - m.height * 1.35, x + 6, y - 18 - m.height * 1.6);
-      break;
-    }
-    case 'mound': {
-      const [x, y] = inset(1.6);
-      g.fillStyle(shade(wall, 0.8)); g.fillEllipse(x, y - 22, 100, 46);
-      g.fillStyle(wall); g.fillEllipse(x - 4, y - 26 - m.height * 0.3, 84, 38 + m.height);
-      g.fillStyle(roof); g.fillEllipse(x - 8, y - 34 - m.height * 0.6, 60, 20 + m.height * 0.6);
-      g.fillStyle(0x140c08); g.fillEllipse(x - 14, y - 16, 22, 14);
-      break;
-    }
-    case 'shrine': {
-      const [x, y] = inset(1.2);
-      const f = box(g, x, y, 1.2, 1.2, 10, shade(wall, 1.15), wall);
-      g.fillStyle(roof, 0.25); g.fillCircle(f.cx, f.cy - 18, 22);
-      poly(g, shade(roof, 1.2), [[f.cx, f.cy - 40 - m.height * 0.4], [f.cx + 9, f.cy - 14], [f.cx, f.cy - 4], [f.cx - 9, f.cy - 14]]);
-      poly(g, shade(roof, 0.8), [[f.cx, f.cy - 40 - m.height * 0.4], [f.cx + 9, f.cy - 14], [f.cx, f.cy - 4]]);
-      break;
-    }
-  }
-  return { w, h };
+/**
+ * Paint a structure and bake its soft cast shadow underneath: the silhouette is skewed onto
+ * the ground towards the lower right (sun in the upper left) and blurred.
+ */
+function bakeStructure(scene: Phaser.Scene, key: string, w: number, h: number, footY: number, groundY: number, paint: (ctx: CanvasRenderingContext2D) => void) {
+  const R = TEX_RES;
+  const src = paper(w, h, R);
+  paint(src.ctx);
+  const anchors = takeAnchors(w / 2, footY);
+  const kx = 0.8, ky = 0.4;
+  const extraW = kx * groundY + 12;
+  const outH = Math.max(h, groundY + ky * groundY + 12);
+  const out = paper(w + extraW, outH, R);
+  const sil = paper(w + extraW, outH, R);
+  const s = sil.ctx;
+  s.translate(0, groundY);
+  s.transform(1, 0, -kx, -ky, 0, 0);
+  s.translate(0, -groundY);
+  s.drawImage(src.canvas, 0, 0, w, h);
+  s.setTransform(1, 0, 0, 1, 0, 0);
+  s.globalCompositeOperation = 'source-in';
+  s.fillStyle = 'rgb(10,14,30)';
+  s.fillRect(0, 0, sil.canvas.width, sil.canvas.height);
+  const soft = blurred(sil.canvas, 2.5 * R);
+  out.ctx.globalAlpha = 0.34;
+  out.ctx.drawImage(soft, 0, 0, out.w, out.h);
+  out.ctx.globalAlpha = 1;
+  out.ctx.drawImage(src.canvas, 0, 0, w, h);
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  scene.textures.addCanvas(key, out.canvas);
+  ORIGINS.set(key, { x: w / 2 / out.w, y: footY / out.h });
+  ANCHORS.set(key, anchors);
 }
 
-function drawCastle(g: G, team: 0 | 1) {
-  const s = CASTLE_SIZE;
-  const w = s * TW + 8, h = s * TH + 170;
-  const ox = w / 2, oy = h - 4;
-  const stone = 0x9a968a, roof = shade(TEAM_COLORS[team], 0.8);
-  box(g, ox, oy, s, s, 4, 0x6a6458, 0x5a5448);
-  const f = box(g, ox, oy - 4 - (TH * 0.3) / 2 * 2, s - 0.3, s - 0.3, 46, shade(stone, 1.1), stone);
-  crenels(g, f, stone);
-  // keep
-  const k = box(g, f.cx, f.cy + 34, 1.8, 1.8, 70, shade(stone, 1.15), shade(stone, 1.05));
-  crenels(g, k, stone);
-  pyramid(g, k, 44, roof);
-  // corner towers
-  const towers: Array<[number, number]> = [f.top, f.left, f.right, f.bottom];
-  for (const [tx, ty] of towers) {
-    cylinder(g, tx, ty + 46 - 4, 13, 66, stone);
-    cone(g, tx, ty - 24, 16, 34, roof);
+function genStructures(scene: Phaser.Scene) {
+  for (const def of Object.values(BUILDINGS)) {
+    const { w, h } = buildingCanvasSize(def.size, def.model.height);
+    bakeStructure(scene, `b_${def.id}`, w, h, h - 6, h - 6 - def.size * TH / 2, (ctx) => paintBuilding(ctx, def, w, h));
   }
-  // gate on the front-right face
-  g.fillStyle(0x2a1e14);
-  g.fillRect(f.bottom[0] + 26, f.bottom[1] + 22, 14, 20);
-  return { w, h };
+  const { w, h } = castleCanvasSize();
+  for (const team of [0, 1] as const) {
+    bakeStructure(scene, `castle${team}`, w, h, h - 6, h - 6 - CASTLE_SIZE * TH / 2, (ctx) => paintCastle(ctx, team, w, h));
+    bakeStructure(scene, `ruin${team}`, w, h, h - 6, h - 6 - CASTLE_SIZE * TH / 2, (ctx) => paintRuin(ctx, team, w, h));
+  }
 }
 
-/** Collapsed castle: broken wall stubs, tower stumps, rubble and scorch marks (same canvas as the castle). */
-function drawRuin(g: G, team: 0 | 1) {
-  const s = CASTLE_SIZE;
-  const w = s * TW + 8, h = s * TH + 170;
-  const ox = w / 2, oy = h - 4;
-  const stone = 0x8a867a, dark = 0x4a463e, roof = shade(TEAM_COLORS[team], 0.6);
-  const r = rng(900 + team);
-  // scorched ground
-  g.fillStyle(0x1a1610, 0.55); g.fillEllipse(ox, oy - s * TH / 2, s * TW * 0.95, s * TH * 0.95);
-  box(g, ox, oy, s, s, 4, 0x5a5448, 0x4a4438);
-  const f = box(g, ox, oy - 4, s - 0.3, s - 0.3, 0, shade(stone, 0.8), stone);
-  // jagged wall remains along the back edges
-  const wall = (a: [number, number], b: [number, number], n: number) => {
-    for (let i = 0; i < n; i++) {
-      const t0 = i / n, t1 = (i + 1) / n;
-      const x0 = a[0] + (b[0] - a[0]) * t0, y0 = a[1] + (b[1] - a[1]) * t0;
-      const x1 = a[0] + (b[0] - a[0]) * t1, y1 = a[1] + (b[1] - a[1]) * t1;
-      const h0 = 6 + r() * 26, h1 = 6 + r() * 26;
-      poly(g, shade(stone, 0.7 + r() * 0.25), [[x0, y0], [x1, y1], [x1, y1 - h1], [x0, y0 - h0]]);
-      g.lineStyle(1, shade(stone, 0.5), 0.6); g.lineBetween(x0, y0 - h0, x1, y1 - h1);
-    }
-  };
-  wall(f.left, f.top, 6);
-  wall(f.top, f.right, 6);
-  // tower stumps
-  for (const [tx, ty] of [f.top, f.left, f.right]) cylinder(g, tx, ty + 4, 13, 12 + r() * 20, shade(stone, 0.9), 0x3a362e);
-  // collapsed keep: rubble mound
-  const cx = f.cx, cy = f.cy + 8;
-  for (let i = 0; i < 46; i++) {
-    const a = r() * Math.PI * 2, d = Math.sqrt(r());
-    const x = cx + Math.cos(a) * d * 70, y = cy + Math.sin(a) * d * 34 - (1 - d) * 22;
-    const rw = 6 + r() * 12, rh = 4 + r() * 7;
-    g.fillStyle(shade(r() > 0.25 ? stone : dark, 0.6 + r() * 0.6)); g.fillEllipse(x, y, rw, rh);
+function genSoftFx(scene: Phaser.Scene) {
+  const add = (key: string, p: ReturnType<typeof paper>) => { if (scene.textures.exists(key)) scene.textures.remove(key); scene.textures.addCanvas(key, p.canvas); };
+  const glow = paper(48, 48, TEX_RES);
+  glow.ctx.fillStyle = radial(glow.ctx, 24, 24, 24, [[0, 0xfff0c0, 0.95], [0.18, 0xffc060, 0.6], [0.5, 0xff8a20, 0.18], [1, 0xff6010, 0]]);
+  glow.ctx.fillRect(0, 0, 48, 48);
+  add('glow', glow);
+  const puff = paper(40, 30, TEX_RES);
+  const r = prng(3);
+  for (let i = 0; i < 6; i++) softEllipse(puff.ctx, 12 + r() * 16, 10 + r() * 10, 8 + r() * 6, 6 + r() * 4, 0xd8d4cc, 0.5);
+  add('puff', puff);
+}
+
+/** Pennant on a short pole, in several wave phases (tinted with the team colour at runtime). */
+export const FLAG_FRAMES = 6;
+function genFlags(scene: Phaser.Scene) {
+  for (let f = 0; f < FLAG_FRAMES; f++) {
+    const p = paper(26, 24, TEX_RES);
+    const c = p.ctx;
+    c.fillStyle = '#2a1c12'; c.fillRect(1, 2, 1.6, 22);
+    c.fillStyle = '#d8b050'; c.beginPath(); c.arc(1.8, 2, 1.4, 0, Math.PI * 2); c.fill();
+    const ph = (f / FLAG_FRAMES) * Math.PI * 2;
+    const wave = (x: number) => Math.sin(ph - x * 0.35) * (x / 20) * 2.2;
+    c.beginPath();
+    c.moveTo(2.6, 3);
+    for (let x = 0; x <= 20; x += 2) c.lineTo(2.6 + x, 3 + x * 0.12 + wave(x));
+    for (let x = 20; x >= 0; x -= 2) c.lineTo(2.6 + x, 12 - x * 0.12 + wave(x));
+    c.closePath();
+    const g = c.createLinearGradient(0, 0, 24, 0);
+    for (let x = 0; x <= 20; x += 4) { const sh = 0.78 + 0.22 * Math.cos(ph - x * 0.35); g.addColorStop(x / 24, `rgb(${255 * sh | 0},${255 * sh | 0},${255 * sh | 0})`); }
+    c.fillStyle = g; c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.6; c.stroke();
+    if (scene.textures.exists(`flag${f}`)) scene.textures.remove(`flag${f}`);
+    scene.textures.addCanvas(`flag${f}`, p.canvas);
   }
-  // broken roof shards in team colour
-  for (let i = 0; i < 9; i++) {
-    const x = cx + (r() - 0.5) * 110, y = cy + (r() - 0.3) * 40;
-    poly(g, shade(roof, 0.8 + r() * 0.4), [[x, y], [x + 8 + r() * 6, y - 3], [x + 4, y - 8 - r() * 5]]);
-  }
-  // a fallen tower lying across the front
-  const fx = f.bottom[0] - 30, fy = f.bottom[1] - 6;
-  poly(g, shade(stone, 0.75), [[fx, fy], [fx + 44, fy - 14], [fx + 50, fy - 4], [fx + 6, fy + 10]]);
-  poly(g, shade(stone, 1.0), [[fx, fy], [fx + 44, fy - 14], [fx + 40, fy - 22], [fx - 4, fy - 8]]);
-  // charred beams
-  g.lineStyle(3, 0x2a1e14);
-  for (let i = 0; i < 4; i++) { const x = cx + (r() - 0.5) * 80, y = cy + (r() - 0.5) * 24; g.lineBetween(x, y, x + 14 + r() * 10, y - 12 - r() * 10); }
-  return { w, h };
 }
 
 // ------------------------------------------------------------------ units
@@ -610,20 +375,10 @@ function genFx(scene: Phaser.Scene) {
 export function generateTextures(scene: Phaser.Scene) {
   genTerrain(scene);
   genFx(scene);
+  genStructures(scene);
+  genFlags(scene);
+  genSoftFx(scene);
   const g = hiGraphics(scene);
-  for (const def of Object.values(BUILDINGS)) {
-    g.clear();
-    const { w, h } = drawBuilding(g, def);
-    gen(g, `b_${def.id}`, w, h);
-  }
-  for (const team of [0, 1] as const) {
-    g.clear();
-    const { w, h } = drawCastle(g, team);
-    gen(g, `castle${team}`, w, h);
-    g.clear();
-    drawRuin(g, team);
-    gen(g, `ruin${team}`, w, h);
-  }
   for (const u of Object.values(UNITS)) {
     g.clear();
     drawUnit(g, u);
