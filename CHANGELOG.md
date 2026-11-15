@@ -2,6 +2,13 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.15.0
+Factions now play very differently.
+- **Ironvow Order** (few but elite): Masonry (+1 armour on all buildings); the only healers; Shieldbearers project a shield wall (+3 armour to nearby allies); Halberdiers deal double damage to heavy armour; Lancers and Vow Knights charge (the first blow after marching hits 2× / 2.5×); Arbalesters ignore armour; Skyhawks deal double damage to flyers; the Bastion Tower upgrades into a splash-damage Cannon Bastion; champions carry a damage aura.
+- **Thornwild Circle** (the swarm): every unit regenerates 1.5 HP/s and every building 4 HP/s; Burrows release two Vinelings at a time, and fallen Vinelings burst into two Sproutlings; Briarlings reflect melee damage (thorns); Gnashers heal from the damage they deal; Thorn Archers, Sylvan Snipers and Dusk Moths poison (damage over time and a slow, shown as a green tint); Moth Hives release clouds of three moths; Stags trample; fallen treants leave Saplings behind; Shamans lost their heals; the Amber Shrine became the Trophy Totem (+50% kill bounties instead of income); Strangle-Root hits harder as the faction's only defence.
+- Tooltips and the info panel list every unit ability; the lobby shows each faction's traits.
+- Balance pass for the new abilities (measured with bot-vs-bot simulations); smarter hard bots: they read what the enemy's attacks are strong against, avoid flooding fragile chaff, respect enemy splash and save up for anti-air when needed.
+
 ## 0.14.1
 - Fix: zooming with a touchpad (e.g. MacBook) is smooth instead of far too fast: zoom now follows the scroll distance, and pinch-to-zoom zooms the map rather than the page.
 - Fix: a newly finished (or upgraded) spawn building starts its training bar from zero and runs its own full cycle, instead of starting half-way; each building keeps its own rhythm.

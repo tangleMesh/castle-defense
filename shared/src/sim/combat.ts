@@ -1,5 +1,5 @@
 import { BOUNTY_MULT, CASTLE_ARMOR, DEFAULT_AGGRO, TICK_RATE } from '../constants';
-import { BUILDINGS, UNITS, computeDamage, teamItemBonus, type ArmorType, type AttackType } from '../data';
+import { BUILDINGS, UNITS, computeDamage, teamItemBonus, type ArmorType, type AttackType, type UnitDef } from '../data';
 import type { Sim } from './sim';
 import type { Entity } from './state';
 import { modsOf } from './auras';
@@ -32,7 +32,7 @@ export function attackStats(e: Entity): AttackStats | null {
     if (!a) return null;
     return {
       dmg: a.dmg, attackType: a.attackType, range: a.range, cooldownTicks: Math.round(a.cooldown * TICK_RATE),
-      targetsAir: a.targetsAir, structuresOnly: false, splash: 0, chain: 0, aggro: a.range,
+      targetsAir: a.targetsAir, structuresOnly: false, splash: a.splash ?? 0, chain: 0, aggro: a.range,
     };
   }
   return null;
@@ -57,11 +57,12 @@ export function canTarget(sim: Sim, a: Entity, st: AttackStats, t: Entity | unde
 }
 
 /** Apply damage; credits kills/bounty to the attacking player. Returns damage dealt. */
-export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackType, attackerOwner: number): number {
+export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackType, attackerOwner: number, ignoreArmor = false): number {
   if (target.hp <= 0) return 0;
   const armor = armorOf(sim, target);
-  const dmg = computeDamage(raw, type, armor.type, armor.value);
+  const dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   target.hp -= dmg;
+  let bountyExtra = 0;
   if (target.hp <= 0 && target.kind !== 'castle') {
     target.hp = 0;
     const p = sim.state.players[attackerOwner];
@@ -70,10 +71,13 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
       const bounty = target.kind === 'unit'
         ? Math.max(1, Math.round(UNITS[target.type].bounty * BOUNTY_MULT))
         : target.kind === 'building' ? Math.floor((target.value ?? 0) * 0.1 * BOUNTY_MULT) : 0;
+      // Hunting economies (Thornwild's Trophy Totem) earn extra from every kill.
+      const bonus = sim.bountyBonus[attackerOwner] ?? 0;
+      if (bonus > 0 && bounty > 0) { const extra = Math.max(1, Math.round(bounty * bonus)); p.gold += extra; p.goldEarned += extra; bountyExtra = extra; }
       if (bounty > 0) {
         p.gold += bounty;
         p.goldEarned += bounty;
-        sim.emit({ t: 'gold', p: attackerOwner, g: bounty, x: Math.round(target.x * 100) / 100, y: Math.round(target.y * 100) / 100 });
+        sim.emit({ t: 'gold', p: attackerOwner, g: bounty + bountyExtra, x: Math.round(target.x * 100) / 100, y: Math.round(target.y * 100) / 100 });
       }
     }
   }
@@ -104,8 +108,22 @@ export function findTarget(sim: Sim, a: Entity, st: AttackStats, radius: number)
   return best;
 }
 
+/** Damage multiplier of a unit's `bonusVs` against a target. */
+function bonusMult(sim: Sim, a: Entity, t: Entity): number {
+  if (a.kind !== 'unit') return 1;
+  const b = UNITS[a.type].bonusVs;
+  if (!b) return 1;
+  const hit = b.vs === 'air' ? sim.isAir(t) : b.vs === 'structure' ? sim.isStructure(t) : t.kind === 'unit' && UNITS[t.type].armorType === b.vs;
+  return hit ? b.mult : 1;
+}
+
 export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmgMult: number) {
-  const raw = st.dmg * dmgMult;
+  const ud = a.kind === 'unit' ? UNITS[a.type] : undefined;
+  let mult = dmgMult * bonusMult(sim, a, t);
+  // Charge: the first blow after marching freely hits much harder.
+  let charged = false;
+  if (ud?.charge && a.charge) { mult *= ud.charge; a.charge = false; charged = true; }
+  const raw = st.dmg * mult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
   if (st.chain > 1) {
     const hit = [t];
@@ -128,7 +146,9 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
     return;
   }
   sim.emit({ t: 'atk', a: a.id, b: t.id, r: ranged });
-  dealDamage(sim, t, raw, st.attackType, a.owner);
+  const dealt = dealDamage(sim, t, raw, st.attackType, a.owner, !!ud?.ignoreArmor);
+  if (charged) sim.emit({ t: 'splash', x: Math.round(t.x * 100) / 100, y: Math.round(t.y * 100) / 100, r: 0.6 });
+  if (ud) onHit(sim, a, ud, t, dealt, ranged);
   if (st.splash > 0) {
     const p = sim.isStructure(t) ? nearestPointOn(t, a.x, a.y) : { x: t.x, y: t.y };
     for (const u of sim.hash.query(p.x, p.y, st.splash + 0.8)) {
@@ -138,6 +158,16 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
     }
     sim.emit({ t: 'splash', x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100, r: st.splash });
   }
+}
+
+/** Lifesteal, poison and thorns after a single-target hit. */
+function onHit(sim: Sim, a: Entity, ud: UnitDef, t: Entity, dealt: number, ranged: 0 | 1) {
+  if (ud.lifesteal && dealt > 0 && a.hp > 0) a.hp = Math.min(a.maxHp, a.hp + dealt * ud.lifesteal);
+  if (ud.poison && t.kind === 'unit' && t.hp > 0) {
+    t.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: ud.poison.slow, owner: a.owner };
+  }
+  const thorns = t.kind === 'unit' ? UNITS[t.type].thorns : undefined;
+  if (thorns && !ranged && dealt > 0 && a.hp > 0) dealDamage(sim, a, dealt * thorns, 'chaos', t.owner, true);
 }
 
 function tryHeal(sim: Sim, e: Entity) {
@@ -163,7 +193,14 @@ export function stepCombatUnits(sim: Sim) {
     if (e.kind !== 'unit' || e.hp <= 0) continue;
     const st = attackStats(e)!;
     const mods = modsOf(sim, e.id);
-    if (mods.regen > 0) e.hp = Math.min(e.maxHp, e.hp + mods.regen / TICK_RATE);
+    const ud = UNITS[e.type];
+    const regen = (ud.regen ?? 0) + mods.regen;
+    if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
+    if (e.poison) {
+      dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
+      if (--e.poison.left <= 0) delete e.poison;
+      if (e.hp <= 0) continue;
+    }
     if ((e.cd ?? 0) > 0) e.cd!--;
     tryHeal(sim, e);
 
@@ -191,6 +228,8 @@ export function stepCombatUnits(sim: Sim) {
       }
     } else {
       followFlow(sim, e, speed);
+      // Marching freely readies the next charge.
+      if (ud.charge) e.charge = true;
     }
   }
 }

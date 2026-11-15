@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive,
+  BASE_INCOME, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -531,9 +531,11 @@ export class Hud {
       const u = UNITS[d.spawn.unit];
       lines.push(`Spawns <b>${d.spawn.count}× ${u.name}</b> every ${d.spawn.interval}s`);
       lines.push(`${u.hp} HP · ${u.dmg} ${ATTACK_LABEL[u.attackType]} dmg (strong vs ${strongAgainst(u.attackType)}) · ${ARMOR_LABEL[u.armorType]} armor ${u.armor}${u.air ? ' · <i>flying</i>' : ''}${u.range > 1.5 ? ` · range ${u.range}` : ''}`);
+      for (const a of unitAbilities(u, UNITS)) lines.push(`<span class="tip-ability">✦ ${a}</span>`);
     }
     if (d.aura) lines.push(`Aura radius ${d.aura.radius}`);
-    if (d.attack) lines.push(`Attack ${d.attack.dmg} ${ATTACK_LABEL[d.attack.attackType]}, range ${d.attack.range}`);
+    if (d.attack) lines.push(`Attack ${d.attack.dmg} ${ATTACK_LABEL[d.attack.attackType]}, range ${d.attack.range}${d.attack.splash ? ', splash' : ''}`);
+    if (d.regen) lines.push(`Living wood: regrows ${d.regen} HP/s`);
     lines.push(`<span class="tip-meta">${d.hp} HP · build ${d.buildTime}s${d.special ? ' · <b>SPECIAL</b>' : ''}</span>`);
     return lines.join('<br>');
   }
@@ -590,8 +592,7 @@ export class Hud {
         h('div', { class: 'info-title' }, u.name), h('div', { class: 'dim' }, ownerName), hpBar,
         h('div', null, `Attack: ${u.dmg} ${ATTACK_LABEL[u.attackType]}${u.range > 1.5 ? ` · range ${u.range}` : ' · melee'}${u.splash ? ' · splash' : ''}${u.chain ? ` · chains ${u.chain}` : ''}`),
         h('div', null, `Armor: ${u.armor} ${ARMOR_LABEL[u.armorType]} · Speed ${u.speed}${u.air ? ' · flying' : ''}`),
-        u.heal ? h('div', null, `Heals ${u.heal.amount} HP`) : null,
-        u.structuresOnly ? h('div', null, 'Attacks buildings only') : null,
+        unitAbilities(u, UNITS).map((a) => h('div', { class: 'ability' }, `✦ ${a}`)),
         h('div', { class: 'dim' }, `Strong vs ${strongAgainst(u.attackType)} · Bounty ${u.bounty}g`),
       ));
     } else if (kind === 1) {

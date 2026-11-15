@@ -48,6 +48,8 @@ export function stepBuildings(sim: Sim) {
       }
       continue;
     }
+    // Living structures (Thornwild) slowly regrow damage.
+    if (def.regen && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + def.regen / TICK_RATE);
     if (!def.spawn) continue;
     if (e.spawnTimer === undefined) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
     e.spawnTimer -= step[e.team];

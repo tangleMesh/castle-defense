@@ -9,8 +9,12 @@ export const KIND_CODES: EntityKind[] = ['unit', 'building', 'builder', 'castle'
  * Compact entity row: [id, kind, type, owner, team, x, y, hp, maxHp, extra, spawn].
  * extra = construction progress 0..100 for structures (‑progress while upgrading), else 0.
  * spawn = ticks until the next unit for finished spawn buildings, else 0.
+ * fx = status bit flags (FX_POISON).
  */
-export type EntRow = [number, number, string, number, number, number, number, number, number, number, number];
+export type EntRow = [number, number, string, number, number, number, number, number, number, number, number, number];
+
+/** EntRow fx flag: the unit is poisoned. */
+export const FX_POISON = 1;
 
 export interface SnapshotPlayer {
   i: number;
@@ -63,7 +67,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
       extra = e.upgrading ? -Math.max(1, prog) : prog;
     }
     const spawn = e.kind === 'building' && !e.buildLeft ? e.spawnTimer ?? 0 : 0;
-    ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), e.maxHp, extra, spawn]);
+    ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), e.maxHp, extra, spawn, e.poison ? FX_POISON : 0]);
     if (e.kind === 'builder') for (const o of e.orders ?? []) orders.push([e.owner, o.building, o.tx, o.ty]);
   }
   return {

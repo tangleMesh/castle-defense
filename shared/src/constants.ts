@@ -10,7 +10,7 @@ export const TICK_RATE = 20;
 /** Snapshot is broadcast every N ticks (10 Hz). */
 export const SNAPSHOT_EVERY = 2;
 
-/** Enough for exactly one cheap spawner of either faction (Ironvow 90, Thornwild 80). */
+/** Enough for exactly one cheap spawner of either faction (both cost 90). */
 export const START_GOLD = 100;
 export const INCOME_INTERVAL_TICKS = 10 * TICK_RATE;
 /** Gold pace: income and bounties run at 30% of the original (fast-paced) economy. */
@@ -22,6 +22,8 @@ export const BOUNTY_MULT = 0.3;
 /** Income buildings stack up to this total bonus (+30%). */
 export const MAX_INCOME_BONUS = 0.3;
 export const SELL_REFUND = 0.5;
+/** Kill-bounty bonus buildings stack up to this total (+100%). */
+export const MAX_BOUNTY_BONUS = 1;
 /** Bonus gold for the first, second and third player to finish a building each round. */
 export const FIRST_BUILD_BONUS = [20, 15, 10];
 

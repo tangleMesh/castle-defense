@@ -189,7 +189,11 @@ export class LobbyView {
           return h('button', {
             class: `faction ${me.faction === id ? 'selected' : ''}`, style: `--fc:${css(f.color)}`,
             onclick: () => this.socket.send({ type: 'lobby.setFaction', faction: id }),
-          }, h('b', null, f.name), h('span', null, f.desc));
+          }, h('b', null, f.name), h('span', null, f.desc),
+            h('ul', { class: 'traits' }, f.traits.map((t) => {
+              const [head, ...rest] = t.split(': ');
+              return h('li', null, rest.length ? h('b', null, `${head}: `) : null, rest.length ? rest.join(': ') : head);
+            })));
         })),
       ) : null,
       h('div', { class: 'room-actions' },

@@ -47,6 +47,10 @@ export interface Entity {
   targetId?: number;
   cd?: number;
   healCd?: number;
+  /** Charge ready: the next blow deals the unit's charge multiplier. */
+  charge?: boolean;
+  /** Active poison: damage per second, ticks left, slow and the player credited for kills. */
+  poison?: { dps: number; left: number; slow: number; owner: number };
 
   // ---- builder
   orders?: BuildOrder[];

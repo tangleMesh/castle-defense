@@ -43,6 +43,25 @@ export interface UnitDef {
   chain?: number;
   heal?: { amount: number; range: number; cooldown: number };
   aggro?: number;
+  // ---- faction-specific abilities
+  /** Aura carried by the unit itself (radius measured from the unit). */
+  aura?: AuraDef;
+  /** Damage multiplier against a target class (e.g. halberds vs heavy armour, hawks vs flyers). */
+  bonusVs?: { vs: ArmorType | 'air' | 'structure'; mult: number };
+  /** Attacks ignore the target's armour value. */
+  ignoreArmor?: boolean;
+  /** The first blow after marching freely deals this damage multiplier. */
+  charge?: number;
+  /** Attacks poison the target: damage per second for `duration` seconds and a slow. */
+  poison?: { dps: number; duration: number; slow: number };
+  /** Share of damage dealt that heals the attacker. */
+  lifesteal?: number;
+  /** Share of melee damage taken that is reflected to the attacker. */
+  thorns?: number;
+  /** Units released when this unit dies. */
+  onDeath?: { unit: string; count: number };
+  /** Innate regeneration in HP per second. */
+  regen?: number;
   model: UnitModel;
 }
 
@@ -70,7 +89,11 @@ export interface BuildingDef {
   special?: boolean;
   spawn?: { unit: string; count: number; interval: number };
   aura?: AuraDef;
-  attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean };
+  attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number };
+  /** Extra share of kill bounties for the owner (0.5 = +50%; stacks up to MAX_BOUNTY_BONUS). */
+  bountyBonus?: number;
+  /** Structure regeneration in HP per second (set by faction traits). */
+  regen?: number;
   /** Additional income multiplier (0.15 = +15%). */
   incomeBonus?: number;
   upgrades?: string[];
@@ -82,6 +105,10 @@ export interface FactionDef {
   name: string;
   desc: string;
   color: number;
+  /** Short summary of what makes the faction play differently (lobby). */
+  traits: string[];
+  /** Applied to every unit / building of the faction. */
+  trait?: { unitRegen?: number; buildingRegen?: number; buildingArmor?: number };
   /** Buildable building ids in command-card order. */
   build: string[];
   buildings: BuildingDef[];

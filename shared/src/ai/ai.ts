@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, TICK_RATE } from '../constants';
-import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type BuildingDef, type ItemDef, type UnitDef } from '../data';
+import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type ItemDef, type UnitDef } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
@@ -226,10 +226,25 @@ export class AiPlayer {
     else if (P.saves) {
       // Go for the best option; wait for it when it's within ~15 s of income.
       options.sort((a, b) => b.score - a.score);
-      const income = incomeFor(sim, this.player) * 1.5;
-      for (const o of options) {
-        if (o.def.cost <= me.gold) { pick = o; break; }
-        if (o.def.cost <= me.gold + income) return null;
+      const perTick = incomeFor(sim, this.player);
+      // Enemy flyers and no way to hit them: save up (up to ~40 s) for anti-air instead of
+      // buying yet another cheap ground spawner.
+      const aa = this.needsAntiAir(sim, me, mine) ? options.find((o) => o.def.spawn && (UNITS[o.def.spawn.unit].targetsAir || UNITS[o.def.spawn.unit].air)) : undefined;
+      if (aa && aa.def.cost > me.gold && aa.def.cost <= me.gold + perTick * 4) return null;
+      if (aa && aa.def.cost <= me.gold) pick = aa;
+      else {
+        // Don't flood the field with cheap chaff: if the affordable choice is a spawner of fragile
+        // units, wait up to ~30 s of income for a clearly better option (unless under pressure).
+        const cheap = options.find((o) => o.def.cost <= me.gold);
+        // (Not for the very first spawner: that one is bought as soon as possible.)
+        const chaff = !!cheap?.def.spawn && UNITS[cheap.def.spawn.unit].hp < 150
+          && mine.filter((e) => BUILDINGS[e.type].spawn).length >= 1;
+        for (const o of options) {
+          if (o.def.cost <= me.gold) { pick = o; break; }
+          if (o.def.cost <= me.gold + perTick * 1.5) return null;
+          if (chaff && o.score >= cheap!.score * 1.2 && o.def.cost <= me.gold + perTick * 3
+            && !this.enemyProfile(sim, me).pressure) return null;
+        }
       }
     } else if (P.planner) {
       const affordable = options.filter((o) => o.def.cost <= me.gold);
@@ -288,6 +303,8 @@ export class AiPlayer {
       }
       if (def.spawn) {
         let score = this.spawnScore(def, enemy) / def.cost;
+        // Planners keep a mixed army: each further copy of the same spawner is worth a bit less.
+        if (P.counter) score *= 0.88 ** count((d) => d.id === def.id || !!def.upgrades?.includes(d.id));
         if (P.rangedShare && UNITS[def.spawn.unit].range >= 4 && ranged < P.rangedShare * Math.max(1, spawners)) score *= 1.6;
         out.push({ kind: 'build', def, score });
         continue;
@@ -304,6 +321,10 @@ export class AiPlayer {
         const perTick = incomeFor(sim, this.player) * def.incomeBonus + def.cost * INCOME_PCT;
         const payback = (def.cost / Math.max(0.1, perTick)) * (INCOME_INTERVAL_TICKS / TICK_RATE);
         if (payback < (P.counter ? 240 : 180)) out.push({ kind: 'build', def, score: top * 1.1 });
+      } else if (def.bountyBonus) {
+        // Hunting economy: worth it once the army is killing steadily.
+        const have = count((d) => !!d.bountyBonus);
+        if (spawners >= 4 && have < Math.min(2, Math.floor(spawners / 4))) out.push({ kind: 'build', def, score: top * 1.05 });
       } else if (def.attack) {
         // Towers (incl. auras that also attack) defend the castle approach.
         if (towers < wantTowers) out.push({ kind: 'build', def, score: top * (enemy.pressure ? 1.4 : 1.1) });
@@ -336,9 +357,15 @@ export class AiPlayer {
   private spawnScore(def: BuildingDef, enemy: EnemyProfile): number {
     const sp = def.spawn!;
     const u = UNITS[sp.unit];
-    const dps = u.dmg / u.cooldown * (u.chain ? 1 + (u.chain - 1) * 0.5 : 1) * (u.splash ? 1.6 : 1) * (u.heal ? 1.5 : 1);
-    let power = Math.sqrt(u.hp * (1 + u.armor * 0.06) * dps) * sp.count / sp.interval;
+    // Faction abilities, folded into rough damage and toughness factors.
+    const dps = (u.dmg / u.cooldown * (u.chain ? 1 + (u.chain - 1) * 0.5 : 1) * (u.splash ? 1.6 : 1) * (u.heal ? 1.5 : 1)
+      + (u.poison ? u.poison.dps * 0.8 : 0)) * (u.charge ? 1.25 : 1) * (u.bonusVs ? 1.15 : 1) * (u.ignoreArmor ? 1.15 : 1) * (u.aura ? 1.25 : 1);
+    let hp = u.hp * (1 + (u.lifesteal ?? 0) * 0.8 + (u.thorns ?? 0) * 0.6) + (u.regen ?? 0) * 8;
+    if (u.onDeath) hp += UNITS[u.onDeath.unit].hp * u.onDeath.count * 0.3;
+    let power = Math.sqrt(hp * (1 + u.armor * 0.06) * dps) * sp.count / sp.interval;
     if (u.structuresOnly) power *= 0.6;
+    // Small bodies lose more to overkill, splash and towers than the formula suggests.
+    if (u.hp < 150) power *= 0.75;
     // Ranged units keep shooting from behind the frontline.
     if (this.profile.counter && u.range >= 4) power *= 1.35;
     if (this.profile.counter && enemy.total > 0) power *= this.counterFactor(u, enemy);
@@ -354,18 +381,35 @@ export class AiPlayer {
     const air = enemy.air / enemy.total;
     if (!u.targetsAir && !u.air) f *= 1 - air * 0.8;
     else if (air > 0.15) f *= 1 + air * 0.5;
+    // Defence: avoid units whose armour the enemy's attacks are strong against.
+    let taken = 0;
+    for (const [att, w] of Object.entries(enemy.attack) as Array<[AttackType, number]>) taken += (w / enemy.total) * DAMAGE_TABLE[att][u.armorType];
+    if (taken > 0) f /= Math.max(0.6, taken) ** 0.7;
+    // Swarms of small bodies melt under splash and chain attacks.
+    if (u.hp < 150 || u.onDeath) f *= 1 - (enemy.splash / enemy.total) * 0.7;
     // Our own units: keep some frontline when the enemy has many ranged units.
     if (u.range > 2 && enemy.ranged / enemy.total > 0.5) f *= 0.9;
     return Math.max(0.2, f) ** 1.5;
   }
 
+  /** The enemy fields a real air force and less than a fifth of our spawners can shoot it down. */
+  private needsAntiAir(sim: Sim, me: PlayerState, mine: Entity[]): boolean {
+    const enemy = this.enemyProfile(sim, me);
+    if (!enemy.total || enemy.air / enemy.total < 0.2) return false;
+    const spawners = mine.filter((e) => BUILDINGS[e.type].spawn);
+    const aa = spawners.filter((e) => { const u = UNITS[BUILDINGS[e.type].spawn!.unit]; return u.targetsAir || u.air; });
+    return aa.length < Math.max(1, spawners.length * 0.2);
+  }
+
   private enemyProfile(sim: Sim, me: PlayerState): EnemyProfile {
-    const p: EnemyProfile = { armor: {}, air: 0, ranged: 0, total: 0, pressure: false };
+    const p: EnemyProfile = { armor: {}, attack: {}, air: 0, ranged: 0, splash: 0, total: 0, pressure: false };
     const c = rectCenter(MAP.castles[me.team]);
     const add = (u: UnitDef, w: number) => {
       p.armor[u.armorType] = (p.armor[u.armorType] ?? 0) + w;
+      p.attack[u.attackType] = (p.attack[u.attackType] ?? 0) + w;
       if (u.air) p.air += w;
       if (u.range > 2) p.ranged += w;
+      if (u.splash || u.chain) p.splash += w;
       p.total += w;
     };
     let near = 0;
@@ -377,11 +421,12 @@ export class AiPlayer {
       if (e.kind !== 'castle' && !entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
       if (e.kind === 'unit') {
         const u = UNITS[e.type];
-        if (u) add(u, u.hp / 200);
+        // Small units still count: a cloud of moths is a threat even at 85 HP each.
+        if (u) add(u, Math.max(0.6, u.hp / 200));
         if (Math.hypot(e.x - c.x, e.y - c.y) < 18) near++;
       } else if (e.kind === 'building') {
         const sp = BUILDINGS[e.type].spawn;
-        if (sp) { const u = UNITS[sp.unit]; add(u, (u.hp / 200) * sp.count * 2); }
+        if (sp) { const u = UNITS[sp.unit]; add(u, Math.max(0.6, u.hp / 200) * sp.count * 2); }
       }
     }
     p.pressure = near >= 6;
@@ -435,8 +480,12 @@ export class AiPlayer {
 
 interface EnemyProfile {
   armor: Partial<Record<ArmorType, number>>;
+  /** Weight of the enemy's attack types (what hurts which of our armour types). */
+  attack: Partial<Record<AttackType, number>>;
   air: number;
   ranged: number;
+  /** Enemy units with splash or chain attacks (bad news for swarms). */
+  splash: number;
   total: number;
   /** Many enemy units close to our castle. */
   pressure: boolean;

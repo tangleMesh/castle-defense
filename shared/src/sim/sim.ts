@@ -1,4 +1,5 @@
-import { INCOME_INTERVAL_TICKS, START_GOLD , type GameMode } from '../constants';
+import { INCOME_INTERVAL_TICKS, START_GOLD, type GameMode } from '../constants';
+import { nextRandom } from './rng';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
 import type { Entity, PlayerCommand, PlayerSetup, SimEvent, SimState, Team } from './state';
@@ -30,6 +31,8 @@ export class Sim {
   byId = new Map<number, Entity>();
   hash = new SpatialHash(3);
   mods = new Map<number, Mods>();
+  /** Per player kill-bounty bonus from buildings (recomputed every tick with the auras). */
+  bountyBonus: number[] = [];
   private blocked: Uint8Array | null = null;
   private fields: [Uint16Array | null, Uint16Array | null] = [null, null];
 
@@ -104,15 +107,31 @@ export class Sim {
   removeDead() {
     let gridChanged = false;
     const alive: Entity[] = [];
+    const released: Entity[] = [];
     for (const e of this.state.entities) {
       if (e.hp > 0 || e.kind === 'builder' || e.kind === 'castle') { alive.push(e); continue; }
       this.byId.delete(e.id);
-      if (e.kind === 'unit') { const p = this.state.players[e.owner]; if (p) p.lost = (p.lost ?? 0) + 1; }
+      if (e.kind === 'unit') {
+        const p = this.state.players[e.owner]; if (p) p.lost = (p.lost ?? 0) + 1;
+        if (UNITS[e.type].onDeath) released.push(e);
+      }
       this.emit({ t: 'die', id: e.id, x: round2(e.x), y: round2(e.y), k: e.kind });
       if (e.kind === 'building') gridChanged = true;
     }
     this.state.entities = alive;
     if (gridChanged) this.invalidateGrid();
+    // Units that burst into smaller ones when they fall (Vinelings → Sproutlings, treants → saplings).
+    for (const e of released) {
+      const od = UNITS[e.type].onDeath!;
+      const u = UNITS[od.unit];
+      for (let i = 0; i < od.count; i++) {
+        const a = (i / od.count) * Math.PI * 2 + nextRandom(this.state);
+        this.add({
+          kind: 'unit', type: od.unit, owner: e.owner, team: e.team,
+          x: e.x + Math.cos(a) * 0.35, y: e.y + Math.sin(a) * 0.35, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0,
+        });
+      }
+    }
   }
 
   removeNow(e: Entity) {

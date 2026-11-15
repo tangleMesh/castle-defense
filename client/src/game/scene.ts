@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
+  BUILDINGS, FX_POISON, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -18,6 +18,8 @@ const GROUND_RES = Math.min(TEX_RES, 1.5);
 
 interface View {
   id: number;
+  /** Status flags from the snapshot (FX_POISON). */
+  fx?: number;
   kind: number;
   type: string;
   team: Team;
@@ -484,7 +486,9 @@ export class GameScene extends Phaser.Scene {
       const breathe = !v.moving && !v.air ? 1 + 0.018 * Math.sin(time / 520 + v.id) : 1;
       if (v.kind === KIND_UNIT) v.sprite.setScale(sc(UNIT_SCALE), sc(UNIT_SCALE * breathe));
       else v.sprite.setScale(sc(1.1), sc(1.1 * breathe));
-      if (v.flash > 0) v.sprite.setTint(0xffaaaa); else v.sprite.clearTint();
+      if (v.flash > 0) v.sprite.setTint(0xffaaaa);
+      else if ((v.fx ?? 0) & FX_POISON) v.sprite.setTint(0xa8f080);
+      else v.sprite.clearTint();
       v.shadow?.setPosition(p.x, p.y).setDepth(d - 0.5);
       v.ring?.setPosition(p.x, p.y).setDepth(d - 0.4);
       return;
@@ -569,7 +573,9 @@ export class GameScene extends Phaser.Scene {
       if (Math.abs(sdx) > 0.004) v.facing = sdx > 0 ? 1 : -1;
       v.x = x; v.y = y;
       const src = nb ?? row;
-      if (src[7] < v.hp) v.flash = 90;
+      v.fx = src[11] ?? 0;
+      // Damage flash (not for the steady tick of poison: poisoned units get a green tint instead).
+      if (src[7] < v.hp - (v.fx & FX_POISON ? 3 : 0)) v.flash = 90;
       v.hp = src[7]; v.maxHp = src[8]; v.extra = src[9];
       // Spawn countdown, interpolated between snapshots (unless a unit spawned in between).
       v.spawn = nb && nb[10] <= row[10] ? row[10] + (nb[10] - row[10]) * alpha : src[10];
