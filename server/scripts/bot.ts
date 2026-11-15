@@ -70,7 +70,7 @@ export class Bot {
 
   waitFor<T extends ServerMessage['type']>(type: T, pred: (m: Extract<ServerMessage, { type: T }>) => boolean = () => true, timeoutMs = 30_000): Promise<Extract<ServerMessage, { type: T }>> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`${this.name}: timeout waiting for ${type}`)), timeoutMs);
+      const timer = setTimeout(() => reject(new Error(`${this.name}: timeout waiting for ${type} (last tick ${this.snap?.tick}, phase ${this.snap?.phase}, ents ${this.snap?.ents.length}, buildings ${this.snap?.ents.filter((e) => e[1] === 1).length}, ended ${this.ended?.reason}, errors ${this.errors.slice(-3).join(" / ")})`)), timeoutMs);
       this.waiters.push({
         pred: (m) => m.type === type && pred(m as Extract<ServerMessage, { type: T }>),
         resolve: (m) => { clearTimeout(timer); resolve(m as Extract<ServerMessage, { type: T }>); },

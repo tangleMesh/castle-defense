@@ -2,6 +2,9 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.16.1
+- Tests: fixed the long-standing "flaky" AI end-to-end test. It waited to *see* 4 buildings, but under fog of war the human only sees its own team's, so a quick defeat of its bot ally left it waiting forever. It now waits for the ally's first building early in the round. The failure messages of the test bots also show the last snapshot state.
+
 ## 0.16.0
 - **Sapphires**, a rare second resource: every player starts each round with exactly 1, shown next to the gold. A further sapphire costs 1,500 gold in the castle shop (slot Z).
 - Special buildings cost a sapphire on top of their gold (this replaces the old "one per player" rule). Cancelling a construction returns the sapphire.

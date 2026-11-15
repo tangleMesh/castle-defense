@@ -173,10 +173,10 @@ export async function aiMatchScenario(base: string, opts: { prefix: string; time
   const init = human.waitFor('match.init');
   human.send({ type: 'lobby.start' });
   const { matchId } = await init;
-  // The AI must actually build.
-  await human.waitFor('match.snapshot', (m) => m.snap.ents.filter((e) => e[1] === 1).length >= 4, opts.timeoutMs);
+  // The AI must actually build. Under fog of war the human only sees its own team's buildings
+  // (here: its bot ally's), and the round may end early, so check this well before any castle can fall.
+  await human.waitFor('match.snapshot', (m) => m.snap.tick > 600 && m.snap.ents.some((e) => e[1] === 1 && e[4] === human.team), opts.timeoutMs);
   log.push('AI players are building');
-  await human.waitFor('match.snapshot', (m) => m.snap.tick > 1200, opts.timeoutMs);
   const tickBefore = human.snap!.tick;
   const end = human.waitFor('match.end');
   human.send({ type: 'game.saveAndExit' });
