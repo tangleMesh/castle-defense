@@ -1,6 +1,8 @@
 import type { BuildingDef, FactionDef, FactionId, UnitDef } from './types';
 import { IRONVOW } from './factions/ironvow';
 import { THORNWILD } from './factions/thornwild';
+import { TUNING } from './tuning';
+import type { Tuning } from './types';
 
 export * from './types';
 export * from './combat';
@@ -24,6 +26,32 @@ for (const f of Object.values(FACTIONS)) {
     UNITS[u.id] = u;
   }
 }
+
+/** Hand-written values of every unit, before tuning. */
+const BASE = new Map(Object.values(UNITS).map((u) => [u.id, { hp: u.hp, dmg: u.dmg, heal: u.heal && { ...u.heal }, poison: u.poison && { ...u.poison } }]));
+const unitFaction = new Map<string, FactionId>();
+for (const f of Object.values(FACTIONS)) for (const u of f.units) unitFaction.set(u.id, f.id);
+
+/** The tuning in effect (see shared/src/data/tuning.ts). */
+export let ACTIVE_TUNING: Tuning = TUNING;
+
+/**
+ * Sets every unit's hp / damage / heal / poison to its hand-written value times the tuning.
+ * Always starts from the base values, so applying a tuning twice doesn't compound.
+ */
+export function applyUnitTuning(t: Tuning) {
+  ACTIVE_TUNING = t;
+  for (const u of Object.values(UNITS)) {
+    const b = BASE.get(u.id)!;
+    const power = Math.sqrt(t.factions[unitFaction.get(u.id)!]?.power ?? 1);
+    const hp = power * (t.units[u.id]?.hp ?? 1), dmg = power * (t.units[u.id]?.dmg ?? 1);
+    u.hp = b.hp * hp;
+    u.dmg = b.dmg * dmg;
+    if (b.heal) u.heal = { ...b.heal, amount: b.heal.amount * dmg };
+    if (b.poison) u.poison = { ...b.poison, dps: b.poison.dps * dmg };
+  }
+}
+applyUnitTuning(TUNING);
 
 /** Command-card hotkeys in WC3-grid order (row by row). */
 export const GRID_HOTKEYS = ['Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V'];

@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
-import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
+import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
@@ -11,8 +11,11 @@ import type { Command, Entity, PlayerState } from '../sim/state';
 export type AiLevel = 'easy' | 'normal' | 'hard' | 'brutal';
 export const AI_LEVELS: AiLevel[] = ['easy', 'normal', 'hard', 'brutal'];
 export const AI_LEVEL_NAMES: Record<AiLevel, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard', brutal: 'Brutal' };
-/** Income multiplier per level: Brutal openly cheats (it also sees through the fog of war). */
-export const AI_INCOME: Record<AiLevel, number> = { easy: 1, normal: 1, hard: 1, brutal: 1.3 };
+/**
+ * Income multiplier per level, set by the balancer (shared/src/data/tuning.ts). Brutal openly
+ * cheats (it also sees through the fog of war); easier levels may get less than a player.
+ */
+export const AI_INCOME: Record<AiLevel, number> = { easy: 1, normal: 1, hard: 1, brutal: 1.3, ...ACTIVE_TUNING.aiIncome };
 
 /** Bot players use synthetic user ids of the form `ai:<level>:<suffix>`. */
 export function isBotId(userId: string): boolean {

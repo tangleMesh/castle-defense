@@ -1,4 +1,6 @@
-import { BUILDINGS, UNITS } from '../data';
+import { AI_INCOME, AI_LEVELS } from '../ai/ai';
+import { BUILDINGS, UNITS, applyUnitTuning, type Tuning } from '../data';
+import { TUNING } from '../data/tuning';
 
 /**
  * What-if balance changes for the simulation lab: `{ "tw_burrow.spawn.interval": 24 }` sets a field
@@ -12,4 +14,17 @@ export function applyPatch(patch: Record<string, unknown>) {
     for (const k of keys.slice(0, -1)) obj = (obj[k] ??= {}) as Record<string, unknown>;
     obj[keys.at(-1)!] = value;
   }
+}
+
+const DEFAULT_INCOME = { easy: 1, normal: 1, hard: 1, brutal: 1.3 };
+
+/** The committed tuning (shared/src/data/tuning.ts). */
+export const COMMITTED_TUNING: Tuning = TUNING;
+/** No tuning at all: every multiplier 1, default bot incomes. */
+export const NEUTRAL_TUNING: Tuning = { factions: {}, units: {}, aiIncome: {} };
+
+/** Applies a tuning (unit multipliers and bot incomes) from the hand-written base values. */
+export function applyTuning(t: Tuning) {
+  applyUnitTuning(t);
+  for (const l of AI_LEVELS) AI_INCOME[l] = t.aiIncome[l] ?? DEFAULT_INCOME[l];
 }

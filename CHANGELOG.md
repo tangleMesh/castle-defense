@@ -2,6 +2,16 @@
 
 Castle Defense follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.19.0
+**Automatic balancer** (`npm run balance`)
+- One command plays every line-up against every other at 1v1–4v4 (pure, mixed and mirror teams, both map sides), building duels and the bot difficulty ladder. It then tunes the balance and verifies the result on fresh seeds.
+- Changes go only into a small generated file of multipliers, `shared/src/data/tuning.ts`: faction power, outlier units and bot income per level. The hand-written faction data stays the design intent. The game, tooltips and lab all use the tuned values.
+- Writes `docs/balance-report.md`, which also lists what knobs can't fix (size-dependent strength, lopsided line-ups, side bias, support units) as items for a design look.
+- Every game counts: a logistic fit of win rate against power and income over all games of a run picks each step.
+- Tuning steps play a representative sample of line-ups per team size (pure vs pure plus random others); only verification plays the full grid.
+- Verification passes when results are statistically indistinguishable from 50% (within ±5%).
+- `npm run balance:check` measures only, exits 1 when out of band and prints the command that re-tunes just the failed stages (e.g. `--stages bots` after an AI change). `--quick --dry` is a 5-minute smoke test. See docs/balancing.md, "Automatic balancing".
+
 ## 0.18.1
 - Renamed the game to **Castle Defense** (title, login/lobby screens, README, package name). The MongoDB database keeps its name `bastion_clash`, so existing accounts and saved games stay intact.
 

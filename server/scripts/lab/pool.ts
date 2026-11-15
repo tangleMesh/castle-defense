@@ -1,7 +1,7 @@
 // A small worker pool so lab runs use every CPU core.
 import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
-import type { DuelResult, LabMatch, LabResult, DuelSide } from '@bc/shared';
+import type { DuelResult, LabMatch, LabResult, DuelSide, Tuning } from '@bc/shared';
 import type { LabTask } from './worker';
 
 type Pending = { task: LabTask; resolve: (r: unknown) => void };
@@ -42,10 +42,13 @@ export class LabPool {
     }
   }
 
+  /** Tuning sent with every task (the balancer swaps candidates); undefined = the committed one. */
+  tuning?: Tuning;
+
   private run<T>(task: { kind: 'match'; job: LabMatch } | { kind: 'duel'; a: DuelSide; b: DuelSide; seed: number; minutes: number }): Promise<T> {
     this.total++;
     return new Promise((resolve) => {
-      this.queue.push({ task: { ...task, id: this.nextId++ } as LabTask, resolve: resolve as (r: unknown) => void });
+      this.queue.push({ task: { ...task, id: this.nextId++, tuning: this.tuning } as LabTask, resolve: resolve as (r: unknown) => void });
       this.pump();
     });
   }

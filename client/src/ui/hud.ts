@@ -548,7 +548,7 @@ export class Hud {
     if (d.spawn) {
       const u = UNITS[d.spawn.unit];
       lines.push(`Spawns <b>${d.spawn.count}× ${u.name}</b> every ${d.spawn.interval}s`);
-      lines.push(`${u.hp} HP · ${u.dmg} ${ATTACK_LABEL[u.attackType]} dmg (strong vs ${strongAgainst(u.attackType)}) · ${ARMOR_LABEL[u.armorType]} armor ${u.armor}${u.air ? ' · <i>flying</i>' : ''}${u.range > 1.5 ? ` · range ${u.range}` : ''}`);
+      lines.push(`${Math.round(u.hp)} HP · ${+u.dmg.toFixed(1)} ${ATTACK_LABEL[u.attackType]} dmg (strong vs ${strongAgainst(u.attackType)}) · ${ARMOR_LABEL[u.armorType]} armor ${u.armor}${u.air ? ' · <i>flying</i>' : ''}${u.range > 1.5 ? ` · range ${u.range}` : ''}`);
       for (const a of unitAbilities(u, UNITS)) lines.push(`<span class="tip-ability">✦ ${a}</span>`);
     }
     if (d.aura) lines.push(`Aura radius ${d.aura.radius}`);
@@ -608,7 +608,7 @@ export class Hud {
       const u = UNITS[type];
       this.info.append(portrait(`u_${type}`), h('div', { class: 'istats' },
         h('div', { class: 'info-title' }, u.name), h('div', { class: 'dim' }, ownerName), hpBar,
-        h('div', null, `Attack: ${u.dmg} ${ATTACK_LABEL[u.attackType]}${u.range > 1.5 ? ` · range ${u.range}` : ' · melee'}${u.splash ? ' · splash' : ''}${u.chain ? ` · chains ${u.chain}` : ''}`),
+        h('div', null, `Attack: ${+u.dmg.toFixed(1)} ${ATTACK_LABEL[u.attackType]}${u.range > 1.5 ? ` · range ${u.range}` : ' · melee'}${u.splash ? ' · splash' : ''}${u.chain ? ` · chains ${u.chain}` : ''}`),
         h('div', null, `Armor: ${u.armor} ${ARMOR_LABEL[u.armorType]} · Speed ${u.speed}${u.air ? ' · flying' : ''}`),
         unitAbilities(u, UNITS).map((a) => h('div', { class: 'ability' }, `✦ ${a}`)),
         h('div', { class: 'dim' }, `Strong vs ${strongAgainst(u.attackType)} · Bounty ${u.bounty}g`),

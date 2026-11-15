@@ -1,6 +1,6 @@
 {
   "name": "castle-defense",
-  "version": "0.18.1",
+  "version": "0.19.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -17,7 +17,9 @@
     "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p client --noEmit",
     "bots": "tsx server/scripts/bots.ts",
     "dev:memory": "tsx server/scripts/devMemory.ts",
-    "lab": "tsx server/scripts/lab/lab.ts"
+    "lab": "tsx server/scripts/lab/lab.ts",
+    "balance": "tsx server/scripts/lab/balance.ts",
+    "balance:check": "tsx server/scripts/lab/balance.ts --check"
   },
   "devDependencies": {
     "typescript": "5.8.3",

@@ -116,3 +116,15 @@ export interface FactionDef {
   buildings: BuildingDef[];
   units: UnitDef[];
 }
+
+/**
+ * Balance multipliers on top of the hand-written faction data, written by `npm run balance`
+ * (shared/src/data/tuning.ts). `power` scales hp and damage of every unit of a faction by
+ * sqrt(power) each, so fight strength moves by about `power`.
+ */
+export interface Tuning {
+  factions: Partial<Record<FactionId, { power: number }>>;
+  units: Record<string, { hp?: number; dmg?: number }>;
+  /** Income multiplier per bot level ('hard' is the anchor and stays 1). */
+  aiIncome: Partial<Record<'easy' | 'normal' | 'hard' | 'brutal', number>>;
+}
