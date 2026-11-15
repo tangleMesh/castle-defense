@@ -1,9 +1,25 @@
-import { TICK_RATE } from '../constants';
+import { FIRST_BUILD_BONUS, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, teamItemBonus } from '../data';
 import { idx, inBounds, nearestFree } from './grid';
 import type { Sim } from './sim';
 import { nextRandom } from './rng';
 import type { Entity } from './state';
+
+/** The first three players to finish a building in a round earn a small gold bonus. */
+function firstBuildBonus(sim: Sim, e: Entity) {
+  const s = sim.state;
+  const list = (s.firstBuilds ??= []);
+  if (list.length >= FIRST_BUILD_BONUS.length || list.includes(e.owner)) return;
+  const p = s.players[e.owner];
+  if (!p) return;
+  const place = list.length;
+  const g = FIRST_BUILD_BONUS[place];
+  list.push(e.owner);
+  p.gold += g;
+  p.goldEarned += g;
+  sim.emit({ t: 'first', p: e.owner, place, g });
+  sim.emit({ t: 'gold', p: e.owner, g, x: e.x, y: e.y });
+}
 
 /** Construction/upgrade progress and periodic unit spawning. */
 export function stepBuildings(sim: Sim) {
@@ -23,8 +39,10 @@ export function stepBuildings(sim: Sim) {
       // Fresh constructions grow from 10% to full HP; upgrades keep their HP ratio.
       if (!e.upgrading) e.hp = Math.min(e.maxHp, e.hp + (e.maxHp * 0.9) / (e.buildTotal || 1));
       if (e.buildLeft === 0) {
+        const fresh = !e.upgrading;
         delete e.upgrading;
         sim.emit({ t: 'built', id: e.id });
+        if (fresh) firstBuildBonus(sim, e);
         if (def.spawn) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE * 0.5);
       }
       continue;

@@ -15,6 +15,8 @@ export const BOUNTY_MULT = 0.3;
 /** Income buildings stack up to this total bonus (+30%). */
 export const MAX_INCOME_BONUS = 0.3;
 export const SELL_REFUND = 0.5;
+/** Bonus gold for the first, second and third player to finish a building each round. */
+export const FIRST_BUILD_BONUS = [20, 15, 10];
 
 export const CASTLE_HP = 8000;
 export const CASTLE_ARMOR = 5;

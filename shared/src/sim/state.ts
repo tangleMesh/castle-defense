@@ -97,7 +97,9 @@ export type SimEvent =
   | { t: 'match'; winner: Team; score: [number, number] }
   | { t: 'err'; p: number; msg: string }
   /** Player `p` bought an item. */
-  | { t: 'item'; p: number; item: string };
+  | { t: 'item'; p: number; item: string }
+  /** Player `p` finished the round's `place`-th first building (0-based) and got `g` bonus gold. */
+  | { t: 'first'; p: number; place: number; g: number };
 
 export interface RoundRecord {
   winner: Team;
@@ -124,6 +126,8 @@ export interface SimState {
   entities: Entity[];
   castleIds: [number, number];
   strikes: PendingStrike[];
+  /** Players who already finished a building this round, in order (optional: absent in older saves). */
+  firstBuilds?: number[];
   /** Transient: events produced in the last step (not meaningful after restore). */
   events: SimEvent[];
 }

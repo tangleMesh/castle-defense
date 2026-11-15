@@ -7,6 +7,7 @@ import type { Team } from './state';
 export function startRound(sim: Sim) {
   const s = sim.state;
   s.round++;
+  s.firstBuilds = [];
   s.entities = [];
   s.strikes = [];
   s.phase = 'playing';

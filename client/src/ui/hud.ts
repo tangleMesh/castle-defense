@@ -767,6 +767,12 @@ export class Hud {
           this.message(`${s.playerName(ev.p)} calls a rescue strike!`, team === s.team ? 'gold' : 'error', 2500);
         }
         return;
+      case 'first': {
+        const nth = ['First', 'Second', 'Third'][ev.place] ?? 'Early';
+        if (ev.p === s.you) this.message(`${nth} building of the round! +${ev.g} gold`, 'gold', 3000);
+        else this.message(`${s.playerName(ev.p)} finished the ${nth.toLowerCase()} building (+${ev.g} gold).`, 'info', 2500);
+        return;
+      }
       case 'item': {
         const it = ITEM_BY_ID[ev.item];
         if (!it) return;
