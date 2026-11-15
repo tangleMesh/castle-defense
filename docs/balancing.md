@@ -40,10 +40,16 @@ Keys are `<building or unit id>.<field path>`. `LAB_THREADS=2` limits the worker
 - **Mirror pairings** (same line-up on both sides) and the **left-side rate** should be close to
   50%. If they aren't, something in the simulation or the bots favours one side (the map is
   point-symmetric; see the notes on tie-breaking in `grid.ts`, `movement.ts`, `combat.ts`).
+  `shared/test/symmetry.test.ts` guards this exactly: two identical bots in a mirror match must
+  stay mirror images through the opening and the first clashes. Rules that keep it that way:
+  units decide from start-of-tick positions and move together, separation pushes are applied
+  together, and random draws that affect positions use `sideRandom` with team-relative keys.
+  Individual mirror rows still swing (±20% with 32 games, the game snowballs); judge the
+  overall left-side rate.
 - **Ladder**: each level should win at least 70% against the one below.
 - **Sparring**: the "control" row is the plain hard bot against itself on the same seeds. A strategy
   is only a problem when hard wins clearly less against it than against the control.
-- **Duels** are winner-take-all and noisy for expensive tiers (one unit per side). Treat
+- **Duels** field counts chosen so both sides invest the same gold (within ~5%). They are winner-take-all and noisy for expensive tiers (one unit per side). Treat
   scores above 85% or below 15% as a prompt to look closer, not as a verdict. Siege-only
   units (rams) score high there because they only hit buildings.
 

@@ -61,6 +61,25 @@ export function duel(a: DuelSide, b: DuelSide, opts: { minutes?: number; seed?: 
 }
 
 /**
+ * Building counts for both sides with gold as equal as possible (rounding each side on its own
+ * gave e.g. 4 Militia Halls = 360 g against 5 Burrows = 425 g). Searches counts up to about
+ * twice the budget and prefers the closest gold match, then the count nearest the budget.
+ */
+export function matchCounts(costA: number, costB: number, budget: number): [number, number] {
+  let best: [number, number] = [1, 1], bestScore = Infinity;
+  const maxA = Math.max(1, Math.ceil((budget * 1.6) / costA));
+  for (let a = 1; a <= maxA; a++) {
+    const b = Math.max(1, Math.round((a * costA) / costB));
+    const ga = a * costA, gb = b * costB;
+    const mismatch = Math.abs(ga - gb) / Math.max(ga, gb);
+    const off = Math.abs((ga + gb) / 2 - budget) / budget;
+    const score = mismatch * 4 + off * 0.25;
+    if (score < bestScore) { bestScore = score; best = [a, b]; }
+  }
+  return best;
+}
+
+/**
  * Cross-faction duels of every spawn building against every enemy spawn building of the same
  * tier, with about `budget` gold invested per side, played from both sides.
  */
@@ -70,7 +89,7 @@ export function duelJobs(budget = 400, factions: readonly FactionId[] = FACTION_
   for (let i = 0; i < factions.length; i++) for (let j = i + 1; j < factions.length; j++) for (const tier of tiers) {
     const scale = tier === 'special' || tier === 'elite' ? 2.5 : 1;
     for (const da of spawners(factions[i], tier)) for (const db of spawners(factions[j], tier)) {
-      const ca = Math.max(1, Math.round((budget * scale) / totalCost(da))), cb = Math.max(1, Math.round((budget * scale) / totalCost(db)));
+      const [ca, cb] = matchCounts(totalCost(da), totalCost(db), budget * scale);
       out.push({ tier, a: { building: da.id, count: ca }, b: { building: db.id, count: cb } });
     }
   }

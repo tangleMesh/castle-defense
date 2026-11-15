@@ -2,7 +2,8 @@ import { FIRST_BUILD_BONUS, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, teamItemBonus } from '../data';
 import { idx, inBounds, nearestFree } from './grid';
 import type { Sim } from './sim';
-import { nextRandom } from './rng';
+import { sideRandom } from './rng';
+import { MAP } from '../map/map';
 import type { Entity } from './state';
 
 /** The first three players to finish a building in a round earn a small gold bonus. */
@@ -66,7 +67,11 @@ export function spawnUnit(sim: Sim, from: Entity, unitId: string, i: number, n: 
   let x = from.team === 0 ? from.tx! + size + 0.45 : from.tx! - 0.45;
   // dir * 0.01 keeps spawns off exact tile boundaries in a point-symmetric way (otherwise
   // flooring sends team 0 and team 1 units into tiles that aren't mirror images of each other).
-  let y = from.ty! + size / 2 + (i - (n - 1) / 2) * 0.7 + dir * 0.01 + (nextRandom(sim.state) - 0.5) * 0.2;
+  // Mirrored jitter: team 1 gets the mirror image of what team 0 would get from the same spot.
+  const rx = from.team === 0 ? from.tx! : MAP.width - size - from.tx!;
+  const ry = from.team === 0 ? from.ty! : MAP.height - size - from.ty!;
+  const jitter = sideRandom(sim.state, rx * 131 + ry * 7919 + i * 31) - 0.5;
+  let y = from.ty! + size / 2 + dir * (i - (n - 1) / 2) * 0.7 + dir * 0.01 + dir * jitter * 0.2;
   if (!u.air) {
     const g = sim.blockedGrid;
     const tx = Math.floor(x), ty = Math.floor(y);

@@ -2,6 +2,22 @@
 
 Bastion Clash follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.18.0
+**Rescue strike pays out**
+- Units killed by a rescue strike now count as regular kills of the player who cast it and pay the full gold bounty (plus Trophy Totem bonuses). The strike now also turns the defender's moment of need into gold, a small comeback lever.
+
+**Fairness**
+- The left side still won ~55–59% in larger test runs. Remaining causes fixed: units moved one after another within a tick, so a unit chasing an enemy reacted to where it had *already* stepped (now all units decide from start-of-tick positions and move together); separation pushes were applied in list order (now all at once); spawn jitter and the Vineling/treant burst came from one shared random stream (now mirror-symmetric draws). Two identical bots in a mirror match now stay exact mirror images through the opening and first clashes (new test `symmetry.test.ts`). Left side over 576 games: 52%.
+
+**Bots**
+- Teammate bots no longer fire their rescue strikes one tick apart into the same wave (the old guard only covered the very same tick).
+
+**Balance**
+- Vineling damage 5.5 → 5. Burrows outclassed every basic Ironvow building at equal gold, which made two Thornwild players nearly unbeatable in 2v2 (Ironvow+Ironvow won 6–16% against them).
+
+**Simulation lab**
+- Building duels now give both sides the same gold (within ~5%); before, counts were rounded per side, e.g. 4 Militia Halls (360 g) against 5 Burrows (425 g).
+
 ## 0.17.0
 **Stronger bots**
 - New **Brutal** difficulty: Hard's brain with instant reactions, no fog of war and +30% income (an openly cheating bot for veterans).

@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, START_GOLD, START_SAPPHIRES, type GameMode } from '../constants';
-import { nextRandom } from './rng';
+import { sideRandom } from './rng';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
 import type { Entity, PlayerCommand, PlayerSetup, SimEvent, SimState, Team } from './state';
@@ -125,7 +125,10 @@ export class Sim {
       const od = UNITS[e.type].onDeath!;
       const u = UNITS[od.unit];
       for (let i = 0; i < od.count; i++) {
-        const a = (i / od.count) * Math.PI * 2 + nextRandom(this.state);
+        // Side-symmetric: team 1's burst is the point mirror of team 0's in the same spot.
+        const rx = e.team === 0 ? e.x : MAP.width - e.x, ry = e.team === 0 ? e.y : MAP.height - e.y;
+        const a = (i / od.count) * Math.PI * 2 + sideRandom(this.state, Math.floor(rx * 64) * 7 + Math.floor(ry * 64) * 8191 + i)
+          + (e.team === 0 ? 0 : Math.PI);
         this.add({
           kind: 'unit', type: od.unit, owner: e.owner, team: e.team,
           x: e.x + Math.cos(a) * 0.35, y: e.y + Math.sin(a) * 0.35, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0,

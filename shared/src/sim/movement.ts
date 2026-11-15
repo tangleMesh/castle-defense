@@ -116,6 +116,13 @@ export function stepUnitMovementPost(sim: Sim) {
   const g = sim.blockedGrid;
   const units = sim.state.entities.filter((e) => e.kind === 'unit' && e.hp > 0);
   sim.hash.rebuild(units);
+  // Pushes are computed from the positions at the start of the step and applied together, so
+  // the result doesn't depend on the order of the entity list (which would favour one side).
+  const push = new Map<Entity, { dx: number; dy: number }>();
+  const add = (e: Entity, dx: number, dy: number) => {
+    const p = push.get(e);
+    if (p) { p.dx += dx; p.dy += dy; } else push.set(e, { dx, dy });
+  };
   for (const a of units) {
     const ra = UNITS[a.type].radius;
     const airA = !!UNITS[a.type].air;
@@ -127,13 +134,19 @@ export function stepUnitMovementPost(sim: Sim) {
       let d = Math.hypot(dx, dy);
       const overlap = ra + rb - d;
       if (overlap <= 0) continue;
-      if (d < 1e-4) { dx = ((a.id * 7919) % 13) / 13 - 0.5; dy = ((b.id * 104729) % 17) / 17 - 0.5; d = Math.hypot(dx, dy) || 1; }
+      if (d < 1e-4) {
+        // Exactly stacked: split them along the team's forward axis (mirrored for team 1).
+        dx = ((a.id * 7919) % 13) / 13 - 0.5; dy = ((b.id * 104729) % 17) / 17 - 0.5;
+        if (a.team === 1) { dx = -dx; dy = -dy; }
+        d = Math.hypot(dx, dy) || 1;
+      }
       // Allies push each other gently; enemies hold their ground more.
-      const push = (overlap * (a.team === b.team ? 0.5 : 0.35)) / d;
-      tryShift(g, a, -dx * push, -dy * push, airA);
-      tryShift(g, b, dx * push, dy * push, airA);
+      const k = (overlap * (a.team === b.team ? 0.5 : 0.35)) / d;
+      add(a, -dx * k, -dy * k);
+      add(b, dx * k, dy * k);
     }
   }
+  for (const [e, p] of push) tryShift(g, e, p.dx, p.dy, !!UNITS[e.type].air);
   for (const u of units) {
     if (!UNITS[u.type].air && blockedAt(g, u.x, u.y)) {
       const f = nearestFree(g, u.x, u.y);

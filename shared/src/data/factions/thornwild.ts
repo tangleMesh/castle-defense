@@ -148,7 +148,7 @@ export const THORNWILD: FactionDef = {
     },
   ],
   units: [
-    { id: 'tw_vineling', name: 'Vineling', hp: 90, armor: 0, armorType: 'light', dmg: 5.5, attackType: 'normal', range: 0.4, cooldown: 0.8, speed: 3.0, radius: 0.28, bounty: 3, onDeath: { unit: 'tw_sproutling', count: 2 },
+    { id: 'tw_vineling', name: 'Vineling', hp: 90, armor: 0, armorType: 'light', dmg: 5, attackType: 'normal', range: 0.4, cooldown: 0.8, speed: 3.0, radius: 0.28, bounty: 3, onDeath: { unit: 'tw_sproutling', count: 2 },
       model: { shape: 'beast', body: LEAF, accent: BARK, scale: 0.8 } },
     { id: 'tw_sproutling', name: 'Sproutling', hp: 22, armor: 0, armorType: 'light', dmg: 2, attackType: 'normal', range: 0.4, cooldown: 0.8, speed: 3.4, radius: 0.22, bounty: 0,
       model: { shape: 'beast', body: 0x8ac860, accent: BARK, scale: 0.55 } },

@@ -290,6 +290,22 @@ describe('rescue strike', () => {
     sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
     expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('already'))).toBe(true);
   });
+
+  it('counts its kills as regular kills of the caster and pays the full bounty', () => {
+    const { sim, c, enemy } = setup();
+    const p = sim.state.players[0];
+    const kills0 = p.kills;
+    let paid = 0;
+    sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
+    for (let i = 0; i < 25 && sim.get(enemy.id); i++) {
+      const e = sim.get(enemy.id); if (e) { e.x = c.x + 6; e.y = c.y; }
+      sim.step();
+      for (const ev of sim.state.events) if (ev.t === 'gold' && ev.p === 0) paid += ev.g;
+    }
+    expect(sim.get(enemy.id)).toBeUndefined();
+    expect(p.kills).toBe(kills0 + 1);
+    expect(paid).toBe(Math.round(UNITS.tw_vineling.bounty * BOUNTY_MULT));
+  });
 });
 
 describe('rounds', () => {

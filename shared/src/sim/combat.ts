@@ -57,30 +57,35 @@ export function canTarget(sim: Sim, a: Entity, st: AttackStats, t: Entity | unde
 }
 
 /** Apply damage; credits kills/bounty to the attacking player. Returns damage dealt. */
+/**
+ * Credit a kill: the killer's kill count and the full gold bounty (plus hunting bonuses).
+ * Used by regular combat and by the rescue strike alike.
+ */
+export function rewardKill(sim: Sim, target: Entity, killerOwner: number) {
+  const p = sim.state.players[killerOwner];
+  if (!p) return;
+  if (target.kind === 'unit') p.kills++;
+  const bounty = target.kind === 'unit'
+    // No minimum: swarms of cheap bodies must not feed the enemy more gold than an elite army.
+    ? Math.round(UNITS[target.type].bounty * BOUNTY_MULT)
+    : target.kind === 'building' ? Math.floor((target.value ?? 0) * 0.1 * BOUNTY_MULT) : 0;
+  if (bounty <= 0) return;
+  // Hunting economies (Thornwild's Trophy Totem) earn extra from every kill.
+  const bonus = sim.bountyBonus[killerOwner] ?? 0;
+  const extra = bonus > 0 ? Math.max(1, Math.round(bounty * bonus)) : 0;
+  p.gold += bounty + extra;
+  p.goldEarned += bounty + extra;
+  sim.emit({ t: 'gold', p: killerOwner, g: bounty + extra, x: Math.round(target.x * 100) / 100, y: Math.round(target.y * 100) / 100 });
+}
+
 export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackType, attackerOwner: number, ignoreArmor = false): number {
   if (target.hp <= 0) return 0;
   const armor = armorOf(sim, target);
   const dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   target.hp -= dmg;
-  let bountyExtra = 0;
   if (target.hp <= 0 && target.kind !== 'castle') {
     target.hp = 0;
-    const p = sim.state.players[attackerOwner];
-    if (p) {
-      if (target.kind === 'unit') p.kills++;
-      const bounty = target.kind === 'unit'
-        // No minimum: swarms of cheap bodies must not feed the enemy more gold than an elite army.
-        ? Math.round(UNITS[target.type].bounty * BOUNTY_MULT)
-        : target.kind === 'building' ? Math.floor((target.value ?? 0) * 0.1 * BOUNTY_MULT) : 0;
-      // Hunting economies (Thornwild's Trophy Totem) earn extra from every kill.
-      const bonus = sim.bountyBonus[attackerOwner] ?? 0;
-      if (bonus > 0 && bounty > 0) { const extra = Math.max(1, Math.round(bounty * bonus)); p.gold += extra; p.goldEarned += extra; bountyExtra = extra; }
-      if (bounty > 0) {
-        p.gold += bounty;
-        p.goldEarned += bounty;
-        sim.emit({ t: 'gold', p: attackerOwner, g: bounty + bountyExtra, x: Math.round(target.x * 100) / 100, y: Math.round(target.y * 100) / 100 });
-      }
-    }
+    rewardKill(sim, target, attackerOwner);
   }
   if (target.kind === 'castle') {
     const p = sim.state.players[attackerOwner];
@@ -205,53 +210,67 @@ export function stepCombatUnits(sim: Sim) {
   // Units alive at the start of the tick all get to act, even if they are killed earlier in this
   // loop: exchanges resolve simultaneously instead of favouring whoever happens to act first.
   const acting = fairOrder(sim).filter((e) => e.kind === 'unit' && e.hp > 0);
+  // Moves are simultaneous too: every unit decides from the positions at the start of the tick
+  // (a chaser must not see where its target has already stepped this tick), then all move at once.
+  const moved: Array<[Entity, number, number]> = [];
+  const settle = (e: Entity, x0: number, y0: number) => {
+    if (e.x !== x0 || e.y !== y0) { moved.push([e, e.x, e.y]); e.x = x0; e.y = y0; }
+  };
   for (const e of acting) {
-    if (e.hp <= 0) {
-      // Killed this tick: its last blow still lands (no movement, no regeneration).
-      const st = attackStats(e)!, t = sim.get(e.targetId);
-      if (!e.cd && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg);
-      continue;
-    }
-    const st = attackStats(e)!;
-    const mods = modsOf(sim, e.id);
-    const ud = UNITS[e.type];
-    const regen = (ud.regen ?? 0) + mods.regen;
-    if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
-    if (e.poison) {
-      dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
-      if (--e.poison.left <= 0) delete e.poison;
-      if (e.hp <= 0) continue;
-    }
-    if ((e.cd ?? 0) > 0) e.cd!--;
-    tryHeal(sim, e);
+    const x0 = e.x, y0 = e.y;
+    stepUnit(sim, e, tick);
+    settle(e, x0, y0);
+  }
+  for (const [e, x, y] of moved) { e.x = x; e.y = y; }
+}
 
-    let target = sim.get(e.targetId);
-    const rescan = (tick + e.id) % 5 === 0;
-    if (!canTarget(sim, e, st, target) || sim.edgeDist(e, target) > st.aggro + 3) {
-      target = findTarget(sim, e, st, st.aggro);
-    } else if (rescan && sim.isStructure(target) && !st.structuresOnly) {
-      // Prefer fighting units over hitting buildings.
-      const u = findTarget(sim, e, st, st.aggro);
-      if (u && u.kind === 'unit') target = u;
-    }
-    e.targetId = target?.id;
+/** One unit's turn: regen, poison, healing, targeting, then attack or move. */
+function stepUnit(sim: Sim, e: Entity, tick: number) {
+  if (e.hp <= 0) {
+    // Killed this tick: its last blow still lands (no movement, no regeneration).
+    const st = attackStats(e)!, t = sim.get(e.targetId);
+    if (!e.cd && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg);
+    return;
+  }
+  const st = attackStats(e)!;
+  const mods = modsOf(sim, e.id);
+  const ud = UNITS[e.type];
+  const regen = (ud.regen ?? 0) + mods.regen;
+  if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
+  if (e.poison) {
+    dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
+    if (--e.poison.left <= 0) delete e.poison;
+    if (e.hp <= 0) return;
+  }
+  if ((e.cd ?? 0) > 0) e.cd!--;
+  tryHeal(sim, e);
 
-    const speed = (UNITS[e.type].speed * mods.speed) / TICK_RATE;
-    if (target) {
-      if (sim.edgeDist(e, target) <= st.range + 0.05) {
-        if (!e.cd) {
-          performAttack(sim, e, st, target, mods.dmg);
-          e.cd = st.cooldownTicks;
-        }
-      } else {
-        const p = sim.isStructure(target) ? nearestPointOn(target, e.x, e.y) : target;
-        moveToward(sim, e, p.x, p.y, speed);
+  let target = sim.get(e.targetId);
+  const rescan = (tick + e.id) % 5 === 0;
+  if (!canTarget(sim, e, st, target) || sim.edgeDist(e, target) > st.aggro + 3) {
+    target = findTarget(sim, e, st, st.aggro);
+  } else if (rescan && sim.isStructure(target) && !st.structuresOnly) {
+    // Prefer fighting units over hitting buildings.
+    const u = findTarget(sim, e, st, st.aggro);
+    if (u && u.kind === 'unit') target = u;
+  }
+  e.targetId = target?.id;
+
+  const speed = (UNITS[e.type].speed * mods.speed) / TICK_RATE;
+  if (target) {
+    if (sim.edgeDist(e, target) <= st.range + 0.05) {
+      if (!e.cd) {
+        performAttack(sim, e, st, target, mods.dmg);
+        e.cd = st.cooldownTicks;
       }
     } else {
-      followFlow(sim, e, speed);
-      // Marching freely readies the next charge.
-      if (ud.charge) e.charge = true;
+      const p = sim.isStructure(target) ? nearestPointOn(target, e.x, e.y) : target;
+      moveToward(sim, e, p.x, p.y, speed);
     }
+  } else {
+    followFlow(sim, e, speed);
+    // Marching freely readies the next charge.
+    if (ud.charge) e.charge = true;
   }
 }
 

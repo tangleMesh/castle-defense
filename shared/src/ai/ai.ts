@@ -182,6 +182,9 @@ export class AiPlayer {
     const s = sim.state;
     const me = s.players[this.player];
     if (me.rescueUsed) return null;
+    // A teammate's strike is still in its telegraph: let it land before judging the wave again
+    // (otherwise both strikes go into the same wave one tick apart).
+    if (s.strikes.some((st) => s.players[st.player]?.team === me.team)) return null;
     const c = rectCenter(MAP.castles[me.team]);
     const castle = sim.castle(me.team);
     // Every difficulty: never let a building of our team fall if a strike can still save it.

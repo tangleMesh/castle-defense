@@ -1,8 +1,12 @@
 import { RESCUE_RADIUS } from '../constants';
 import { UNITS } from '../data';
 import type { Sim } from './sim';
+import { rewardKill } from './combat';
 
-/** Resolve pending rescue strikes: after the telegraph, every enemy unit in the circle dies. */
+/**
+ * Resolve pending rescue strikes: after the telegraph, every enemy unit in the circle dies.
+ * Strike kills count as regular kills of the caster and pay the full bounty.
+ */
 export function stepStrikes(sim: Sim) {
   const s = sim.state;
   if (!s.strikes.length) return;
@@ -15,6 +19,7 @@ export function stepStrikes(sim: Sim) {
       if (e.kind !== 'unit' || e.team === team || e.hp <= 0) continue;
       if (Math.hypot(e.x - st.x, e.y - st.y) - UNITS[e.type].radius <= RESCUE_RADIUS) {
         e.hp = 0;
+        rewardKill(sim, e, st.player);
         kills++;
       }
     }
