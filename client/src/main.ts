@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { PublicUser, ServerMessage } from '@bc/shared';
+import { versionLabel } from '@bc/shared';
 import './style.css';
 import { api, getToken, setToken } from './net/api';
 import { Socket } from './net/socket';
@@ -123,7 +124,7 @@ class App {
   }
 }
 
-document.getElementById('app-version')!.textContent = `v${__APP_VERSION__}`;
+document.getElementById('app-version')!.textContent = `v${versionLabel(__APP_VERSION__)}`;
 
 const app = new App();
 // `?debug` exposes the app on window for manual inspection and automated UI tests.

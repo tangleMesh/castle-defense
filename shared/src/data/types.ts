@@ -123,6 +123,11 @@ export interface FactionDef {
  * sqrt(power) each, so fight strength moves by about `power`.
  */
 export interface Tuning {
+  /**
+   * Balance revision: +1 every time the balancer writes a changed tuning, never reset. Shown after
+   * the game version (0.20.0+3), so a balance-only change is told apart from a game change.
+   */
+  revision?: number;
   factions: Partial<Record<FactionId, { power: number }>>;
   units: Record<string, { hp?: number; dmg?: number }>;
   /** Income multiplier per bot level ('hard' is the anchor and stays 1). */

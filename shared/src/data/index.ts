@@ -32,6 +32,12 @@ const BASE = new Map(Object.values(UNITS).map((u) => [u.id, { hp: u.hp, dmg: u.d
 const unitFaction = new Map<string, FactionId>();
 for (const f of Object.values(FACTIONS)) for (const u of f.units) unitFaction.set(u.id, f.id);
 
+/** Balance revision of the committed tuning: the `+N` after the game version (0.20.0+3). */
+export const BALANCE_REVISION = TUNING.revision ?? 0;
+
+/** Full version label: game version (semantic, from package.json) + balance revision. */
+export const versionLabel = (gameVersion: string) => `${gameVersion}+${BALANCE_REVISION}`;
+
 /** The tuning in effect (see shared/src/data/tuning.ts). */
 export let ACTIVE_TUNING: Tuning = TUNING;
 

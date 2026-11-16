@@ -1,6 +1,18 @@
 # Changelog
 
-Castle Defense follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
+Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of the game:
+
+- `0.21.0` is the **game version** ([semantic versioning](https://semver.org), root `package.json`): new features bump the minor version, bug fixes the patch version. Balance runs never change it.
+- `+2` is the **balance revision** (`revision` in `shared/src/data/tuning.ts`): `npm run balance` adds 1 whenever it writes a changed tuning. It never resets, not even when the game version changes.
+
+So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
+
+## 0.21.0
+**Version label with balance revision**
+- The version in the corner now reads e.g. `v0.21.0+1`: game version plus balance revision (see above). The balancer raises the revision whenever it writes a changed tuning, and its report and `tuning.ts` header name the full version.
+
+**Simulation lab**
+- Balancer tuning steps now draw line-up pairings uniformly at random. Before, every step included pure vs pure, which over-weighted those line-ups: on the 110×40 map, steps and full-grid verifications disagreed by 10–20 points, and the fit stalled between them.
 
 ## 0.20.0
 **Bigger, horizontal map**
@@ -21,7 +33,7 @@ Castle Defense follows [semantic versioning](https://semver.org): new features b
 - Changes go only into a small generated file of multipliers, `shared/src/data/tuning.ts`: faction power, outlier units and bot income per level. The hand-written faction data stays the design intent. The game, tooltips and lab all use the tuned values.
 - Writes `docs/balance-report.md`, which also lists what knobs can't fix (size-dependent strength, lopsided line-ups, side bias, support units) as items for a design look.
 - Every game counts: a logistic fit of win rate against power and income over all games of a run picks each step.
-- Tuning steps play a representative sample of line-ups per team size (pure vs pure plus random others); only verification plays the full grid.
+- Tuning steps play a random sample of line-ups per team size; only verification plays the full grid.
 - Verification passes when results are statistically indistinguishable from 50% (within ±5%).
 - `npm run balance:check` measures only, exits 1 when out of band and prints the command that re-tunes just the failed stages (e.g. `--stages bots` after an AI change). `--quick --dry` is a 5-minute smoke test. See docs/balancing.md, "Automatic balancing".
 

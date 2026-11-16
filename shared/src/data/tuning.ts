@@ -3,6 +3,7 @@
 import type { Tuning } from './types';
 
 export const TUNING: Tuning = {
+  revision: 1,
   factions: {
     ironvow: { power: 1.008 },
     thornwild: { power: 0.992 },

@@ -53,6 +53,10 @@ If it fails, it prints the exact command that re-tunes only the failed stages, f
 `--stages bots` after an AI change. Each stage starts from the committed tuning, so a small change usually needs
 one or two steps. Review the diff of `tuning.ts` and `docs/balance-report.md`, then commit both.
 
+**Versioning:** each run that changes the tuning raises `revision` in `tuning.ts` by 1. The game shows it after the
+game version (`v0.21.0+2`), so players and testers can tell a balance change from a game change. Commit a balance run
+without touching `package.json`; the revision never resets.
+
 **What it changes:** only `shared/src/data/tuning.ts`, a small generated file of multipliers on top of
 the hand-written faction files. It's applied at load time (`applyUnitTuning` in `shared/src/data/index.ts`),
 so the game, the bots, the tooltips and the lab all use the tuned values. The faction files stay the design intent.
@@ -69,7 +73,8 @@ The game snowballs, so single results are noisy, and small changes can flip a ma
   Each step jumps to the fit's target, at most ±6% power or ±15% income per step. While the knob has barely moved,
   a prior on the slope keeps the steps cautious; once there is data at several settings, the fit takes over.
 - **A sample per step, the full grid only to verify.** Each tuning step plays `--pairings` (default 4) line-up pairings per
-  team size, on fresh seeds: pure vs pure plus a random draw of the rest, re-drawn every step.
+  team size, on fresh seeds, drawn uniformly at random and re-drawn every step, so a step measures the same thing as the
+  full grid on average. (Always including pure vs pure biased the steps against the verification by 10–20 points.)
 - **Lenient verification.** A result only counts after a **verification run** of the full grid on new seeds with 2.5× the
   games. The verification starts as soon as a step lands within tolerance, or once the fit has settled: its step moves power by less than 0.5%, from step 3 on. It passes when each faction is within the tolerance, or within ±5% with a 95% CI that includes 50%.
 
