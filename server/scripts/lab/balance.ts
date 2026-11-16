@@ -334,7 +334,7 @@ function writeTuning(fm: FactionMeasure | null, revision: number) {
     "import type { Tuning } from './types';",
     '',
     'export const TUNING: Tuning = {',
-    '  // Balance revision: +1 per balancer run that changed the tuning, never reset (version 0.20.0+N).',
+    '  // Balance revision: +1 per balancer run that changed the tuning, never reset (shown as <game version>+N).',
     `  revision: ${revision},`,
     '  factions: {',
     ...FACTION_IDS.map((f) => `    ${f}: { power: ${tuning.factions[f]?.power ?? 1} },`),

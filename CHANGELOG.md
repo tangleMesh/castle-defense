@@ -7,7 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
-## 0.21.2
+## 0.21.2+2 · balance
+First tuning for the 110×40 map (`npm run balance`, 182 min; full report in docs/balance-report.md).
+- **Factions:** Ironvow power 1.008 → 0.979, Thornwild 0.992 → 1.021. The wider map favoured Ironvow (65% before tuning). Verified at 54% / 46% over 646 games, statistically even.
+- **Units:** Lancer −4% and Elder Stag −15% (were 79% and 89% in duels); Halberdier +4% (20%).
+- **Bots:** Easy income 1.00 → 0.79 and Normal 1.00 → 0.94, so each level clearly beats the one below. Brutal beats Hard 88%, Hard beats Normal 73%, Normal beats Easy 88%.
+- Still uneven by team size: Ironvow wins 54% in 1v1, 38% in 2v2, 61% in 3v3 and 63% in 4v4. One power value per faction can only even out the average.
+
 **Simulation lab**
 - The balancer plays about the same number of games per team size (`--games`, `--verify-games`) and computes the uncertainty of the size-averaged win rate correctly. Before, 1v1 got 20 of 512 verification games but a quarter of the weight, so verifications scattered by ±8 points instead of the assumed ±3.
 
