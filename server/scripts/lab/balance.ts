@@ -7,8 +7,8 @@
  *   npm run balance                     tune units, factions and bots; write tuning.ts + docs/balance-report.md
  *   npm run balance -- --quick --dry    smoke test (~5 min), writes nothing
  *
- * Options: --stages units,factions,bots · --sizes 1,2,3,4 · --seeds 4 (per pairing and side, per
- * step) · --pairings 4 (line-up pairings per team size and step) · --iterations 8 · --tolerance 0.03 (faction win rate 50% ± this) · --reset (start
+ * Options: --stages units,factions,bots · --sizes 1,2,3,4 · --games 48 / --verify-games 120 (non-mirror
+ * games per team size, per step / per verification) · --pairings 4 (line-up pairings per team size and step) · --iterations 8 · --tolerance 0.03 (faction win rate 50% ± this) · --reset (start
  * from an untuned game) · --out <file> · LAB_THREADS limits worker threads.
  *
  * How it works (see docs/balancing.md, "Automatic balancing"):
@@ -41,8 +41,9 @@ const check = flag('check');
 const dry = flag('dry') || check;
 const stages = arg('stages', 'units,factions,bots').split(',');
 const sizes = arg('sizes', quick ? '1,2' : '1,2,3,4').split(',').map(Number);
-const seeds = Number(arg('seeds', quick ? '2' : '4'));
-const verifySeeds = Number(arg('verify-seeds', String(Math.round(seeds * 2.5))));
+/** Non-mirror games per team size: per tuning step, and per verification of the full grid. */
+const stepGames = Number(arg('games', quick ? '16' : '48'));
+const verifyGames = Number(arg('verify-games', quick ? '40' : '120'));
 const iterations = Number(arg('iterations', quick ? '3' : '8'));
 const tol = Number(arg('tolerance', '0.03'));
 const pairingsPerSize = Number(arg('pairings', '4'));
@@ -73,46 +74,53 @@ async function play(label: string, jobs: MatrixJob[]) {
 interface FactionMeasure {
   /** Per faction: non-mirror win rate averaged over team sizes (the tuning target). */
   overall: Record<string, number>;
+  /** Standard error of `overall` (each size's rate weighs a quarter, whatever its game count). */
+  se: Record<string, number>;
   bySize: Map<number, MatrixReport>;
   all: MatrixReport;
   games: number;
 }
 
 /**
- * Plays the faction matrix. `subset` (a per-iteration seed) plays only `--pairings` line-up pairings
- * per team size, drawn uniformly at random and fresh each iteration, so on average a step measures
- * the same thing as the full grid (which is for verification). Always including pure vs pure
- * over-weighted those line-ups: steps and verifications disagreed by 10–20 points on the 110×40 map.
+ * Plays the faction matrix with about `gamesPerSize` non-mirror games per team size: the metric
+ * averages the sizes with equal weight, so each needs a similar sample (with seeds per pairing,
+ * 1v1 had 20 games against 200 for 4v4 and dominated the noise). 1v1 games are also the cheapest.
+ *
+ * `subset` (a per-iteration seed) plays only `--pairings` line-up pairings per team size, drawn
+ * uniformly at random and fresh each iteration, so on average a step measures the same thing as the
+ * full grid (always including pure vs pure biased steps by 10–20 points). The full grid verifies.
  */
-async function measureFactions(label: string, n: number, opts: { mirrors?: boolean; subset?: number } = {}): Promise<FactionMeasure> {
+async function measureFactions(label: string, gamesPerSize: number, opts: { mirrors?: boolean; subset?: number } = {}): Promise<FactionMeasure> {
   const base = freshSeeds();
-  let jobs = factionMatrix({ sizes, level: 'hard', seeds: n, seedBase: base }).filter((j) => j.key[0] !== j.key[1]);
-  if (opts.subset !== undefined) {
-    let r = (opts.subset * 7919 + 17) >>> 0;
-    const rnd = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
-    const canon = (j: MatrixJob) => [...j.key].sort().join('|');
-    const keep = new Set<string>();
-    for (const size of sizes) {
-      const keys = [...new Set(jobs.filter((j) => j.teams[0].length === size).map(canon))];
+  let r = ((opts.subset ?? 0) * 7919 + 17) >>> 0;
+  const rnd = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const canon = (j: MatrixJob) => [...j.key].sort().join('|');
+  const jobs: MatrixJob[] = [];
+  sizes.forEach((size, si) => {
+    const sizeBase = base + si * 100_003;
+    let keys = [...new Set(factionMatrix({ sizes: [size], level: 'hard', seeds: 1 }).filter((j) => j.key[0] !== j.key[1]).map(canon))];
+    if (opts.subset !== undefined) {
       for (let i = keys.length - 1; i > 0; i--) { const t = Math.floor(rnd() * (i + 1)); [keys[i], keys[t]] = [keys[t], keys[i]]; }
-      for (const k of keys.slice(0, pairingsPerSize)) keep.add(k);
+      keys = keys.slice(0, pairingsPerSize);
     }
-    jobs = jobs.filter((j) => keep.has(canon(j)));
-  }
-  // Mirror matches only feed the side check, so fewer of them are enough.
-  if (opts.mirrors) jobs.push(...factionMatrix({ sizes, level: 'hard', seeds: Math.max(2, Math.ceil(n / 3)), seedBase: base + 500_000 }).filter((j) => j.key[0] === j.key[1]));
+    const n = Math.max(1, Math.round(gamesPerSize / (2 * keys.length)));
+    jobs.push(...factionMatrix({ sizes: [size], level: 'hard', seeds: n, seedBase: sizeBase }).filter((j) => j.key[0] !== j.key[1] && keys.includes(canon(j))));
+    // Mirror matches only feed the side check, so fewer of them are enough.
+    if (opts.mirrors) jobs.push(...factionMatrix({ sizes: [size], level: 'hard', seeds: Math.max(1, Math.round(n / 3)), seedBase: sizeBase + 50_000 }).filter((j) => j.key[0] === j.key[1]));
+  });
   const res = await play(label, jobs);
   const bySize = new Map<number, MatrixReport>();
   for (const size of sizes) {
     const idx = jobs.map((j, i) => (j.teams[0].length === size ? i : -1)).filter((i) => i >= 0);
     bySize.set(size, summarize(idx.map((i) => jobs[i]), idx.map((i) => res[i])));
   }
-  const overall: Record<string, number> = {};
+  const overall: Record<string, number> = {}, se: Record<string, number> = {};
   for (const f of FACTION_IDS) {
-    const rates = [...bySize.values()].map((r) => r.factions[f]?.rate).filter((v): v is number => v !== undefined);
-    overall[f] = rates.reduce((a, b) => a + b, 0) / Math.max(1, rates.length);
+    const rates = [...bySize.values()].map((r) => r.factions[f]).filter((v): v is Rate => v !== undefined);
+    overall[f] = rates.reduce((a, v) => a + v.rate, 0) / Math.max(1, rates.length);
+    se[f] = Math.sqrt(rates.reduce((a, v) => a + ((v.ci[1] - v.ci[0]) / 3.92) ** 2, 0)) / Math.max(1, rates.length);
   }
-  return { overall, bySize, all: summarize(jobs, res), games: jobs.length };
+  return { overall, se, bySize, all: summarize(jobs, res), games: jobs.length };
 }
 
 async function measureLadder(label: string, n: number) {
@@ -204,7 +212,8 @@ async function stageFactions(): Promise<FactionMeasure> {
   // each step jumps to the fit's 50% point (at most ±6% power per step).
   const points: FitPoint[] = [];
   const record = (m: FactionMeasure) => FACTION_IDS.forEach((f, g) => {
-    const n = m.all.factions[f]?.games ?? 0;
+    // Effective sample size of the size-averaged rate (from its standard error).
+    const n = m.se[f] > 0 ? 0.25 / m.se[f] ** 2 : 0;
     if (n) points.push({ group: g, x: lp[f], rate: clamp(m.overall[f], 0.02, 0.98), n });
   });
   const step = () => {
@@ -219,14 +228,14 @@ async function stageFactions(): Promise<FactionMeasure> {
   // The verification passes when every faction is within tolerance or statistically
   // indistinguishable from 50% (its 95% CI holds 50%), but never beyond ±5%.
   const verifiedOk = (m: FactionMeasure) => FACTION_IDS.every((f) => {
-    const dev = Math.abs(m.overall[f] - 0.5), ci = m.all.factions[f]?.ci ?? [0, 1];
-    return dev <= tol || (dev <= 0.05 && ci[0] <= 0.5 && ci[1] >= 0.5);
+    const dev = Math.abs(m.overall[f] - 0.5);
+    return dev <= tol || (dev <= 0.05 && dev <= 1.96 * m.se[f]);
   });
   out.push(`Tuning steps play a sample of ${pairingsPerSize} line-up pairings per team size (drawn at random); verification plays the full grid.`, '');
   out.push('| Step | power | win rate | games | fitted slope |', '|---|---|---|---|---|');
   let verified: FactionMeasure | null = null;
   for (let k = 1; k <= iterations && !check; k++) {
-    const m = await measureFactions(`factions #${k}`, seeds, { subset: k });
+    const m = await measureFactions(`factions #${k}`, stepGames, { subset: k });
     record(m);
     const row = `| ${k} | ${powerLine()} | ${factionLine(m)} | ${m.games} |`;
     process.stderr.write(`  power ${powerLine()} → ${factionLine(m)}\n`);
@@ -240,7 +249,7 @@ async function stageFactions(): Promise<FactionMeasure> {
       out.push(`${row} ${b.toFixed(0)}${verifyNow ? ' (fit settled)' : ''} |`);
     }
     if (verifyNow) {
-      const v = await measureFactions(`verify #${k}`, verifySeeds, { mirrors: true });
+      const v = await measureFactions(`verify #${k}`, verifyGames, { mirrors: true });
       record(v);
       out.push(`| ${k} ✓ verify | ${powerLine()} | ${factionLine(v)} | ${v.games} | |`);
       process.stderr.write(`  verify → ${factionLine(v)}\n`);
@@ -249,7 +258,7 @@ async function stageFactions(): Promise<FactionMeasure> {
     }
   }
   if (!verified) {
-    verified = await measureFactions('factions verify', verifySeeds, { mirrors: true });
+    verified = await measureFactions('factions verify', verifyGames, { mirrors: true });
     if (!check) out.push(`| final | ${powerLine()} | ${factionLine(verified)} | ${verified.games} | |`);
   }
   out.push('', `Power now: ${powerLine()}`, '', '### Faction win rate per team size (verification run)', '', sizeTable(verified), '');

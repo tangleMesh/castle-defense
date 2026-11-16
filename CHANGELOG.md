@@ -7,6 +7,10 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.21.2
+**Simulation lab**
+- The balancer plays about the same number of games per team size (`--games`, `--verify-games`) and computes the uncertainty of the size-averaged win rate correctly. Before, 1v1 got 20 of 512 verification games but a quarter of the weight, so verifications scattered by ±8 points instead of the assumed ±3.
+
 ## 0.21.1
 - The version label in the lower-right corner is larger and brighter (13 px instead of 10 px), so it's readable.
 
