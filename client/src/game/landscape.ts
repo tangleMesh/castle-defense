@@ -40,7 +40,7 @@ let cache: Decor[] | null = null;
 
 /**
  * Deterministic forest belt around the map, shared by the battlefield and the minimap.
- * Front edges (bottom-right on screen) keep a clearing so tall trees never hide units.
+ * The front edge (bottom on screen) keeps a clearing so tall trees never hide units.
  */
 export function outerDecor(): Decor[] {
   if (cache) return cache;
@@ -53,8 +53,9 @@ export function outerDecor(): Decor[] {
       if (inPond(x + 0.5, y + 0.5)) continue;
       const c = toScreen(x + 0.5, y + 0.5);
       if (c.x < view.x0 || c.x > view.x1 || c.y < view.y0 || c.y > view.y1) continue;
-      const front = Math.max(x - W + 1, y - H + 1, 0);
-      const back = Math.max(-x, -y, 0);
+      // Only the south edge lies in front of the battlefield; the sides and the north are behind.
+      const front = Math.max(y - H + 1, 0);
+      const back = Math.max(-x, -y, x - W + 1, 0);
       const d = Math.max(front, back);
       const gap = front > 0 ? 4 : 1;
       const r = rnd(x, y, 1), r2 = rnd(x, y, 2);

@@ -12,17 +12,18 @@ describe('fog of war', () => {
     const b = baseArea(0);
     expect(b.x).toBe(0);
     expect(b.w).toBe(MAP.zones[0].x + MAP.zones[0].w);
-    const grid = computeVision(0, [{ x: 40.5, y: 14.5 }]);
+    const grid = computeVision(0, [{ x: 55.5, y: 20.5 }]);
     expect(tileVisible(grid, 5, 0)).toBe(true); // own base, far corner
-    expect(tileVisible(grid, 60, 14)).toBe(false); // enemy base
+    expect(tileVisible(grid, 90, 20)).toBe(false); // enemy base
     let count = 0;
-    for (let y = 0; y < MAP.height; y++) for (let x = 28; x < 60; x++) if (tileVisible(grid, x + 0.5, y + 0.5)) count++;
+    for (let y = 0; y < MAP.height; y++) for (let x = b.w; x < MAP.zones[1].x; x++) if (tileVisible(grid, x + 0.5, y + 0.5)) count++;
     expect(count).toBe(24 * 24);
-    expect(tileVisible(grid, 28.5, 14.5)).toBe(true);
-    expect(tileVisible(grid, 51.5, 14.5)).toBe(true);
-    expect(tileVisible(grid, 52.5, 14.5)).toBe(false);
-    expect(tileVisible(grid, 51.5, 2.5)).toBe(true);
-    expect(tileVisible(grid, 51.5, 1.5)).toBe(false);
+    expect(tileVisible(grid, 43.5, 20.5)).toBe(true);
+    expect(tileVisible(grid, 42.5, 20.5)).toBe(false);
+    expect(tileVisible(grid, 66.5, 20.5)).toBe(true);
+    expect(tileVisible(grid, 67.5, 20.5)).toBe(false);
+    expect(tileVisible(grid, 66.5, 8.5)).toBe(true);
+    expect(tileVisible(grid, 66.5, 7.5)).toBe(false);
   });
 
   it('filters enemy entities and orders per team, keeps castles, reveals all between rounds', () => {

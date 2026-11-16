@@ -3,7 +3,7 @@ import {
   BUILDINGS, FX_POISON, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
-import { DPR, TEAM_COLORS, TH, TW, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
+import { DPR, TEAM_COLORS, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
 import { ANCHORS, FLAG_FRAMES, TEX_RES, UNIT_TEX, generateTextures, originOf, texHeight } from './textures';
 import type { MatchSession } from './session';
 import { OUTER_MARGIN, OUTER_TILES, PONDS, outerDecor } from './landscape';
@@ -506,7 +506,8 @@ export class GameScene extends Phaser.Scene {
     if (v.kind === KIND_BUILDING) {
       v.sprite.setAlpha(constructing ? 0.35 + (v.extra / 100) * 0.4 : 1);
       v.sprite.setTint(v.flash > 0 ? 0xffbbbb : 0xffffff);
-      v.scaffold!.setVisible(constructing || v.extra < 0).setPosition(foot.x, foot.y).setDepth(d + 0.2).setAlpha(0.9);
+      const front = toScreen(v.x, v.y + size / 2); // middle of the front edge
+      v.scaffold!.setVisible(constructing || v.extra < 0).setPosition(front.x, front.y).setDepth(d + 0.2).setAlpha(0.9);
     } else if (!v.ruined && !this.collapsing.has(v.id)) {
       // A brief warm flicker when hit (a full tint would turn the whole castle pink).
       v.sprite.setTint(v.flash > 60 ? 0xfff0e4 : 0xffffff);

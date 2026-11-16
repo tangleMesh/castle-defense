@@ -21,6 +21,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 100 gold, enough for one cheap spawn building.
 - **Fast rounds** (about 5–7 minutes): castles have 8000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 24×24 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
+- **Map**: 110×40 tiles, castle to castle from left to right. Each team builds in a 30-tile-wide zone at its end; the 48-tile neutral middle is split into three lanes by rock outcrops.
 - **Best-of rounds**: a round ends when a castle falls. Each new round starts on a fresh map with a new builder, fresh gold and a refreshed rescue strike.
 - **Computer players**: the host can fill any slot with an AI at *Easy*, *Normal*, *Hard* or *Brutal* difficulty and pick its faction and team. The AI runs on the server and sends the same commands a player would. Easy, Normal and Hard don't cheat; Hard counters your army composition, builds a safe base behind its castle, plans its economy and strikes early waves before they snowball. *Brutal* openly cheats: +30% income, no fog of war and instant reactions. Every bot fires its strike to save a team building that is about to fall. Bots rejoin automatically when a saved game is resumed.
 - **Factions**: *Ironvow Order* (soldiers, siege, sunfire) and *Thornwild Circle* (swarms, beasts, lightning, treants).
@@ -36,7 +37,7 @@ The game uses semantic versioning. The current version is in the root `package.j
 | --- | --- |
 | `shared/` | Deterministic simulation (20 Hz), game data, protocol (zod), all TypeScript |
 | `server/` | Node 24, fastify (REST + static), `ws` websockets, MongoDB driver |
-| `client/` | Phaser 3 isometric renderer with all art generated procedurally at runtime, plus a DOM HUD. Built with Vite |
+| `client/` | Phaser 3 renderer (front 3/4 view, battlefield left to right) with all art generated procedurally at runtime, plus a DOM HUD. Built with Vite |
 
 The server is authoritative. Clients send only intents (move, build, upgrade, sell, rescue, buy). The server steps the simulation and broadcasts compact snapshots at 10 Hz, and clients interpolate between them.
 

@@ -2,6 +2,19 @@
 
 Castle Defense follows [semantic versioning](https://semver.org): new features bump the minor version, bug fixes the patch version. The version is set in the root `package.json` and shown in the lower-right corner of the game.
 
+## 0.20.0
+**Bigger, horizontal map**
+- The battlefield now runs straight from left to right on screen: a front 3/4 view, with the camera looking at the field from the south, replaces the diagonal isometric view. Buildings show their front wall, a narrow side wall and their roof; the castle gate faces the viewer.
+- Map 80×28 → 110×40 tiles. Build zones 27×26 → 30×38 (+60% building area), and the neutral middle is twice as wide (24 → 48 tiles). Rocks are redrawn as three lanes around a centre boulder, point-symmetric as before.
+- The minimap follows the new 5:1 shape.
+- Games saved on the old map can't be resumed (the lobby says so instead of loading a broken game).
+
+**Fairness**
+- Regeneration and poison now tick for all units before anyone attacks. Before, the outcome depended on processing order: a unit hit before its own turn regenerated, one hit after didn't. Two mirrored units meeting in the exact centre of the new map exposed it.
+
+**Simulation lab**
+- The balancer's report flags a faction whose bot falls behind on one ladder step, such as Hard Thornwild beating Easy Ironvow only about 50% (true before this release too).
+
 ## 0.19.0
 **Automatic balancer** (`npm run balance`)
 - One command plays every line-up against every other at 1v1–4v4 (pure, mixed and mirror teams, both map sides), building duels and the bot difficulty ladder. It then tunes the balance and verifies the result on fresh seeds.

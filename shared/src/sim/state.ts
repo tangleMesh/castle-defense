@@ -121,6 +121,8 @@ export interface RoundRecord {
 
 export interface SimState {
   version: 1;
+  /** Map the game is played on, `<width>x<height>` (absent in saves from before the 110×40 map). */
+  map?: string;
   tick: number;
   /** Tick at which the current round started. */
   roundStartTick: number;

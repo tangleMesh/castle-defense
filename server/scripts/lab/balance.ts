@@ -118,11 +118,12 @@ async function measureFactions(label: string, n: number, opts: { mirrors?: boole
 }
 
 async function measureLadder(label: string, n: number) {
-  const steps: Array<{ hi: AiLevel; lo: AiLevel; rate: Rate }> = [];
+  const steps: Array<{ hi: AiLevel; lo: AiLevel; rate: Rate; pairings: Array<{ key: string } & Rate> }> = [];
   for (let i = AI_LEVELS.length - 1; i > 0; i--) {
     const hi = AI_LEVELS[i], lo = AI_LEVELS[i - 1];
     const jobs = ladderMatrix({ hi, lo, seeds: n, seedBase: freshSeeds() });
-    steps.push({ hi, lo, rate: summarizeLadder(jobs, await play(`${label} ${hi}>${lo}`, jobs)).total });
+    const sum = summarizeLadder(jobs, await play(`${label} ${hi}>${lo}`, jobs));
+    steps.push({ hi, lo, rate: sum.total, pairings: sum.pairings });
   }
   return steps;
 }
@@ -307,6 +308,8 @@ async function stageBots() {
   }
   out.push('', `Income now: ${incomeLine()}`, '');
   for (const s of last) {
+    // Income can only move a level as a whole; one faction's bot falling behind is an AI problem.
+    for (const p of s.pairings) if (p.ci[1] < 0.6) design.push(`${p.key}: the higher level wins only ${pct(p.rate)} (CI ${pct(p.ci[0])}–${pct(p.ci[1])}), so this faction's bot plays weaker`);
     if (s.rate.rate < 0.65) { failed.add('bots'); problems.push(`${s.hi} beats ${s.lo} only ${pct(s.rate.rate)} (want ${pct(LADDER_BAND[0])}–${pct(LADDER_BAND[1])})`); }
     else if (!inBand(s.rate.rate)) design.push(`${s.hi} beats ${s.lo} ${pct(s.rate.rate)} (band ${pct(LADDER_BAND[0])}–${pct(LADDER_BAND[1])}; income limits reached or noise)`);
   }

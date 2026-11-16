@@ -1,16 +1,24 @@
 import { CASTLE_SIZE, type BuildingDef } from '@bc/shared';
-import { TEAM_COLORS, TH, TW } from './iso';
+import { EX, EY, SK, TEAM_COLORS, TX, TY } from './iso';
 import { css, fillPoly, grad, lit, mix, path, radial, rng, shade, softEllipse, type Ctx } from './paint';
 
 /**
- * Painted isometric structures. Faces are drawn in their own local coordinates (u along the
- * wall in tiles, v up in px) via canvas transforms, so masonry, timber and planks follow the
- * iso perspective. Light comes from the upper left: left faces are sunlit, right faces in shade.
+ * Painted structures in the front 3/4 view (see iso.ts). Faces are drawn in their own local
+ * coordinates (u along the wall in tiles, v up in px) via canvas transforms, so masonry, timber
+ * and planks follow the perspective. The "left" face is the front (south) wall facing the viewer
+ * and the sun; the "right" face is the narrow east wall, in shade.
  */
 
-const HW = TW / 2, HH = TH / 2;
 type Pt = { x: number; y: number };
 const pt = (x: number, y: number): Pt => ({ x, y });
+/** Half a tile on screen along x / y (for ground ellipses under footprints). */
+const HX = TX / 2, HY = TY / 2;
+/** Margin (px) around a footprint on structure canvases, for overhangs and props. */
+export const STRUCT_MARGIN = 24;
+/** Ground centre of an s×s footprint whose front-right (south-east) corner is at (ox, oy). */
+const centreOf = (ox: number, oy: number, s: number): Pt => pt(ox - (s * (TX + SK)) / 2, oy - (s * TY) / 2);
+/** Front-right corner of a k×k box centred on the ground point c. */
+const cornerFor = (c: Pt, k: number): Pt => pt(c.x + (k * (TX + SK)) / 2, c.y + (k * TY) / 2);
 const lerp = (a: Pt, b: Pt, t: number): Pt => pt(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
 const up = (p: Pt, h: number): Pt => pt(p.x, p.y - h);
 
@@ -38,10 +46,13 @@ export interface Box {
   c: Pt;
 }
 
-/** Box with its front ground corner at (ox, oy): a tiles along the left face, b along the right, h px tall. */
+/**
+ * Box with its front-right (south-east) ground corner at (ox, oy): a tiles along the front face
+ * (x), b along the east face (y), h px tall. L = south-west, R = north-east, B = north-west.
+ */
 export function boxGeo(ox: number, oy: number, a: number, b: number, h: number): Box {
-  const F = pt(ox, oy), R = pt(ox + b * HW, oy - b * HH), L = pt(ox - a * HW, oy - a * HH);
-  const B = pt(ox + (b - a) * HW, oy - (a + b) * HH);
+  const F = pt(ox, oy), L = pt(ox - a * EX.x, oy - a * EX.y), R = pt(ox - b * EY.x, oy - b * EY.y);
+  const B = pt(ox - a * EX.x - b * EY.x, oy - a * EX.y - b * EY.y);
   const tL = up(L, h), tF = up(F, h), tR = up(R, h), tB = up(B, h);
   return { L, F, R, B, tL, tF, tR, tB, a, b, h, c: lerp(tL, tR, 0.5) };
 }
@@ -53,7 +64,7 @@ function faceLeft(ctx: Ctx, g: Box, paint: FacePainter) {
   ctx.save();
   path(ctx, [[g.L.x, g.L.y], [g.F.x, g.F.y], [g.tF.x, g.tF.y], [g.tL.x, g.tL.y]]);
   ctx.clip();
-  ctx.transform(HW, HH, 0, -1, g.L.x, g.L.y);
+  ctx.transform(EX.x, EX.y, 0, -1, g.L.x, g.L.y);
   paint(ctx, g.a, g.h, LIGHT.left);
   ctx.restore();
 }
@@ -63,7 +74,7 @@ function faceRight(ctx: Ctx, g: Box, paint: FacePainter) {
   ctx.save();
   path(ctx, [[g.F.x, g.F.y], [g.R.x, g.R.y], [g.tR.x, g.tR.y], [g.tF.x, g.tF.y]]);
   ctx.clip();
-  ctx.transform(HW, -HH, 0, -1, g.F.x, g.F.y);
+  ctx.transform(-EY.x, -EY.y, 0, -1, g.F.x, g.F.y);
   paint(ctx, g.b, g.h, LIGHT.right);
   ctx.restore();
 }
@@ -73,7 +84,7 @@ function faceTop(ctx: Ctx, g: Box, paint: (ctx: Ctx, U: number, W: number) => vo
   ctx.save();
   path(ctx, [[g.tL.x, g.tL.y], [g.tF.x, g.tF.y], [g.tR.x, g.tR.y], [g.tB.x, g.tB.y]]);
   ctx.clip();
-  ctx.transform(HW, HH, HW, -HH, g.tL.x, g.tL.y);
+  ctx.transform(EX.x, EX.y, -EY.x, -EY.y, g.tL.x, g.tL.y);
   paint(ctx, g.a, g.b);
   ctx.restore();
 }
@@ -281,7 +292,7 @@ function gableRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, wa
   ctx.save();
   path(ctx, [[g.tF.x, g.tF.y], [g.tR.x, g.tR.y], [m2.x, m2.y + 2]]);
   ctx.clip();
-  ctx.transform(HW, -HH, 0, -1, g.F.x, g.F.y);
+  ctx.transform(-EY.x, -EY.y, 0, -1, g.F.x, g.F.y);
   wall(ctx, g.b, g.h + rise, LIGHT.right);
   ctx.restore();
   // a small round window in the gable
@@ -395,7 +406,8 @@ function crenellate(ctx: Ctx, g: Box, stone: number, seed: number, count = 0, fr
       const col = lit(mix(stone, 0x8a7a60, r() * 0.2), leftFace ? LIGHT.left : LIGHT.right);
       fillPoly(ctx, [[a.x, a.y], [b.x, b.y], [b.x, b.y - hgt], [a.x, a.y - hgt]], css(col));
       // merlon top
-      const dx = leftFace ? HW * 0.12 : -HW * 0.12, dy = leftFace ? -HH * 0.12 : -HH * 0.12;
+      // inwards: from the front edge towards the back, from the east edge towards the west
+      const dx = leftFace ? -EY.x * 0.12 : -EX.x * 0.12, dy = leftFace ? -EY.y * 0.12 : -EX.y * 0.12;
       fillPoly(ctx, [[a.x, a.y - hgt], [b.x, b.y - hgt], [b.x + dx, b.y - hgt + dy], [a.x + dx, a.y - hgt + dy]], css(lit(stone, LIGHT.top)));
     }
   }
@@ -418,17 +430,17 @@ function stoneTop(ctx: Ctx, g: Box, stone: number) {
 /** Mossy, root-veined earth under Thornwild structures (no masonry). */
 function earthPatch(ctx: Ctx, ox: number, oy: number, s: number, seed: number) {
   const r = rng(seed);
-  const c = pt(ox, oy - s * HH);
-  softEllipse(ctx, c.x, c.y, s * HW * 0.95, s * HH * 0.95, 0x4a3a22, 0.75);
-  softEllipse(ctx, c.x - 6, c.y - 3, s * HW * 0.7, s * HH * 0.7, 0x5a6a30, 0.5);
+  const c = centreOf(ox, oy, s);
+  softEllipse(ctx, c.x, c.y, s * HX * 0.95, s * HY * 0.95, 0x4a3a22, 0.75);
+  softEllipse(ctx, c.x - 6, c.y - 3, s * HX * 0.7, s * HY * 0.7, 0x5a6a30, 0.5);
   for (let i = 0; i < 140; i++) {
     const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 0.9;
-    const x = c.x + Math.cos(a) * s * HW * d, y = c.y + Math.sin(a) * s * HH * d;
+    const x = c.x + Math.cos(a) * s * HX * d, y = c.y + Math.sin(a) * s * HY * d;
     ctx.strokeStyle = css(r() < 0.5 ? 0x6a8a34 : 0x3e5a22, 0.7); ctx.lineWidth = 0.8;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (r() - 0.4) * 2, y - 2 - r() * 2); ctx.stroke();
   }
   for (let i = 0; i < 6; i++) {
-    const x = c.x + (r() - 0.5) * s * HW * 1.4, y = c.y + (r() - 0.5) * s * HH * 1.2;
+    const x = c.x + (r() - 0.5) * s * HX * 1.4, y = c.y + (r() - 0.5) * s * HY * 1.2;
     ctx.fillStyle = css(lit(0x8a8478, 0.8 + r() * 0.3)); ctx.beginPath(); ctx.ellipse(x, y, 2 + r() * 2.5, 1.3 + r() * 1.2, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
@@ -447,8 +459,8 @@ function cobbleTop(ctx: Ctx, g: Box, stone: number, seed: number) {
 
 /** Soft contact shadow + plinth under a footprint. */
 function footing(ctx: Ctx, ox: number, oy: number, s: number, ground = 0x6a6050) {
-  const c = pt(ox, oy - s * HH);
-  softEllipse(ctx, c.x + 6, c.y + 3, s * HW * 1.15, s * HH * 1.15, 0x0c0a08, 0.4);
+  const c = centreOf(ox, oy, s);
+  softEllipse(ctx, c.x + 6, c.y + 3, s * HX * 1.2, s * HY * 1.25, 0x0c0a08, 0.4);
   // trodden earth around the base
   const g = boxGeo(ox, oy, s, s, 0);
   fillPoly(ctx, [[g.L.x, g.L.y], [g.F.x, g.F.y], [g.R.x, g.R.y], [g.B.x, g.B.y]], css(mix(ground, 0x5a4a30, 0.4), 0.55));
@@ -457,14 +469,15 @@ function footing(ctx: Ctx, ox: number, oy: number, s: number, ground = 0x6a6050)
 // ------------------------------------------------------------------ buildings
 
 export function buildingCanvasSize(size: number, height: number) {
-  return { w: size * TW + 16, h: size * TH + height * 2.6 + 40 };
+  return { w: size * (TX + SK) + STRUCT_MARGIN * 2, h: size * TY + height * 2.6 + 40 };
 }
 
-/** Paint a building onto ctx (canvas of buildingCanvasSize). Foot (front corner) at (w/2, h - 6). */
+/** Paint a building onto ctx (canvas of buildingCanvasSize). Foot (front-right corner) at (w - STRUCT_MARGIN, h - 6). */
 export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) {
   const m = def.model;
   const s = def.size;
-  const ox = w / 2, oy = h - 6;
+  const ox = w - STRUCT_MARGIN, oy = h - 6;
+  const mid = centreOf(ox, oy, s);
   const seed = [...def.id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0;
   footing(ctx, ox, oy, s);
   if (def.faction === 'thornwild') {
@@ -476,7 +489,10 @@ export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) 
     faceRight(ctx, plinth, stoneWall(0x8a8072, seed + 1, 3));
     cobbleTop(ctx, plinth, 0x8a8072, seed);
   }
-  const inset = (k: number) => [ox, oy - 3 - (TH * (s - k)) / 2] as const;
+  /** Front-right corner of a k-tile box centred on the footprint (lifted onto the plinth). */
+  const inset = (k: number) => { const c = cornerFor(mid, k); return [c.x, c.y - 3] as const; };
+  /** Centre-front point of a round structure k tiles across (huts, mounds, trees). */
+  const stand = (k: number) => [mid.x, mid.y + (k * TY) / 2 - 3] as const;
   const H = m.height * 1.6;
 
   switch (m.style) {
@@ -514,7 +530,7 @@ export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) 
       faceRight(ctx, g, (c, U, V, l) => { wall(c, U, V, l); windowAt(c, U * 0.35, V * 0.55, 0.22, 4, l); });
       A.flags.push(gableRoof(ctx, g, H * 0.5, m.roof, m.roof === 0x3a8a3a || def.faction === 'thornwild' ? 'thatch' : 'shingle', wall, seed).m2);
       fence(ctx, ox, oy, s, seed);
-      hay(ctx, pt(ox + 26, oy - 10));
+      hay(ctx, pt(ox - s * TX + 4, oy - 6));
       break;
     }
     case 'tower': {
@@ -590,29 +606,31 @@ export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) 
       faceLeft(ctx, g, (c, U, V, l) => { wall(c, U, V, l); doorAt(c, U * 0.4, 0.3, V * 0.7, l); });
       faceRight(ctx, g, (c, U, V, l) => { wall(c, U, V, l); windowAt(c, U * 0.3, V * 0.45, 0.14, 8, l, true); windowAt(c, U * 0.65, V * 0.45, 0.14, 8, l, true); });
       stoneTop(ctx, g, m.wall);
-      roundTower(ctx, g.tL.x + 5, g.tL.y + 14, 7, 22, m.wall, seed + 1);
-      coneRoof(ctx, g.tL.x + 5, g.tL.y - 8, 9, 18, m.roof, seed);
-      const k = boxGeo(g.c.x, g.c.y + 16, 0.95, 0.95, H * 0.62);
+      // back-right tower, then the keep, then the front-left tower (painter's order)
+      roundTower(ctx, g.tR.x - 5, g.tR.y + 14, 7, 22, m.wall, seed + 3);
+      coneRoof(ctx, g.tR.x - 5, g.tR.y - 8, 9, 18, m.roof, seed + 1);
+      const kc = cornerFor(g.c, 0.95);
+      const k = boxGeo(kc.x, kc.y, 0.95, 0.95, H * 0.62);
       const kw = stoneWall(shade(m.wall, 1.04), seed + 2, 6);
       faceLeft(ctx, k, (c, U, V, l) => { kw(c, U, V, l); windowAt(c, U * 0.35, V * 0.55, 0.2, 10, l, true); });
       faceRight(ctx, k, (c, U, V, l) => { kw(c, U, V, l); windowAt(c, U * 0.35, V * 0.55, 0.2, 10, l, true); });
       stoneTop(ctx, k, m.wall);
       dome(ctx, k.c, 13, 18, m.roof);
-      roundTower(ctx, g.tR.x - 5, g.tR.y + 14, 7, 22, m.wall, seed + 3);
-      coneRoof(ctx, g.tR.x - 5, g.tR.y - 8, 9, 18, m.roof, seed + 1);
+      roundTower(ctx, g.tL.x + 5, g.tL.y + 14, 7, 22, m.wall, seed + 1);
+      coneRoof(ctx, g.tL.x + 5, g.tL.y - 8, 9, 18, m.roof, seed);
       sunHalo(ctx, k.c.x, k.c.y - 26);
       A.flags.push(pt(g.tR.x - 5, g.tR.y - 26));
       A.glow.push(pt(k.c.x, k.c.y - 26));
       break;
     }
     case 'tree': {
-      const [x, y] = inset(1.4);
+      const [x, y] = stand(1.4);
       greatTree(ctx, x, y, H, m.wall, m.roof, seed, def.special);
       A.flags.push(pt(x + 8, y - H * 0.85 - (12 + H * 0.2) - (14 + H * 0.26) * 0.9));
       break;
     }
     case 'hut': {
-      const [x, y] = inset(1.4);
+      const [x, y] = stand(1.4);
       const cx = x, by = y - 14;
       roundHut(ctx, cx, by, 38, H * 0.55, m.wall, m.roof, seed);
       totem(ctx, cx + 44, by + 16, m.roof);
@@ -621,7 +639,7 @@ export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) 
       break;
     }
     case 'mound': {
-      const [x, y] = inset(1.6);
+      const [x, y] = stand(1.6);
       burrow(ctx, x, y, H, m.wall, m.roof, seed);
       A.flags.push(pt(x + 6, y - 36 - H * 0.5));
       A.glow.push(pt(x - 14, y - 16));
@@ -967,12 +985,12 @@ function crystal(ctx: Ctx, x: number, y: number, h: number, color: number) {
 // ------------------------------------------------------------------ castle
 
 export function castleCanvasSize() {
-  return { w: CASTLE_SIZE * TW + 24, h: CASTLE_SIZE * TH + 230 };
+  return { w: CASTLE_SIZE * (TX + SK) + STRUCT_MARGIN * 2, h: CASTLE_SIZE * TY + 230 };
 }
 
 export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   const s = CASTLE_SIZE;
-  const ox = w / 2, oy = h - 6;
+  const ox = w - STRUCT_MARGIN, oy = h - 6;
   const stone = 0xa29a88;
   const roof = mix(TEAM_COLORS[team], 0x30343c, 0.35);
   const seed = 500 + team * 17;
@@ -982,28 +1000,33 @@ export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   faceLeft(ctx, base, stoneWall(0x7a7466, seed, 3)); faceRight(ctx, base, stoneWall(0x7a7466, seed + 1, 3));
   stoneTop(ctx, base, 0x8a8476);
   const k = s - 0.35;
-  const yW = oy - 6 - (TH * 0.35) / 2;
+  // the curtain wall stands on the base, inset by half the margin on every side
+  const xW = ox - (0.35 / 2) * (TX + SK), yW = oy - 6 - (TY * 0.35) / 2;
   const wallH = 52;
-  // back towers first (painter's order)
-  const curtain = boxGeo(ox, yW, k, k, wallH);
+  // back towers first (painter's order): north-west and north-east corners
+  const curtain = boxGeo(xW, yW, k, k, wallH);
   roundTower(ctx, curtain.B.x, curtain.B.y + 2, 15, wallH + 20, stone, seed + 2);
   crownTower(ctx, curtain.B.x, curtain.B.y + 2 - wallH - 20, 15, stone, roof, seed);
+  roundTower(ctx, curtain.R.x, curtain.R.y + 2, 15, wallH + 18, stone, seed + 6);
+  crownTower(ctx, curtain.R.x, curtain.R.y + 2 - wallH - 18, 15, stone, roof, seed + 2);
   // courtyard visible over the back walls
-  faceTop(ctx, boxGeo(ox, yW, k, k, 8), (c, U, W) => {
+  faceTop(ctx, boxGeo(xW, yW, k, k, 8), (c, U, W) => {
     c.fillStyle = css(lit(0x7a7060, 0.95)); c.fillRect(0, 0, U, W);
     const r = rng(seed + 9);
     for (let i = 0; i < 120; i++) { c.fillStyle = css(lit(0x8a8070, 0.8 + r() * 0.4), 0.6); c.fillRect(r() * U, r() * W, 0.2, 0.2); }
   });
   // inner sides of the back curtain walls, with masonry
-  const inner = boxGeo(ox, yW - 8, k, k, wallH - 8);
+  const inner = boxGeo(xW, yW - 8, k, k, wallH - 8);
+  // inner side of the west wall (faces east: narrow, shaded) …
   ctx.save();
   path(ctx, [[inner.L.x, inner.L.y], [inner.B.x, inner.B.y], [inner.tB.x, inner.tB.y], [inner.tL.x, inner.tL.y]]); ctx.clip();
-  ctx.transform(HW, -HH, 0, -1, inner.L.x, inner.L.y);
+  ctx.transform(-EY.x, -EY.y, 0, -1, inner.L.x, inner.L.y);
   stoneWall(stone, seed + 21, 6)(ctx, k, wallH, 0.62);
   ctx.restore();
+  // … and of the north wall (faces south, towards the viewer)
   ctx.save();
   path(ctx, [[inner.B.x, inner.B.y], [inner.R.x, inner.R.y], [inner.tR.x, inner.tR.y], [inner.tB.x, inner.tB.y]]); ctx.clip();
-  ctx.transform(HW, HH, 0, -1, inner.B.x, inner.B.y);
+  ctx.transform(EX.x, EX.y, 0, -1, inner.B.x, inner.B.y);
   stoneWall(stone, seed + 22, 6)(ctx, k, wallH, 0.92);
   ctx.restore();
   // battlements along the back walls
@@ -1016,7 +1039,9 @@ export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   }
   courtyard(ctx, inner, seed);
   // keep
-  const keep = boxGeo(curtain.c.x, curtain.c.y + wallH + 6, 1.7, 1.7, 96);
+  // keep: centred, set back a little from the middle of the courtyard
+  const kc = cornerFor(pt(curtain.c.x, curtain.c.y + wallH), 1.7);
+  const keep = boxGeo(kc.x - EY.x * 0.6, kc.y - EY.y * 0.6, 1.7, 1.7, 96);
   const kw = stoneWall(shade(stone, 1.04), seed + 3, 6);
   faceLeft(ctx, keep, (c, U, V, l) => {
     kw(c, U, V, l);
@@ -1031,15 +1056,10 @@ export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   const kApex = up(keep.c, 46);
   ctx.strokeStyle = css(0x2a1c12); ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(kApex.x, kApex.y); ctx.lineTo(kApex.x, kApex.y - 14); ctx.stroke();
-  // side towers
-  roundTower(ctx, curtain.L.x + 2, curtain.L.y + 2, 15, wallH + 18, stone, seed + 5);
-  crownTower(ctx, curtain.L.x + 2, curtain.L.y + 2 - wallH - 18, 15, stone, roof, seed + 1);
-  roundTower(ctx, curtain.R.x - 2, curtain.R.y + 2, 15, wallH + 18, stone, seed + 6);
-  crownTower(ctx, curtain.R.x - 2, curtain.R.y + 2 - wallH - 18, 15, stone, roof, seed + 2);
-  // front curtain walls with walkway and crenellations
+  // front curtain walls with walkway and crenellations; the gate faces the viewer
   const cw = stoneWall(stone, seed + 7, 6);
-  faceLeft(ctx, curtain, (c, U, V, l) => { cw(c, U, V, l); slit(c, U * 0.25, V * 0.6); slit(c, U * 0.75, V * 0.6); });
-  faceRight(ctx, curtain, (c, U, V, l) => {
+  faceRight(ctx, curtain, (c, U, V, l) => { cw(c, U, V, l); slit(c, U * 0.3, V * 0.6); slit(c, U * 0.7, V * 0.6); });
+  faceLeft(ctx, curtain, (c, U, V, l) => {
     cw(c, U, V, l);
     // gatehouse: arched gate with portcullis
     const gu = U * 0.5 - 0.22, gw = 0.44, gh = 30;
@@ -1050,16 +1070,18 @@ export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
     for (let v = 6; v < gh; v += 5) c.fillRect(gu, v, gw, 0.8);
     slit(c, U * 0.18, V * 0.6); slit(c, U * 0.82, V * 0.6);
   });
-  for (const t of [0.3, 0.7]) { const p = lerp(curtain.F, curtain.R, t); A.glow.push(pt(p.x, p.y - 26)); torch(ctx, pt(p.x, p.y - 22)); }
+  for (const t of [0.3, 0.7]) { const p = lerp(curtain.L, curtain.F, t); A.glow.push(pt(p.x, p.y - 26)); torch(ctx, pt(p.x, p.y - 22)); }
   // walkway tops of the front walls
   const walk = (a: Pt, b: Pt, inward: Pt) => fillPoly(ctx, [[a.x, a.y], [b.x, b.y], [b.x + inward.x, b.y + inward.y], [a.x + inward.x, a.y + inward.y]], css(lit(stone, LIGHT.top * 0.9)));
-  walk(curtain.tL, curtain.tF, pt(HW * 0.18, -HH * 0.18));
-  walk(curtain.tF, curtain.tR, pt(-HW * 0.18, -HH * 0.18));
+  walk(curtain.tL, curtain.tF, pt(-EY.x * 0.18, -EY.y * 0.18));
+  walk(curtain.tF, curtain.tR, pt(-EX.x * 0.18, -EX.y * 0.18));
   crenellate(ctx, curtain, stone, seed, 6, true);
-  // gatehouse towers flanking the gate
-  const gate = lerp(curtain.F, curtain.R, 0.5);
-  for (const dx of [-0.3, 0.3]) {
-    const p = lerp(curtain.F, curtain.R, 0.5 + dx);
+  // gatehouse towers flanking the gate, front-left corner tower
+  roundTower(ctx, curtain.L.x, curtain.L.y + 4, 15, wallH + 18, stone, seed + 5);
+  crownTower(ctx, curtain.L.x, curtain.L.y + 4 - wallH - 18, 15, stone, roof, seed + 1);
+  const gate = lerp(curtain.L, curtain.F, 0.5);
+  for (const dx of [-0.17, 0.17]) {
+    const p = lerp(curtain.L, curtain.F, 0.5 + dx);
     roundTower(ctx, p.x, p.y + 4, 8, wallH + 6, stone, seed + 11 + dx * 10);
     crownTower(ctx, p.x, p.y + 4 - wallH - 6, 8, stone, roof, seed + 3, true);
   }
@@ -1072,7 +1094,8 @@ export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
 /** A few signs of life in the castle courtyard: a well, crates, a hay cart. */
 function courtyard(ctx: Ctx, g: Box, seed: number) {
   const r = rng(seed + 40);
-  const at = (u: number, w: number) => pt(g.L.x + u * HW + w * HW, g.L.y + u * HH - w * HH);
+  // u tiles along the front (x), w tiles towards the back (−y), from the south-west corner
+  const at = (u: number, w: number) => pt(g.L.x + u * EX.x - w * EY.x, g.L.y + u * EX.y - w * EY.y);
   // well
   const wl = at(0.9, 2.6);
   softEllipse(ctx, wl.x + 3, wl.y + 2, 9, 4, 0x000000, 0.35);
@@ -1113,11 +1136,12 @@ function crownTower(ctx: Ctx, cx: number, ty: number, rx: number, stone: number,
 /** Collapsed castle: jagged masonry walls, broken towers, the stump of the keep, heaps of blocks and charred beams. */
 export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   const s = CASTLE_SIZE;
-  const ox = w / 2, oy = h - 6;
+  const ox = w - STRUCT_MARGIN, oy = h - 6;
   const stone = 0x8e8676, roof = mix(TEAM_COLORS[team], 0x30343c, 0.55);
   const r = rng(900 + team);
   // scorched ground and the old base
-  softEllipse(ctx, ox, oy - s * HH, s * HW * 1.15, s * HH * 1.15, 0x14100a, 0.65);
+  const mid = centreOf(ox, oy, s);
+  softEllipse(ctx, mid.x, mid.y, s * HX * 1.2, s * HY * 1.25, 0x14100a, 0.65);
   const base = boxGeo(ox, oy, s, s, 6);
   faceLeft(ctx, base, stoneWall(0x6a6458, 9, 3)); faceRight(ctx, base, stoneWall(0x6a6458, 10, 3));
   faceTop(ctx, base, (c, U, W) => {
@@ -1125,8 +1149,8 @@ export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
     for (let i = 0; i < 160; i++) { c.fillStyle = css(r() < 0.5 ? 0x2a2218 : 0x7a7060, 0.4); c.fillRect(r() * U, r() * W, 0.08 + r() * 0.1, 0.06); }
   });
   const k = s - 0.35;
-  const yW = oy - 6 - (TH * 0.35) / 2;
-  const c = boxGeo(ox, yW, k, k, 0);
+  const xW = ox - (0.35 / 2) * (TX + SK), yW = oy - 6 - (TY * 0.35) / 2;
+  const c = boxGeo(xW, yW, k, k, 0);
   /** A wall segment whose top edge is broken off (clip with a jagged polygon, then paint masonry). */
   const brokenWall = (from: Pt, to: Pt, mat: FacePainter, light: number, dir: 'L' | 'R', hMax: number) => {
     const n = 10;
@@ -1140,7 +1164,7 @@ export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
     ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y);
     for (let i = n; i >= 0; i--) ctx.lineTo(top[i].x, top[i].y);
     ctx.closePath(); ctx.clip();
-    if (dir === 'L') ctx.transform(HW, HH, 0, -1, from.x, from.y); else ctx.transform(HW, -HH, 0, -1, from.x, from.y);
+    if (dir === 'L') ctx.transform(EX.x, EX.y, 0, -1, from.x, from.y); else ctx.transform(-EY.x, -EY.y, 0, -1, from.x, from.y);
     mat(ctx, k, hMax, light);
     ctx.restore();
     // broken edge highlight
@@ -1156,14 +1180,15 @@ export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
     ctx.fillStyle = css(0x1a1610); ctx.beginPath(); ctx.ellipse(p.x, p.y + 2 - hh - 4, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
   }
   // stump of the keep
-  const keep = boxGeo(c.c.x, c.c.y + 1.7 * HH, 1.7, 1.7, 0);
+  const kc = cornerFor(c.c, 1.7);
+  const keep = boxGeo(kc.x, kc.y, 1.7, 1.7, 0);
   brokenWall(keep.L, keep.F, stoneWall(stone, 41, 6), 1, 'L', 38);
   brokenWall(keep.F, keep.R, stoneWall(stone, 42, 6), 0.66, 'R', 30);
   // heaps of fallen blocks: little lit cuboids, back to front
   const blocks: Array<[number, number, number]> = [];
   for (let i = 0; i < 70; i++) {
     const a = r() * Math.PI * 2, d = Math.sqrt(r());
-    blocks.push([c.c.x + Math.cos(a) * d * 96, c.c.y + 10 + Math.sin(a) * d * 46, 0.08 + r() * 0.12]);
+    blocks.push([c.c.x + Math.cos(a) * d * s * HX * 1.05, c.c.y + 10 + Math.sin(a) * d * s * HY * 0.9, 0.08 + r() * 0.12]);
   }
   blocks.sort((p, q) => p[1] - q[1]);
   for (const [x, y, sz] of blocks) {

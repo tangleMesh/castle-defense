@@ -209,7 +209,18 @@ export function stepCombatUnits(sim: Sim) {
   const tick = sim.state.tick;
   // Units alive at the start of the tick all get to act, even if they are killed earlier in this
   // loop: exchanges resolve simultaneously instead of favouring whoever happens to act first.
-  const acting = fairOrder(sim).filter((e) => e.kind === 'unit' && e.hp > 0);
+  let acting = fairOrder(sim).filter((e) => e.kind === 'unit' && e.hp > 0);
+  // Regeneration and poison first, for everyone at once: inside each unit's turn the outcome
+  // depended on whether the enemy had already struck (regen is capped at full hp).
+  for (const e of acting) {
+    const regen = (UNITS[e.type].regen ?? 0) + modsOf(sim, e.id).regen;
+    if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
+    if (e.poison) {
+      dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
+      if (--e.poison.left <= 0) delete e.poison;
+    }
+  }
+  acting = acting.filter((e) => e.hp > 0); // killed by poison: no last blow
   // Moves are simultaneous too: every unit decides from the positions at the start of the tick
   // (a chaser must not see where its target has already stepped this tick), then all move at once.
   const moved: Array<[Entity, number, number]> = [];
@@ -224,7 +235,7 @@ export function stepCombatUnits(sim: Sim) {
   for (const [e, x, y] of moved) { e.x = x; e.y = y; }
 }
 
-/** One unit's turn: regen, poison, healing, targeting, then attack or move. */
+/** One unit's turn: healing, targeting, then attack or move (regen and poison ran before). */
 function stepUnit(sim: Sim, e: Entity, tick: number) {
   if (e.hp <= 0) {
     // Killed this tick: its last blow still lands (no movement, no regeneration).
@@ -234,14 +245,6 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   }
   const st = attackStats(e)!;
   const mods = modsOf(sim, e.id);
-  const ud = UNITS[e.type];
-  const regen = (ud.regen ?? 0) + mods.regen;
-  if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
-  if (e.poison) {
-    dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
-    if (--e.poison.left <= 0) delete e.poison;
-    if (e.hp <= 0) return;
-  }
   if ((e.cd ?? 0) > 0) e.cd!--;
   tryHeal(sim, e);
 
@@ -270,7 +273,7 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   } else {
     followFlow(sim, e, speed);
     // Marching freely readies the next charge.
-    if (ud.charge) e.charge = true;
+    if (UNITS[e.type].charge) e.charge = true;
   }
 }
 

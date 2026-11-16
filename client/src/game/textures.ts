@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { BUILDINGS, CASTLE_SIZE, UNITS } from '@bc/shared';
-import { TH, TW } from './iso';
+import { SK, TX, TY } from './iso';
 import { blurred, grad, paper, radial, softEllipse, rng as prng } from './paint';
 import { UNIT_CANVAS, UNIT_FRAMES, outline, paintBuilder, paintUnit } from './units';
 import { PROP_SIZE, paintBush, paintOak, paintPine, paintRock } from './props';
-import { buildingCanvasSize, castleCanvasSize, paintBuilding, paintCastle, paintRuin, takeAnchors, type Anchors } from './structures';
+import { STRUCT_MARGIN, buildingCanvasSize, castleCanvasSize, paintBuilding, paintCastle, paintRuin, takeAnchors, type Anchors } from './structures';
 
 type G = Phaser.GameObjects.Graphics;
 
@@ -57,18 +57,18 @@ function genTerrain(scene: Phaser.Scene) {
   const tile = (key: string, base: number, seed: number, specks: number[], speckCount = 14) => {
     g.clear();
     const r = rng(seed);
-    poly(g, base, [[TW / 2, 0], [TW, TH / 2], [TW / 2, TH], [0, TH / 2]]);
+    poly(g, base, [[0, 0], [TX, 0], [TX + SK, TY], [SK, TY]]);
     for (let i = 0; i < speckCount; i++) {
       const u = r(), v = r();
-      const x = (u - v) * (TW / 2) + TW / 2, y = (u + v) * (TH / 2);
+      const x = u * TX + v * SK, y = v * TY;
       g.fillStyle(specks[i % specks.length], 0.55);
       g.fillRect(x, y, 2, 1 + (r() > 0.6 ? 1 : 0));
     }
-    // subtle bevel on the lower edges
+    // subtle bevel on the lower and right edges
     g.lineStyle(1, shade(base, 0.82), 0.5);
-    g.lineBetween(0, TH / 2, TW / 2, TH);
-    g.lineBetween(TW / 2, TH, TW, TH / 2);
-    gen(g, key, TW, TH);
+    g.lineBetween(SK, TY, TX + SK, TY);
+    g.lineBetween(TX, 0, TX + SK, TY);
+    gen(g, key, TX + SK, TY);
   };
   const grass = [0x4e7f35, 0x527f37, 0x4a7a33, 0x56853a];
   grass.forEach((c, i) => tile(`g${i}`, c, 11 + i, [0x6a9a45, 0x3c6428, 0x7aa850]));
@@ -84,16 +84,16 @@ function genTerrain(scene: Phaser.Scene) {
   // Painted forest props and boulders (with baked soft shadows).
   for (let i = 0; i < 3; i++) {
     const P = PROP_SIZE.pine, O = PROP_SIZE.oak;
-    bakeStructure(scene, `tree_p${i}`, P.w, P.h, P.footY, P.footY, (c) => paintPine(c, 201 + i * 7));
-    bakeStructure(scene, `tree_o${i}`, O.w, O.h, O.footY, O.footY, (c) => paintOak(c, 301 + i * 11));
+    bakeStructure(scene, `tree_p${i}`, P.w, P.h, P.w / 2, P.footY, P.footY, (c) => paintPine(c, 201 + i * 7));
+    bakeStructure(scene, `tree_o${i}`, O.w, O.h, O.w / 2, O.footY, O.footY, (c) => paintOak(c, 301 + i * 11));
   }
   for (let i = 0; i < 2; i++) {
     const B = PROP_SIZE.bush;
-    bakeStructure(scene, `bush${i}`, B.w, B.h, B.footY, B.footY, (c) => paintBush(c, 401 + i * 5, i === 0));
+    bakeStructure(scene, `bush${i}`, B.w, B.h, B.w / 2, B.footY, B.footY, (c) => paintBush(c, 401 + i * 5, i === 0));
   }
   for (let i = 0; i < 6; i++) {
     const R = PROP_SIZE.rock;
-    bakeStructure(scene, `rock${i}`, R.w, R.h, R.footY, R.footY - 8, (c) => paintRock(c, 77 + i * 13));
+    bakeStructure(scene, `rock${i}`, R.w, R.h, R.w / 2, R.footY, R.footY - 8, (c) => paintRock(c, 77 + i * 13));
   }
 
   // decorative tufts / flowers
@@ -125,11 +125,11 @@ export function originOf(key: string): { x: number; y: number } {
  * Paint a structure and bake its soft cast shadow underneath: the silhouette is skewed onto
  * the ground towards the lower right (sun in the upper left) and blurred.
  */
-function bakeStructure(scene: Phaser.Scene, key: string, w: number, h: number, footY: number, groundY: number, paint: (ctx: CanvasRenderingContext2D) => void) {
+function bakeStructure(scene: Phaser.Scene, key: string, w: number, h: number, footX: number, footY: number, groundY: number, paint: (ctx: CanvasRenderingContext2D) => void) {
   const R = TEX_RES;
   const src = paper(w, h, R);
   paint(src.ctx);
-  const anchors = takeAnchors(w / 2, footY);
+  const anchors = takeAnchors(footX, footY);
   const kx = 0.8, ky = 0.4;
   const extraW = kx * groundY + 12;
   const outH = Math.max(h, groundY + ky * groundY + 12);
@@ -151,19 +151,19 @@ function bakeStructure(scene: Phaser.Scene, key: string, w: number, h: number, f
   out.ctx.drawImage(src.canvas, 0, 0, w, h);
   if (scene.textures.exists(key)) scene.textures.remove(key);
   scene.textures.addCanvas(key, out.canvas);
-  ORIGINS.set(key, { x: w / 2 / out.w, y: footY / out.h });
+  ORIGINS.set(key, { x: footX / out.w, y: footY / out.h });
   ANCHORS.set(key, anchors);
 }
 
 function genStructures(scene: Phaser.Scene) {
   for (const def of Object.values(BUILDINGS)) {
     const { w, h } = buildingCanvasSize(def.size, def.model.height);
-    bakeStructure(scene, `b_${def.id}`, w, h, h - 6, h - 6 - def.size * TH / 2, (ctx) => paintBuilding(ctx, def, w, h));
+    bakeStructure(scene, `b_${def.id}`, w, h, w - STRUCT_MARGIN, h - 6, h - 6 - def.size * TY, (ctx) => paintBuilding(ctx, def, w, h));
   }
   const { w, h } = castleCanvasSize();
   for (const team of [0, 1] as const) {
-    bakeStructure(scene, `castle${team}`, w, h, h - 6, h - 6 - CASTLE_SIZE * TH / 2, (ctx) => paintCastle(ctx, team, w, h));
-    bakeStructure(scene, `ruin${team}`, w, h, h - 6, h - 6 - CASTLE_SIZE * TH / 2, (ctx) => paintRuin(ctx, team, w, h));
+    bakeStructure(scene, `castle${team}`, w, h, w - STRUCT_MARGIN, h - 6, h - 6 - CASTLE_SIZE * TY, (ctx) => paintCastle(ctx, team, w, h));
+    bakeStructure(scene, `ruin${team}`, w, h, w - STRUCT_MARGIN, h - 6, h - 6 - CASTLE_SIZE * TY, (ctx) => paintRuin(ctx, team, w, h));
   }
 }
 
@@ -289,7 +289,7 @@ function genFx(scene: Phaser.Scene) {
     for (let j = 0; j < 3; j++) g.lineBetween(20, 80 - j * 22, 108, 80 - j * 22);
     g.lineBetween(24, 90, 104, 30);
   });
-  make('tile_hl', TW, TH, () => { poly(g, 0xffffff, [[TW / 2, 0], [TW, TH / 2], [TW / 2, TH], [0, TH / 2]]); });
+  make('tile_hl', TX + SK, TY, () => { poly(g, 0xffffff, [[0, 0], [TX, 0], [TX + SK, TY], [SK, TY]]); });
   g.destroy();
 }
 

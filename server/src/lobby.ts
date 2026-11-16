@@ -278,6 +278,10 @@ export class Lobby {
         for (const s of r.slots) this.conns.get(s.userId)?.send({ type: 'error', message: 'Saved game is no longer available' });
         return;
       }
+      if (!Sim.compatible(saved.simState)) {
+        for (const s of r.slots) this.conns.get(s.userId)?.send({ type: 'error', message: 'This saved game was played on the old, smaller map and can\'t be resumed.' });
+        return;
+      }
       sim = Sim.restore(saved.simState);
       matchId = saved._id;
       startedAt = saved.startedAt;

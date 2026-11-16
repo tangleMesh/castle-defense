@@ -62,12 +62,12 @@ describe('map & pathing', () => {
     const sim = newSim();
     const before = computeFlowField(buildBlockedGrid(sim.state), MAP.castles[1]);
     const i = (x: number, y: number) => y * MAP.width + x;
-    const start = before[i(12, 14)];
-    // wall off a column in front of tile (12,14) with buildings, leaving gaps at the edges
-    for (let y = 4; y < 24; y += 2) placeNow(sim, 0, 'iv_war_banner', 14, y);
+    const start = before[i(18, 20)];
+    // wall off a column in front of tile (18,20) with buildings, leaving gaps at the edges
+    for (let y = 4; y < 36; y += 2) placeNow(sim, 0, 'iv_war_banner', 20, y);
     const after = sim.flowField(0);
-    expect(after[i(12, 14)]).toBeGreaterThan(start);
-    expect(after[i(12, 14)]).toBeLessThan(0xffff);
+    expect(after[i(18, 20)]).toBeGreaterThan(start);
+    expect(after[i(18, 20)]).toBeLessThan(0xffff);
   });
 });
 
@@ -226,8 +226,8 @@ describe('spawning & combat', () => {
   it('opposing units fight and kills pay bounty', () => {
     const sim = newSim();
     const a = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 25, 12), 'iv_knight', 0, 1);
-    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_burrow', 54, 12), 'tw_vineling', 0, 1);
-    a.x = 40; a.y = 16; b.x = 41; b.y = 16;
+    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_burrow', 85, 12), 'tw_vineling', 0, 1);
+    a.x = 55; a.y = 16; b.x = 56; b.y = 16;
     const gold = sim.state.players[0].gold;
     const events: SimEvent[] = [];
     for (let i = 0; i < 20 * 15 && sim.get(b.id); i++) events.push(...sim.step());
@@ -244,10 +244,10 @@ describe('spawning & combat', () => {
   it('ground melee cannot hit air units', () => {
     const sim = newSim();
     const a = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 25, 12), 'iv_militia', 0, 1);
-    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_moth_hive', 54, 12), 'tw_dusk_moth', 0, 1);
-    a.x = 40; a.y = 16; b.x = 40.5; b.y = 16;
+    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_moth_hive', 85, 12), 'tw_dusk_moth', 0, 1);
+    a.x = 55; a.y = 16; b.x = 55.5; b.y = 16;
     const hp = b.hp;
-    for (let i = 0; i < 10; i++) { b.x = 40.5; b.y = 16; sim.step(); }
+    for (let i = 0; i < 10; i++) { b.x = 55.5; b.y = 16; sim.step(); }
     expect(sim.get(b.id)!.hp).toBe(hp);
   });
 });
@@ -256,7 +256,7 @@ describe('rescue strike', () => {
   function setup() {
     const sim = newSim();
     const c = rectCenter(MAP.castles[0]);
-    const hut = placeNow(sim, 1, 'tw_burrow', 54, 12);
+    const hut = placeNow(sim, 1, 'tw_burrow', 85, 12);
     const enemy = spawnUnit(sim, hut, 'tw_vineling', 0, 1);
     enemy.x = c.x + 6; enemy.y = c.y;
     const far = spawnUnit(sim, hut, 'tw_vineling', 0, 1);
@@ -292,13 +292,14 @@ describe('rescue strike', () => {
   });
 
   it('counts its kills as regular kills of the caster and pays the full bounty', () => {
-    const { sim, c, enemy } = setup();
+    const { sim, c, enemy, far } = setup();
     const p = sim.state.players[0];
     const kills0 = p.kills;
     let paid = 0;
     sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
     for (let i = 0; i < 25 && sim.get(enemy.id); i++) {
       const e = sim.get(enemy.id); if (e) { e.x = c.x + 6; e.y = c.y; }
+      const f = sim.get(far.id); if (f) { f.x = c.x + 20; f.y = c.y; }
       sim.step();
       for (const ev of sim.state.events) if (ev.t === 'gold' && ev.p === 0) paid += ev.g;
     }

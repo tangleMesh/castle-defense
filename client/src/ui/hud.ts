@@ -8,7 +8,12 @@ import type { MatchSession, Mode } from '../game/session';
 import { DPR, TEAM_COLORS, TEAM_CSS, TEAM_NAMES, WORLD, toScreen, toTile } from '../game/iso';
 
 /** Minimap size in CSS pixels; the canvas backing store is DPR× larger. */
-const MINI_W = 232, MINI_H = 116;
+const MINI_W = 232, MINI_H = 80;
+/** World rect the minimap shows: the whole map, padded with countryside to the minimap's aspect. */
+const MV = (() => {
+  const h = ((WORLD.maxX - WORLD.minX) * MINI_H) / MINI_W, pad = (h - (WORLD.maxY - WORLD.minY)) / 2;
+  return { minX: WORLD.minX, maxX: WORLD.maxX, minY: WORLD.minY - pad, maxY: WORLD.maxY + pad };
+})();
 import { $, clear, css, h } from './dom';
 import { itemIcon } from './itemIcons';
 
@@ -179,8 +184,8 @@ export class Hud {
     let dragging = false;
     const jump = (e: MouseEvent) => {
       const r = this.mini.getBoundingClientRect();
-      const sx = ((e.clientX - r.left) / r.width) * (WORLD.maxX - WORLD.minX) + WORLD.minX;
-      const sy = ((e.clientY - r.top) / r.height) * (WORLD.maxY - WORLD.minY) + WORLD.minY;
+      const sx = ((e.clientX - r.left) / r.width) * (MV.maxX - MV.minX) + MV.minX;
+      const sy = ((e.clientY - r.top) / r.height) * (MV.maxY - MV.minY) + MV.minY;
       const t = toTile(sx, sy);
       if (e.button === 2) { this.session.send({ c: 'move', x: t.x, y: t.y }); return; }
       this.scene.cameras.main.centerOn(sx, sy);
@@ -648,8 +653,8 @@ export class Hud {
     // Countryside around the map, matching the forest drawn on the battlefield.
     g.fillStyle = '#365a26';
     g.fillRect(0, 0, MINI_W, MINI_H);
-    const sx = MINI_W / (WORLD.maxX - WORLD.minX), sy = MINI_H / (WORLD.maxY - WORLD.minY);
-    const P = (x: number, y: number) => { const p = toScreen(x, y); return [(p.x - WORLD.minX) * sx, (p.y - WORLD.minY) * sy] as const; };
+    const sx = MINI_W / (MV.maxX - MV.minX), sy = MINI_H / (MV.maxY - MV.minY);
+    const P = (x: number, y: number) => { const p = toScreen(x, y); return [(p.x - MV.minX) * sx, (p.y - MV.minY) * sy] as const; };
     for (const d of outerDecor()) {
       if (d.kind !== 'tree' && d.kind !== 'rock') continue;
       const [x, y] = P(d.x, d.y);
@@ -666,7 +671,7 @@ export class Hud {
     if (this.scene.groundChunks.length) {
       // The minimap is a small copy of the painted battlefield.
       g.imageSmoothingQuality = 'high';
-      for (const ch of this.scene.groundChunks) g.drawImage(ch.canvas, (ch.x - WORLD.minX) * sx, (ch.y - WORLD.minY) * sy, ch.w * sx, ch.h * sy);
+      for (const ch of this.scene.groundChunks) g.drawImage(ch.canvas, (ch.x - MV.minX) * sx, (ch.y - MV.minY) * sy, ch.w * sx, ch.h * sy);
       g.globalAlpha = 0.18;
       quad(MAP.zones[0].x, MAP.zones[0].y, MAP.zones[0].w, MAP.zones[0].h, '#4f9bff');
       quad(MAP.zones[1].x, MAP.zones[1].y, MAP.zones[1].w, MAP.zones[1].h, '#ff5a48');
@@ -687,10 +692,10 @@ export class Hud {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(this.miniBase, 0, 0);
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
-    const sx = MINI_W / (WORLD.maxX - WORLD.minX), sy = MINI_H / (WORLD.maxY - WORLD.minY);
+    const sx = MINI_W / (MV.maxX - MV.minX), sy = MINI_H / (MV.maxY - MV.minY);
     for (const [id, v] of this.scene.views) {
       const p = toScreen(v.x, v.y);
-      const x = (p.x - WORLD.minX) * sx, y = (p.y - WORLD.minY) * sy;
+      const x = (p.x - MV.minX) * sx, y = (p.y - MV.minY) * sy;
       g.fillStyle = v.owner === s.you && v.kind !== 0 ? '#ffffff' : TEAM_CSS[v.team];
       const size = v.kind === 3 ? 9 : v.kind === 1 ? 5 : v.kind === 2 ? 4 : 2.5;
       if (v.kind === 2) { g.fillStyle = '#ffe060'; }
@@ -700,14 +705,14 @@ export class Hud {
     for (const v of this.scene.ghosts.values()) {
       const p = toScreen(v.x, v.y);
       g.fillStyle = 'rgba(150,160,175,0.7)';
-      g.fillRect((p.x - WORLD.minX) * sx - 2.5, (p.y - WORLD.minY) * sy - 2.5, 5, 5);
+      g.fillRect((p.x - MV.minX) * sx - 2.5, (p.y - MV.minY) * sy - 2.5, 5, 5);
     }
     const fog = this.scene.vision;
     if (fog) {
       // Fog of war: darken every tile the team can't see (row runs → one quad each).
       g.fillStyle = 'rgba(4,6,10,0.55)';
       g.beginPath();
-      const P = (x: number, y: number) => { const q = toScreen(x, y); return [(q.x - WORLD.minX) * sx, (q.y - WORLD.minY) * sy] as const; };
+      const P = (x: number, y: number) => { const q = toScreen(x, y); return [(q.x - MV.minX) * sx, (q.y - MV.minY) * sy] as const; };
       // Outside the map a tile shares the visibility of the nearest map tile (same as the battlefield).
       const W = MAP.width, H = MAP.height, B = OUTER_TILES;
       const vis = (x: number, y: number) => fog[Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))];
@@ -725,12 +730,12 @@ export class Hud {
     }
     for (const [, x, y] of s.latest.strikes) {
       const p = toScreen(x, y);
-      g.strokeStyle = '#ffe060'; g.beginPath(); g.arc((p.x - WORLD.minX) * sx, (p.y - WORLD.minY) * sy, 8, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = '#ffe060'; g.beginPath(); g.arc((p.x - MV.minX) * sx, (p.y - MV.minY) * sy, 8, 0, Math.PI * 2); g.stroke();
     }
     const v = this.scene.viewRect();
     g.strokeStyle = 'rgba(255,255,255,0.9)';
     g.lineWidth = 1;
-    g.strokeRect((v.x - WORLD.minX) * sx, (v.y - WORLD.minY) * sy, v.width * sx, v.height * sy);
+    g.strokeRect((v.x - MV.minX) * sx, (v.y - MV.minY) * sy, v.width * sx, v.height * sy);
   }
 
   // ---------------------------------------------------------------- messages & banners

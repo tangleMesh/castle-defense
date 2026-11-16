@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { spawnUnit } from '../src/sim/spawning';
 import { AiPlayer, Sim, TICK_RATE, botLevel, isBotId, makeBotId, type PlayerCommand, type SimEvent } from '../src';
 
-function play(levels: ['easy' | 'normal' | 'hard', 'easy' | 'normal' | 'hard'], seed: number, maxMinutes = 45) {
+function play(levels: ['easy' | 'normal' | 'hard', 'easy' | 'normal' | 'hard'], seed: number, maxMinutes = 45, swapFactions = false) {
+  const f = swapFactions ? (['thornwild', 'ironvow'] as const) : (['ironvow', 'thornwild'] as const);
   const sim = Sim.create({
     players: [
-      { userId: makeBotId(levels[0], 'a'), name: 'a', team: 0, faction: 'ironvow' },
-      { userId: makeBotId(levels[1], 'b'), name: 'b', team: 1, faction: 'thornwild' },
+      { userId: makeBotId(levels[0], 'a'), name: 'a', team: 0, faction: f[0] },
+      { userId: makeBotId(levels[1], 'b'), name: 'b', team: 1, faction: f[1] },
     ],
     bestOf: 1, seed,
   });
@@ -37,9 +38,10 @@ describe('AI players', () => {
   }, 60_000);
 
   it('hard beats easy most of the time', () => {
-    // Rounds are short and swingy, so judge over several games, not one.
+    // Rounds are short and swingy, so judge over several games, not one; factions alternate so
+    // the test checks the levels, not one faction matchup (the lab ladder covers those).
     let hardWins = 0;
-    for (const seed of [7, 11, 23, 42, 99]) if (play(['easy', 'hard'], seed).sim.state.winner === 1) hardWins++;
+    [7, 11, 23, 42, 99].forEach((seed, i) => { if (play(['easy', 'hard'], seed, 45, i % 2 === 1).sim.state.winner === 1) hardWins++; });
     expect(hardWins).toBeGreaterThanOrEqual(3);
   }, 120_000);
 

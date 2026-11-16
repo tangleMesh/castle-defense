@@ -2,6 +2,8 @@ import { INCOME_INTERVAL_TICKS, START_GOLD, START_SAPPHIRES, type GameMode } fro
 import { sideRandom } from './rng';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
+
+const MAP_KEY = `${MAP.width}x${MAP.height}`;
 import type { Entity, PlayerCommand, PlayerSetup, SimEvent, SimState, Team } from './state';
 import { buildBlockedGrid, computeFlowField, footprint } from './grid';
 import { SpatialHash } from './spatialHash';
@@ -44,6 +46,7 @@ export class Sim {
   static create(opts: CreateOptions): Sim {
     const state: SimState = {
       version: 1,
+      map: MAP_KEY,
       tick: 0,
       roundStartTick: 0,
       rng: opts.seed >>> 0,
@@ -73,6 +76,11 @@ export class Sim {
   }
 
   /** Restore from a persisted state (deep-copied so the input is never mutated). */
+  /** Whether a saved game was played on the current map (older saves sit on other coordinates). */
+  static compatible(saved: SimState): boolean {
+    return saved.map === MAP_KEY;
+  }
+
   static restore(saved: SimState): Sim {
     const state = JSON.parse(JSON.stringify(saved)) as SimState;
     state.events = [];
