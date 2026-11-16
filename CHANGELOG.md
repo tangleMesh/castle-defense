@@ -7,6 +7,9 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.21.1
+- The version label in the lower-right corner is larger and brighter (13 px instead of 10 px), so it's readable.
+
 ## 0.21.0
 **Version label with balance revision**
 - The version in the corner now reads e.g. `v0.21.0+1`: game version plus balance revision (see above). The balancer raises the revision whenever it writes a changed tuning, and its report and `tuning.ts` header name the full version.
