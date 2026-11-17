@@ -7,6 +7,29 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.25.0
+**Bots build varied armies**
+- **Before:** bots only looked about 15 s ahead. Early income is around 1 gold/s, so the cheapest spawner was the only thing in reach: Normal and Hard bots built Militia Hall after Militia Hall (or Burrow after Burrow) and never upgraded.
+- **Now, Normal and Hard plan:**
+  - Every option is rated by value per gold, discounted only by how much extra gold it still needs compared with the soonest affordable one.
+  - Each further copy of the same building is worth less.
+  - Each round, every bot draws a doctrine: a random preference for melee, ranged, air, swarm, siege, towers, upgrades and so on. No two rounds look alike, and the counter logic still answers what the enemy fields.
+  - Under pressure, or for the very first spawner, they buy right away.
+- **Result in the lab:** the 1v1 gap between the factions disappeared. Ironvow won 20% of 1v1 games when its bots spammed Militia and wins 48% now. The Hard bot also no longer has a significant blind spot against human-style strategies.
+
+**Fixed**
+- **Buildings and the castle looked broken:** the left wall was missing, and the right wall was painted in front of the front wall. The camera tilt and the building art disagreed about which side wall faces the viewer. The battlefield now leans the other way, so every building shows its front wall, its shaded east wall on the right and its roof, as painted.
+- **Side bias:**
+  - **First-building bonus:** players who finish their first building on the same tick (common since the start countdown) now share the bonus place. Before, the left side got 20 gold and the right side 15.
+  - **Burst positions:** units bursting on the exact centre line no longer burst in non-mirrored directions.
+  - **Measured:** the left side now wins 48% (CI 44–52%), down from 56%.
+
+**Balancer**
+- **New `early` knob per faction:** it scales first-tier units (buildable spawners and what their units burst into) on top of `power`, steered by the gap between small games (1v1, 2v2) and big ones (3v3, 4v4).
+- **Checks:**
+  - `balance:check` now fails when that gap is over 15%.
+  - The mirror-symmetry test also compares gold and runs for 90 s.
+
 ## 0.24.0+4 · balance
 First balancer run for the reworked factions. It started from an untuned game and took 73 min; the full report is in docs/balance-report.md.
 - **Factions:** Ironvow power 0.911, Thornwild 1.098. Untuned, Ironvow won 73%. Verified at 46% / 54% over 646 games, which is even within the margin.

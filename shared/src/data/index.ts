@@ -31,6 +31,14 @@ for (const f of Object.values(FACTIONS)) {
 const BASE = new Map(Object.values(UNITS).map((u) => [u.id, { hp: u.hp, dmg: u.dmg, heal: u.heal && { ...u.heal }, poison: u.poison && { ...u.poison } }]));
 const unitFaction = new Map<string, FactionId>();
 for (const f of Object.values(FACTIONS)) for (const u of f.units) unitFaction.set(u.id, f.id);
+/** Units of the first tier: spawned by buildable, non-special buildings, and what they burst into. */
+export const EARLY_UNITS = new Set<string>();
+for (const b of Object.values(BUILDINGS)) {
+  if (!b.spawn || b.upgradeOnly || b.special) continue;
+  EARLY_UNITS.add(b.spawn.unit);
+  const od = UNITS[b.spawn.unit].onDeath;
+  if (od) EARLY_UNITS.add(od.unit);
+}
 
 /** Balance revision of the committed tuning: the `+N` after the game version (0.20.0+3). */
 export const BALANCE_REVISION = TUNING.revision ?? 0;
@@ -49,7 +57,8 @@ export function applyUnitTuning(t: Tuning) {
   ACTIVE_TUNING = t;
   for (const u of Object.values(UNITS)) {
     const b = BASE.get(u.id)!;
-    const power = Math.sqrt(t.factions[unitFaction.get(u.id)!]?.power ?? 1);
+    const ft = t.factions[unitFaction.get(u.id)!];
+    const power = Math.sqrt((ft?.power ?? 1) * (EARLY_UNITS.has(u.id) ? ft?.early ?? 1 : 1));
     const hp = power * (t.units[u.id]?.hp ?? 1), dmg = power * (t.units[u.id]?.dmg ?? 1);
     u.hp = b.hp * hp;
     u.dmg = b.dmg * dmg;

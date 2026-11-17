@@ -4,28 +4,31 @@ import { MAP } from '@bc/shared';
 export const DPR = typeof window === 'undefined' ? 1 : Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 
 /**
- * Front 3/4 view: the camera looks at the battlefield from the south. Tile x (the battlefield,
- * castle to castle) runs straight left to right; tile y runs towards the viewer, foreshortened and
- * leaning slightly right, so buildings show their front (south) wall, a narrow east wall and the roof.
+ * Front 3/4 view: the camera looks at the battlefield from the south and a little from the east.
+ * Tile x (the battlefield, castle to castle) runs straight left to right; tile y runs towards the
+ * viewer, foreshortened and leaning slightly left (the far, north side leans right), so buildings
+ * show their front (south) wall, a narrow east wall on the right and the roof. (Until 0.24 the axis
+ * leaned the other way while structures were painted for this one: the visible west wall was
+ * missing and the hidden east wall was painted over the front.)
  */
 /** Screen px per tile along x. */
 export const TX = 44;
 /** Screen px per tile along y (towards the viewer). */
 export const TY = 26;
-/** Screen px the y axis leans right per tile. */
+/** Screen px the y axis leans per tile (towards the viewer: left). */
 export const SK = 10;
 /** Screen vectors of one tile step along x and along y. */
 export const EX = { x: TX, y: 0 } as const;
-export const EY = { x: SK, y: TY } as const;
+export const EY = { x: -SK, y: TY } as const;
 
-/** Tile-space (x along the battlefield, y across) → world pixels. */
+/** Tile-space (x along the battlefield, y across) → world pixels (all ≥ 0). */
 export function toScreen(x: number, y: number): { x: number; y: number } {
-  return { x: x * TX + y * SK, y: y * TY };
+  return { x: x * TX + (MAP.height - y) * SK, y: y * TY };
 }
 
 export function toTile(sx: number, sy: number): { x: number; y: number } {
   const y = sy / TY;
-  return { x: (sx - y * SK) / TX, y };
+  return { x: (sx - (MAP.height - y) * SK) / TX, y };
 }
 
 /** Bounds of the whole map in world pixels. */

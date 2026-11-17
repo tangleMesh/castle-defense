@@ -156,7 +156,9 @@ export interface FactionDef {
 /**
  * Balance multipliers on top of the hand-written faction data, written by `npm run balance`
  * (shared/src/data/tuning.ts). `power` scales hp and damage of every unit of a faction by
- * sqrt(power) each, so fight strength moves by about `power`.
+ * sqrt(power) each, so fight strength moves by about `power`. `early` does the same on top for the
+ * units of buildable, non-special spawners (the first tier, plus what they burst into): it shifts a
+ * faction's strength between short games (1v1, decided early) and long ones (big teams, late units).
  */
 export interface Tuning {
   /**
@@ -164,7 +166,7 @@ export interface Tuning {
    * the game version (0.20.0+3), so a balance-only change is told apart from a game change.
    */
   revision?: number;
-  factions: Partial<Record<FactionId, { power: number }>>;
+  factions: Partial<Record<FactionId, { power: number; early?: number }>>;
   units: Record<string, { hp?: number; dmg?: number }>;
   /** Income multiplier per bot level ('hard' is the anchor and stays 1). */
   aiIncome: Partial<Record<'easy' | 'normal' | 'hard' | 'brutal', number>>;

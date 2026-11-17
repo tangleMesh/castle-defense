@@ -64,7 +64,7 @@ so the game, the bots, the tooltips and the lab all use the tuned values. The fa
 | Stage | Measures | Knob |
 |---|---|---|
 | 1 · units | building duels, same tier, equal gold, no AI | unit hp and dmg of clear outliers (outside 25–75%): ±4% per step, 0.8–1.25 in total. Support, siege, anti-air and champion units are skipped and listed instead |
-| 2 · factions | every line-up against every other at 1v1–4v4, both sides, hard bots | faction `power`: hp and dmg of every unit × √power |
+| 2 · factions | every line-up against every other at 1v1–4v4, both sides, hard bots | faction `power`: hp and dmg of every unit × √power. Faction `early`: the same, on top, for first-tier units only (buildable spawners and what their units burst into), steered by the gap between small (1v1, 2v2) and big games (3v3, 4v4): short games are decided by the first tier, long ones by upgrades and specials. Verification wants that gap within ±15% |
 | 3 · bots | brutal>hard, hard>normal, normal>easy, all faction pairings | income of brutal / normal / easy (hard stays 1, so stage 2 is unaffected); target ~80% |
 | 4 · strategies | normal and hard bots against human-style strategies (pure air, swarm, turtle, rush, …; `sparring.ts`) played by the same level's brain, every faction pairing | none: measure only. A bot that wins less than 40% against one strategy (95% CI below 50%) fails the check |
 
@@ -92,7 +92,7 @@ With 4 cores, a tuning step takes about 8 minutes and a verification about 20–
 `LAB_THREADS` and more cores scale almost linearly.
 
 **What it can't fix** (listed under "Needs a design look" in the report):
-- a faction that is strong at one team size and weak at another (one power knob per faction can only fix the average)
+- a faction that is strong at one team size and weak at another, beyond what `early` (0.75–1.33) can shift
 - lopsided individual line-ups such as mixed teams against pure teams
 - a side bias of the map
 - support units whose value doesn't show in duels

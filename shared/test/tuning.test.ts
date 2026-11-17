@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { AI_INCOME, COMMITTED_TUNING, NEUTRAL_TUNING, UNITS, applyTuning, type Tuning } from '../src/index';
+import { AI_INCOME, COMMITTED_TUNING, EARLY_UNITS, NEUTRAL_TUNING, UNITS, applyTuning, type Tuning } from '../src/index';
 
 describe('balance tuning', () => {
   afterEach(() => applyTuning(COMMITTED_TUNING));
@@ -28,5 +28,16 @@ describe('balance tuning', () => {
     applyTuning({ factions: {}, units: { [healer.id]: { dmg: 2 }, [poisoner.id]: { dmg: 2 } }, aiIncome: {} });
     expect(healer.heal!.amount).toBeCloseTo(h * 2);
     expect(poisoner.poison!.dps).toBeCloseTo(p * 2);
+  });
+
+  it('early scales only first-tier units (and what they burst into) on top of power', () => {
+    applyTuning(NEUTRAL_TUNING);
+    expect([...EARLY_UNITS]).toEqual(expect.arrayContaining(['iv_militia', 'tw_vineling', 'tw_sproutling']));
+    expect(EARLY_UNITS.has('iv_knight')).toBe(false);
+    expect(EARLY_UNITS.has('iv_sun_champion')).toBe(false);
+    const mil = UNITS.iv_militia.hp, kn = UNITS.iv_knight.hp;
+    applyTuning({ factions: { ironvow: { power: 1.21, early: 1.21 } }, units: {}, aiIncome: {} });
+    expect(UNITS.iv_militia.hp).toBeCloseTo(mil * 1.21);
+    expect(UNITS.iv_knight.hp).toBeCloseTo(kn * 1.1);
   });
 });

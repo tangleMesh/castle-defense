@@ -73,10 +73,21 @@ export interface Profile {
   bias?: Partial<Record<BuildCategory, number>>;
   /** Scouting cheat for sparring partners: judges the enemy army without fog of war. */
   fullVision?: boolean;
-  /** Income ticks the bot may wait for a better option instead of buying another fragile-unit spawner (0 = never waits). */
-  chaffWait?: number;
-  /** Normal-style planners: income ticks (10 s each) they save up for a better pick instead of buying the cheapest affordable one. */
-  saveWindow?: number;
+  /**
+   * Planners: how much saving up costs. An option's appeal is divided by (1 + waitCost × extra / cost),
+   * where `extra` is the gold still missing beyond the soonest affordable option; options more than
+   * `maxWait` seconds of extra saving away are skipped. Before, bots only looked ~15 s ahead, and with
+   * income around 1 gold/s early on the cheapest spawner was the only thing ever in reach.
+   */
+  waitCost?: number;
+  maxWait?: number;
+  /**
+   * Per-round doctrine: each round the bot draws a preference for every building category
+   * (log-normal, this σ), so its army differs from round to round and can be countered.
+   */
+  doctrine?: number;
+  /** Noise on a new wish (±share), so equal options are picked in turn. */
+  noise?: number;
   /** Income ticks the bot saves up for anti-air when enemy flyers outnumber its anti-air (0: never reacts). */
   antiAirWait?: number;
   /** Where spawn buildings go: around the castle (default), towards the front, or behind the castle. */
@@ -115,7 +126,7 @@ export const PROFILES: Record<AiLevel, Profile> = {
     think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: true,
     saves: false, tidy: true, rescueAt: 6, rescueDelay: TICK_RATE, rescueAim: 0.5, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
     itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'],
-    saveWindow: 1.5, antiAirWait: 2.5,
+    waitCost: 1.5, maxWait: 120, doctrine: 0.5, noise: 0.3, antiAirWait: 2.5,
   },
   hard: {
     think: Math.round(0.5 * TICK_RATE), maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
@@ -123,13 +134,13 @@ export const PROFILES: Record<AiLevel, Profile> = {
     itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'],
     // Found with the simulation lab (npm run lab -- search / tune): a base behind the castle wins ~65% against one
     // around it, and striking early at small waves (rescueAt 3 instead of 8) another ~70%.
-    place: 'back', chaffWait: 0, antiAirWait: 4,
+    place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4,
   },
   // Hard's brain, faster, without fog of war and with +30% income (AI_INCOME): openly cheating.
   brutal: {
     think: 3, maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], place: 'back', chaffWait: 0, antiAirWait: 4, fullVision: true,
+    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
   },
 };
 
@@ -311,39 +322,9 @@ export class AiPlayer {
     if (goal && goal.def.cost <= me.gold) pick = goal;
     else if (aa && aa.def.cost <= me.gold) pick = aa;
     else if (aa && aa.def.cost <= me.gold + perTick * (P.antiAirWait ?? 0)) return null;
-    else if (P.saves) {
-      // Go for the best option; wait for it when it's within ~15 s of income.
-      options.sort((a, b) => b.score - a.score);
-      {
-        // Don't flood the field with cheap chaff: if the affordable choice is a spawner of fragile
-        // units, wait up to ~30 s of income for a clearly better option (unless under pressure).
-        const cheap = options.find((o) => o.def.cost <= me.gold);
-        // (Not for the very first spawner: that one is bought as soon as possible.)
-        const chaff = !!cheap?.def.spawn && UNITS[cheap.def.spawn.unit].hp < 150
-          && mine.filter((e) => BUILDINGS[e.type].spawn).length >= 1;
-        for (const o of options) {
-          if (o.def.cost <= me.gold) { pick = o; break; }
-          if (o.def.cost <= me.gold + perTick * 1.5) return null;
-          // A strategy bias (sparring partners) is worth saving up for.
-          if ((P.bias?.[buildCategory(o.def, o.kind === 'upgrade')] ?? 1) >= 2 && o.def.cost <= me.gold + perTick * 10) return null;
-          if (chaff && o.score >= cheap!.score * 1.2 && o.def.cost <= me.gold + perTick * (P.chaffWait ?? 3)
-            && !this.enemyProfile(sim, me).pressure) return null;
-        }
-      }
-    } else if (P.planner) {
-      // Picks among what it can afford soon (not only right now, which is mostly the cheapest
-      // spawner), with some noise, and then sticks to that wish until it can pay for it.
-      const reach = options.filter((o) => o.def.cost <= me.gold + perTick * (P.saveWindow ?? 0));
-      if (!reach.length) return null;
-      let want = this.wish ? reach.find((o) => o.def.id === this.wish) : undefined;
-      if (!want) {
-        const noisy = reach.map((o) => ({ o, s: o.score * (0.7 + this.rnd() * 0.6) })).sort((a, b) => b.s - a.s);
-        want = noisy[0].o;
-        this.wish = want.def.id;
-      }
-      if (want.def.cost > me.gold) return null;
-      pick = want;
-      this.wish = null;
+    else if (P.planner) {
+      pick = this.plan(sim, me, mine, options, perTick);
+      if (!pick) return null;
     } else {
       // Easy: wants something at random and waits until it can pay for it.
       if (!this.wish || !options.some((o) => o.def.id === this.wish)) this.wish = options[Math.floor(this.rnd() * options.length)].def.id;
@@ -368,6 +349,60 @@ export class AiPlayer {
     if (s.tick - s.roundStartTick < P.itemsAfterMin * 60 * TICK_RATE || buildings < 5) return null;
     const id = P.items.find((i) => !bag.includes(i));
     return id ? ITEM_BY_ID[id] : null;
+  }
+
+  /**
+   * Planner pick: every option's value (square-rooted, so one strong counter doesn't crowd out
+   * everything else) is weighed by this round's doctrine and discounted by the time needed to save
+   * for it. The bot then sticks to that wish while saving, unless something becomes much better.
+   */
+  private plan(sim: Sim, me: PlayerState, mine: Entity[], options: Option[], perTick: number): Option | undefined {
+    const P = this.profile;
+    const enemy = this.enemyProfile(sim, me);
+    // The first spawner, and anything while the castle is under pressure, is bought right away.
+    const urgent = !mine.some((e) => BUILDINGS[e.type].spawn) || enemy.pressure;
+    const waitCost = urgent ? 8 : P.waitCost ?? 1.5, maxWait = urgent ? 8 : P.maxWait ?? 120;
+    const doctrine = this.doctrineFor(sim);
+    const perSec = Math.max(0.3, perTick) / (INCOME_INTERVAL_TICKS / TICK_RATE);
+    // All gold is spent sooner or later, so what an option really costs in time is the wait on top of
+    // the soonest affordable one (right after a purchase, everything is far away).
+    const soonest = Math.min(...options.map((o) => o.def.cost));
+    const rank = (o: Option) => {
+      const cat = buildCategory(o.def, o.kind === 'upgrade');
+      const extra = Math.max(0, o.def.cost - me.gold) - Math.max(0, soonest - me.gold);
+      // A strategy bias (sparring partners) is worth saving up for longer.
+      if (extra / perSec > maxWait * ((P.bias?.[cat] ?? 1) >= 2 ? 2.5 : 1)) return 0;
+      return Math.sqrt(Math.max(0, o.score)) * (doctrine[cat] ?? 1) / (1 + (waitCost * extra) / o.def.cost);
+    };
+    const ranked = options.map((o) => ({ o, r: rank(o) })).filter((x) => x.r > 0);
+    if (!ranked.length) return undefined;
+    const best = ranked.reduce((a, b) => (b.r > a.r ? b : a));
+    let want = this.wish ? ranked.find((x) => x.o.def.id === this.wish) : undefined;
+    if (!want || best.r > want.r * 1.6) {
+      const noise = P.noise ?? 0;
+      want = ranked.map((x) => ({ ...x, n: x.r * (1 + noise * (this.rnd() * 2 - 1)) })).reduce((a, b) => (b.n > a.n ? b : a));
+      this.wish = want.o.def.id;
+    }
+    if (want.o.def.cost > me.gold) return undefined;
+    this.wish = null;
+    return want.o;
+  }
+
+  private doctrine: { round: number; w: Partial<Record<BuildCategory, number>> } | null = null;
+
+  /** This round's preferences per building category (redrawn every round). */
+  private doctrineFor(sim: Sim): Partial<Record<BuildCategory, number>> {
+    const round = sim.state.round;
+    if (this.doctrine?.round === round) return this.doctrine.w;
+    const sigma = this.profile.doctrine ?? 0;
+    const w: Partial<Record<BuildCategory, number>> = {};
+    for (const c of ['melee', 'ranged', 'air', 'swarm', 'siege', 'tower', 'aura', 'eco', 'upgrade', 'special'] as BuildCategory[]) {
+      // Box–Muller normal draw → log-normal weight around 1.
+      const g = Math.sqrt(-2 * Math.log(1 - this.rnd())) * Math.cos(2 * Math.PI * this.rnd());
+      w[c] = Math.exp(sigma * g);
+    }
+    this.doctrine = { round, w };
+    return w;
   }
 
   private options(sim: Sim, me: PlayerState, mine: Entity[], queued: { building: string }[]): Option[] {
@@ -398,8 +433,8 @@ export class AiPlayer {
       }
       if (def.spawn) {
         let score = this.spawnScore(def, enemy) / def.cost;
-        // Planners keep a mixed army: each further copy of the same spawner is worth a bit less.
-        if (P.counter) score *= 0.88 ** count((d) => d.id === def.id || !!def.upgrades?.includes(d.id));
+        // Planners keep a mixed army: each further copy of the same spawner (or its upgrades) is worth less.
+        if (P.planner) score *= (P.counter ? 0.78 : 0.85) ** count((d) => d.id === def.id || !!def.upgrades?.includes(d.id));
         if (P.rangedShare && UNITS[def.spawn.unit].range >= 4 && ranged < P.rangedShare * Math.max(1, spawners)) score *= 1.6;
         out.push({ kind: 'build', def, score });
         continue;

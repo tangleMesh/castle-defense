@@ -16,9 +16,14 @@ const HX = TX / 2, HY = TY / 2;
 /** Margin (px) around a footprint on structure canvases, for overhangs and props. */
 export const STRUCT_MARGIN = 24;
 /** Ground centre of an s×s footprint whose front-right (south-east) corner is at (ox, oy). */
-const centreOf = (ox: number, oy: number, s: number): Pt => pt(ox - (s * (TX + SK)) / 2, oy - (s * TY) / 2);
+const centreOf = (ox: number, oy: number, s: number): Pt => pt(ox - (s * (EX.x + EY.x)) / 2, oy - (s * (EX.y + EY.y)) / 2);
 /** Front-right corner of a k×k box centred on the ground point c. */
-const cornerFor = (c: Pt, k: number): Pt => pt(c.x + (k * (TX + SK)) / 2, c.y + (k * TY) / 2);
+const cornerFor = (c: Pt, k: number): Pt => pt(c.x + (k * (EX.x + EY.x)) / 2, c.y + (k * (EX.y + EY.y)) / 2);
+/**
+ * Canvas x of the front-right ground corner of an s×s footprint: the back-right corner leans
+ * s × SK further right, and that has to fit inside the margin too.
+ */
+export const footX = (w: number, s: number) => w - STRUCT_MARGIN - s * SK;
 const lerp = (a: Pt, b: Pt, t: number): Pt => pt(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
 const up = (p: Pt, h: number): Pt => pt(p.x, p.y - h);
 
@@ -472,11 +477,11 @@ export function buildingCanvasSize(size: number, height: number) {
   return { w: size * (TX + SK) + STRUCT_MARGIN * 2, h: size * TY + height * 2.6 + 40 };
 }
 
-/** Paint a building onto ctx (canvas of buildingCanvasSize). Foot (front-right corner) at (w - STRUCT_MARGIN, h - 6). */
+/** Paint a building onto ctx (canvas of buildingCanvasSize). Foot (front-right corner) at (footX(w, size), h - 6). */
 export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) {
   const m = def.model;
   const s = def.size;
-  const ox = w - STRUCT_MARGIN, oy = h - 6;
+  const ox = footX(w, def.size), oy = h - 6;
   const mid = centreOf(ox, oy, s);
   const seed = [...def.id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0;
   footing(ctx, ox, oy, s);
@@ -990,7 +995,7 @@ export function castleCanvasSize() {
 
 export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   const s = CASTLE_SIZE;
-  const ox = w - STRUCT_MARGIN, oy = h - 6;
+  const ox = footX(w, CASTLE_SIZE), oy = h - 6;
   const stone = 0xa29a88;
   const roof = mix(TEAM_COLORS[team], 0x30343c, 0.35);
   const seed = 500 + team * 17;
@@ -1001,7 +1006,7 @@ export function paintCastle(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   stoneTop(ctx, base, 0x8a8476);
   const k = s - 0.35;
   // the curtain wall stands on the base, inset by half the margin on every side
-  const xW = ox - (0.35 / 2) * (TX + SK), yW = oy - 6 - (TY * 0.35) / 2;
+  const xW = ox - (0.35 / 2) * (EX.x + EY.x), yW = oy - 6 - (TY * 0.35) / 2;
   const wallH = 52;
   // back towers first (painter's order): north-west and north-east corners
   const curtain = boxGeo(xW, yW, k, k, wallH);
@@ -1136,7 +1141,7 @@ function crownTower(ctx: Ctx, cx: number, ty: number, rx: number, stone: number,
 /** Collapsed castle: jagged masonry walls, broken towers, the stump of the keep, heaps of blocks and charred beams. */
 export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
   const s = CASTLE_SIZE;
-  const ox = w - STRUCT_MARGIN, oy = h - 6;
+  const ox = footX(w, CASTLE_SIZE), oy = h - 6;
   const stone = 0x8e8676, roof = mix(TEAM_COLORS[team], 0x30343c, 0.55);
   const r = rng(900 + team);
   // scorched ground and the old base
@@ -1149,7 +1154,7 @@ export function paintRuin(ctx: Ctx, team: 0 | 1, w: number, h: number) {
     for (let i = 0; i < 160; i++) { c.fillStyle = css(r() < 0.5 ? 0x2a2218 : 0x7a7060, 0.4); c.fillRect(r() * U, r() * W, 0.08 + r() * 0.1, 0.06); }
   });
   const k = s - 0.35;
-  const xW = ox - (0.35 / 2) * (TX + SK), yW = oy - 6 - (TY * 0.35) / 2;
+  const xW = ox - (0.35 / 2) * (EX.x + EY.x), yW = oy - 6 - (TY * 0.35) / 2;
   const c = boxGeo(xW, yW, k, k, 0);
   /** A wall segment whose top edge is broken off (clip with a jagged polygon, then paint masonry). */
   const brokenWall = (from: Pt, to: Pt, mat: FacePainter, light: number, dir: 'L' | 'R', hMax: number) => {

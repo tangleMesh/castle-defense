@@ -161,7 +161,22 @@ async function measureDuels() {
 // ------------------------------------------------------------------ formatting
 
 const factionLine = (m: FactionMeasure) => FACTION_IDS.map((f) => `${f} ${pct(m.overall[f])}`).join(' · ');
-const powerLine = () => FACTION_IDS.map((f) => `${f} ${(tuning.factions[f]?.power ?? 1).toFixed(3)}`).join(' · ');
+const powerLine = () => FACTION_IDS.map((f) => `${f} ${(tuning.factions[f]?.power ?? 1).toFixed(3)}${(tuning.factions[f]?.early ?? 1) !== 1 ? ` (early ${tuning.factions[f]!.early!.toFixed(3)})` : ''}`).join(' · ');
+/**
+ * How much better a faction does in small games (1v1, 2v2) than in big ones (3v3, 4v4): short
+ * games are decided by the first tier, long ones by upgrades, elites and specials. 0 with only
+ * small or only big sizes measured.
+ */
+function spreadOf(m: FactionMeasure, f: string): number {
+  const avg = (pick: (size: number) => boolean) => {
+    const r = [...m.bySize].filter(([size]) => pick(size)).map(([, rep]) => rep.factions[f]?.rate).filter((v): v is number => v !== undefined);
+    return r.length ? r.reduce((a, b) => a + b, 0) / r.length : NaN;
+  };
+  const d = avg((n) => n <= 2) - avg((n) => n >= 3);
+  return Number.isNaN(d) ? 0 : d;
+}
+/** Allowed small-vs-big gap before `early` has to move (and before a verification counts). */
+const SPREAD_TOL = 0.15;
 const incomeLine = () => AI_LEVELS.map((l) => `${l} ${(tuning.aiIncome[l] ?? (l === 'brutal' ? 1.3 : 1)).toFixed(2)}`).join(' · ');
 
 function sizeTable(m: FactionMeasure) {
@@ -211,10 +226,26 @@ async function stageUnits() {
 async function stageFactions(): Promise<FactionMeasure> {
   out.push('## 2 · Factions (hard bots, all line-ups, team sizes ' + sizes.join('/') + ')', '');
   const lp: Record<string, number> = Object.fromEntries(FACTION_IDS.map((f) => [f, Math.log(tuning.factions[f]?.power ?? 1)]));
+  // Second knob per faction: the strength of its first tier, against the small-vs-big-game gap.
+  const le: Record<string, number> = Object.fromEntries(FACTION_IDS.map((f) => [f, Math.log(tuning.factions[f]?.early ?? 1)]));
   const setPower = () => {
     const mean = FACTION_IDS.reduce((a, f) => a + lp[f], 0) / FACTION_IDS.length;
-    for (const f of FACTION_IDS) { lp[f] -= mean; tuning.factions[f] = { power: r3(Math.exp(lp[f])) }; }
+    for (const f of FACTION_IDS) {
+      lp[f] -= mean;
+      const early = r3(Math.exp(le[f]));
+      tuning.factions[f] = { power: r3(Math.exp(lp[f])), ...(early !== 1 ? { early } : {}) };
+    }
   };
+  // Proportional steps (≤ ±5% per step, 0.75–1.33 in total): a 30-point gap moves `early` by ~7%.
+  const stepEarly = (m: FactionMeasure) => {
+    if (sizes.length < 2) return;
+    for (const f of FACTION_IDS) {
+      const d = spreadOf(m, f);
+      if (Math.abs(d) > SPREAD_TOL / 2) le[f] = clamp(le[f] + clamp(-0.25 * d, -0.05, 0.05), Math.log(0.75), Math.log(1.33));
+    }
+    setPower();
+  };
+  const spreadOk = (m: FactionMeasure) => sizes.length < 2 || FACTION_IDS.every((f) => Math.abs(spreadOf(m, f)) <= SPREAD_TOL);
   // Every measurement so far feeds a logistic fit of win rate against power (shared/src/lab/fit.ts);
   // each step jumps to the fit's 50% point (at most ±6% power per step).
   const points: FitPoint[] = [];
@@ -255,25 +286,31 @@ async function stageFactions(): Promise<FactionMeasure> {
       verifyNow = k >= 3 && moved < 0.005;
       out.push(`${row} ${b.toFixed(0)}${verifyNow ? ' (fit settled)' : ''} |`);
     }
+    // The first-tier knob follows the gap between small and big games; while it is large, it keeps moving.
+    if (!spreadOk(m)) { stepEarly(m); verifyNow = false; }
     if (verifyNow) {
       const v = await measureFactions(`verify #${k}`, verifyGames, { mirrors: true });
       record(v);
       out.push(`| ${k} ✓ verify | ${powerLine()} | ${factionLine(v)} | ${v.games} | |`);
       process.stderr.write(`  verify → ${factionLine(v)}\n`);
-      if (verifiedOk(v)) { verified = v; break; }
+      if (verifiedOk(v) && spreadOk(v)) { verified = v; break; }
       step();
+      stepEarly(v);
     }
   }
   if (!verified) {
     verified = await measureFactions('factions verify', verifyGames, { mirrors: true });
     if (!check) out.push(`| final | ${powerLine()} | ${factionLine(verified)} | ${verified.games} | |`);
   }
-  out.push('', `Power now: ${powerLine()}`, '', '### Faction win rate per team size (verification run)', '', sizeTable(verified), '');
+  out.push('', `Power now: ${powerLine()}`, '', '### Faction win rate per team size (verification run)', '', sizeTable(verified), '',
+    `Small (1v1, 2v2) minus big games (3v3, 4v4): ${FACTION_IDS.map((f) => `${f} ${spreadOf(verified!, f) >= 0 ? '+' : ''}${pct(spreadOf(verified!, f))}`).join(' · ')} (the \`early\` knob targets ±${pct(SPREAD_TOL)})`, '');
   for (const f of FACTION_IDS) {
+    const gap = spreadOf(verified, f);
+    if (Math.abs(gap) > SPREAD_TOL) { failed.add('factions'); problems.push(`faction ${f} does ${pct(Math.abs(gap))} ${gap > 0 ? 'better' : 'worse'} in small games (1v1, 2v2) than in big ones (3v3, 4v4) (want within ±${pct(SPREAD_TOL)})`); }
     if (Math.abs(verified.overall[f] - 0.5) > Math.max(tol, 0.05)) { failed.add('factions'); problems.push(`faction ${f} wins ${pct(verified.overall[f])} overall (want 50% ± ${pct(Math.max(tol, 0.05))})`); }
     for (const [size, r] of verified.bySize) {
       const v = r.factions[f];
-      if (v && (v.ci[1] < 0.4 || v.ci[0] > 0.6)) design.push(`${f} wins ${pct(v.rate)} at ${size}v${size} (CI ${pct(v.ci[0])}–${pct(v.ci[1])}): size-dependent, a single power knob can't fix it`);
+      if (v && (v.ci[1] < 0.4 || v.ci[0] > 0.6)) design.push(`${f} wins ${pct(v.rate)} at ${size}v${size} (CI ${pct(v.ci[0])}–${pct(v.ci[1])}): size-dependent${Math.abs(le[f]) >= Math.log(1.32) ? ', and the early knob is at its limit' : ''}`);
     }
   }
   for (const p of verified.all.pairings) {
@@ -382,7 +419,7 @@ function writeTuning(fm: FactionMeasure | null, revision: number) {
     '  // Balance revision: +1 per balancer run that changed the tuning, never reset (shown as <game version>+N).',
     `  revision: ${revision},`,
     '  factions: {',
-    ...FACTION_IDS.map((f) => `    ${f}: { power: ${tuning.factions[f]?.power ?? 1} },`),
+    ...FACTION_IDS.map((f) => `    ${f}: { power: ${tuning.factions[f]?.power ?? 1}${tuning.factions[f]?.early && tuning.factions[f]!.early !== 1 ? `, early: ${tuning.factions[f]!.early}` : ''} },`),
     '  },',
     '  units: {',
     ...units.map(([id, u]) => `    ${id}: { hp: ${u.hp ?? 1}, dmg: ${u.dmg ?? 1} },`),
