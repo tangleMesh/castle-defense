@@ -6,7 +6,7 @@ const players: PlayerSetup[] = [0, 1, 2, 3].map((i) => ({ userId: `u${i}`, name:
 
 describe('game modes', () => {
   it('standard mode keeps the chosen factions', () => {
-    const sim = Sim.create({ players, bestOf: 5, seed: 9 });
+    const sim = Sim.create({ countdownTicks: 0, players, bestOf: 5, seed: 9 });
     for (let r = 0; r < 4; r++) startRound(sim);
     expect(sim.state.players.every((p) => p.faction === 'ironvow')).toBe(true);
     expect(makeSnapshot(sim, []).mode).toBe('standard');
@@ -14,7 +14,7 @@ describe('game modes', () => {
 
   it('random mode draws every faction anew each round, deterministically', () => {
     const draws = (seed: number) => {
-      const sim = Sim.create({ players, bestOf: 5, seed, mode: 'random' });
+      const sim = Sim.create({ countdownTicks: 0, players, bestOf: 5, seed, mode: 'random' });
       const out = [sim.state.players.map((p) => p.faction)];
       for (let r = 0; r < 7; r++) { startRound(sim); out.push(sim.state.players.map((p) => p.faction)); }
       return out;

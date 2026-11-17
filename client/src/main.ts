@@ -67,6 +67,7 @@ class App {
     // Reconnect to the same match: keep the running scene, just reset the snapshot buffer.
     if (this.session && this.session.matchId === init.matchId && this.game) {
       this.session.buffer = [];
+      this.socket!.send({ type: 'match.loaded' });
       return;
     }
     this.leaveGame();
@@ -79,6 +80,8 @@ class App {
     const tryHud = () => {
       if (!ready || !session.latest || this.hud) return;
       this.hud = new Hud(session, scene, () => this.toLobby(), (msg) => this.socket!.send(msg));
+      // Battlefield on screen: the round's start countdown may begin.
+      this.socket!.send({ type: 'match.loaded' });
     };
     scene.onReady = () => { ready = true; tryHud(); };
     session.on('snapshot', () => { if (!pendingSnap) { pendingSnap = true; tryHud(); } });

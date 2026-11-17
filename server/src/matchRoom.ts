@@ -7,6 +7,8 @@ import type { Persistence } from './persistence';
 
 const LIVE_SAVE_EVERY_TICKS = 30 * TICK_RATE;
 const DISCONNECT_GRACE_MS = 60_000;
+/** Longest the first start countdown waits for clients that are still loading. */
+const LOAD_WAIT_MS = 20_000;
 
 export interface MatchRoomOptions {
   matchId: string;
@@ -37,6 +39,9 @@ export class MatchRoom {
   private ticksSinceSave = 0;
   private closed = false;
   private ais: AiPlayer[] = [];
+  /** Players whose client has the battlefield on screen (see `loading`). */
+  private loaded = new Set<string>();
+  private startedAt = Date.now();
 
   constructor(private o: MatchRoomOptions) {
     this.id = o.matchId;
@@ -57,6 +62,7 @@ export class MatchRoom {
 
   start() {
     for (const p of this.sim.state.players) p.connected = isBotId(p.userId) || this.conns.has(p.userId);
+    this.startedAt = Date.now();
     this.timer = setInterval(() => this.tick(), this.o.tickMs);
     void this.persist('live');
   }
@@ -102,6 +108,10 @@ export class MatchRoom {
         if (msg.pause) this.pauseVotes.add(conn.userId); else this.pauseVotes.delete(conn.userId);
         this.broadcastPause(true);
         return;
+      case 'match.loaded':
+        this.loaded.add(conn.userId);
+        this.broadcastPause(true);
+        return;
       case 'game.saveAndExit':
         if (conn.userId !== this.o.hostId) return conn.send({ type: 'error', message: 'Only the host can save & exit' });
         void this.saveAndClose();
@@ -114,8 +124,20 @@ export class MatchRoom {
 
   // ---------------------------------------------------------------- loop
 
+  /**
+   * Connected players still loading the battlefield while the round's start countdown is pending.
+   * The countdown waits for them (at most LOAD_WAIT_MS), so a slow loader doesn't lose its 5 s.
+   */
+  private loading(now: number): string[] {
+    const s = this.sim.state;
+    if (s.phase !== 'playing' || s.phaseTicks <= 0 || now - this.startedAt > LOAD_WAIT_MS) return [];
+    return [...this.conns.keys()].filter((u) => !this.loaded.has(u)).map((u) => this.o.players.find((p) => p.userId === u)?.name ?? '?');
+  }
+
   private isPaused(): { paused: boolean; reason: string; waitingFor: string[]; resumeIn?: number } {
     const now = Date.now();
+    const loading = this.loading(now);
+    if (loading.length) return { paused: true, reason: 'Waiting for players to load the battlefield', waitingFor: loading, resumeIn: Math.ceil((LOAD_WAIT_MS - (now - this.startedAt)) / 1000) };
     const waiting = [...this.disconnectedAt.entries()].filter(([, at]) => now - at < DISCONNECT_GRACE_MS);
     if (waiting.length) {
       const names = waiting.map(([u]) => this.o.players.find((p) => p.userId === u)?.name ?? '?');

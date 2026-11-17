@@ -8,7 +8,7 @@ const players: PlayerSetup[] = [
   { userId: 'a', name: 'A', team: 0, faction: 'ironvow' },
   { userId: 'b', name: 'B', team: 1, faction: 'thornwild' },
 ];
-const newSim = () => Sim.create({ players, bestOf: 3, seed: 5 });
+const newSim = () => Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 5 });
 const buy = (sim: Sim, item: string, player = 0) => sim.step([{ player, cmd: { c: 'buy', item } }]);
 
 describe('builder items', () => {

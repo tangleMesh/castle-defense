@@ -704,6 +704,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBars() {
+    const BAR_OWN = 0x3ad04a, BAR_ALLY = 0x3ab8c8, BAR_ENEMY = 0xe0402e;
     const g = this.bars;
     g.clear();
     const sel = this.session.selection;
@@ -724,8 +725,9 @@ export class GameScene extends Phaser.Scene {
         w = size * 22; x = p.x - w / 2; y = Math.max(top + 4, p.y - 140);
       }
       const r = Math.max(0, v.hp / v.maxHp);
-      // Framed bar: dark case, glossy two-tone fill, a team-coloured cap on the left.
-      const col = r > 0.6 ? 0x3ad04a : r > 0.3 ? 0xe0c030 : 0xe03a2a;
+      // Framed bar: dark case, glossy fill coloured by side (the length shows the health), so
+      // friend and foe are easy to tell apart where units and buildings crowd together.
+      const col = v.team !== this.session.team ? BAR_ENEMY : v.owner === this.session.you ? BAR_OWN : BAR_ALLY;
       g.fillStyle(0x0c0a08, 0.85); g.fillRect(x - 1.5, y - 1.5, w + 3, 6);
       g.fillStyle(0x2a2218, 0.9); g.fillRect(x, y, w, 3);
       g.fillStyle(col); g.fillRect(x, y, w * r, 3);

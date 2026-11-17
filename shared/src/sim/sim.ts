@@ -1,4 +1,4 @@
-import { INCOME_INTERVAL_TICKS, START_GOLD, START_SAPPHIRES, type GameMode } from '../constants';
+import { INCOME_INTERVAL_TICKS, ROUND_COUNTDOWN_TICKS, START_GOLD, START_SAPPHIRES, TICK_RATE, type GameMode } from '../constants';
 import { sideRandom } from './rng';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
@@ -22,6 +22,8 @@ export interface CreateOptions {
   bestOf: number;
   seed: number;
   mode?: GameMode;
+  /** Start countdown of each round in ticks (default ROUND_COUNTDOWN_TICKS; tests use 0). */
+  countdownTicks?: number;
 }
 
 /**
@@ -57,6 +59,7 @@ export class Sim {
       rounds: [],
       phase: 'playing',
       phaseTicks: 0,
+      countdownTicks: opts.countdownTicks ?? ROUND_COUNTDOWN_TICKS,
       winner: null,
       incomeTicks: INCOME_INTERVAL_TICKS,
       nextId: 1,
@@ -121,7 +124,7 @@ export class Sim {
       this.byId.delete(e.id);
       if (e.kind === 'unit') {
         const p = this.state.players[e.owner]; if (p) p.lost = (p.lost ?? 0) + 1;
-        if (UNITS[e.type].onDeath) released.push(e);
+        if (UNITS[e.type].onDeath && !e.smitten) released.push(e);
       }
       this.emit({ t: 'die', id: e.id, x: round2(e.x), y: round2(e.y), k: e.kind });
       if (e.kind === 'building') gridChanged = true;
@@ -222,6 +225,14 @@ export class Sim {
     s.events = [];
     if (s.phase !== 'playing') {
       stepPhase(this);
+      s.tick++;
+      return s.events;
+    }
+    if (s.phaseTicks > 0) {
+      // Start countdown: everything stands still and commands are refused, so nobody (a faster
+      // connection, a quicker loader) gets the first building down before the others can.
+      for (const pc of commands) if (pc.cmd.c !== 'stop') this.emit({ t: 'err', p: pc.player, msg: `The round starts in ${Math.ceil(s.phaseTicks / TICK_RATE)} s` });
+      s.phaseTicks--;
       s.tick++;
       return s.events;
     }

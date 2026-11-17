@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BASE_INCOME, BOUNTY_MULT, MAX_INCOME_BONUS, BUILDINGS, CASTLE_HP, FACTIONS, INCOME_INTERVAL_TICKS, INCOME_PCT, MAP, RESCUE_RANGE, ROCK_GRID,
-  ROUND_END_TICKS, SAPPHIRE_GOLD, START_GOLD, START_SAPPHIRES, Sim, UNITS, computeDamage, computeFlowField, buildBlockedGrid, isFullyConnected,
+  ROUND_COUNTDOWN_TICKS, ROUND_END_TICKS, SAPPHIRE_GOLD, START_GOLD, START_SAPPHIRES, Sim, UNITS, computeDamage, computeFlowField, buildBlockedGrid, isFullyConnected,
   incomeFor, makeSnapshot, rectCenter, type PlayerSetup, type SimEvent, type Team,
 } from '../src/index';
 import { spawnUnit } from '../src/sim/spawning';
@@ -17,7 +17,7 @@ const players = (n = 1): PlayerSetup[] => {
   return out;
 };
 
-const newSim = (bestOf = 3, n = 1) => Sim.create({ players: players(n), bestOf, seed: 1234 });
+const newSim = (bestOf = 3, n = 1) => Sim.create({ countdownTicks: 0, players: players(n), bestOf, seed: 1234 });
 
 /** Place a completed building directly, bypassing the builder walk. */
 function placeNow(sim: Sim, player: number, building: string, tx: number, ty: number, complete = true) {
@@ -287,6 +287,8 @@ describe('rescue strike', () => {
     expect(sim.get(enemy.id)).toBeUndefined();
     expect(sim.get(friend.id)).toBeDefined();
     expect(sim.get(far.id)).toBeDefined();
+    // The smitten Vineling doesn't burst into Sproutlings (the far one is untouched).
+    expect(sim.state.entities.filter((e) => e.type === 'tw_sproutling')).toEqual([]);
     sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
     expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('already'))).toBe(true);
   });
@@ -306,6 +308,25 @@ describe('rescue strike', () => {
     expect(sim.get(enemy.id)).toBeUndefined();
     expect(p.kills).toBe(kills0 + 1);
     expect(paid).toBe(Math.round(UNITS.tw_vineling.bounty * BOUNTY_MULT));
+  });
+});
+
+describe('round start countdown', () => {
+  it('freezes the round for 5 s and refuses commands, then play starts', () => {
+    const sim = Sim.create({ players: [
+      { userId: 'a', name: 'a', team: 0, faction: 'ironvow' },
+      { userId: 'b', name: 'b', team: 1, faction: 'thornwild' },
+    ], bestOf: 1, seed: 1 });
+    expect(sim.state.phaseTicks).toBe(ROUND_COUNTDOWN_TICKS);
+    const build = { c: 'build', building: 'iv_militia_hall', tx: 4, ty: 4 } as const;
+    const gold = sim.state.players[0].gold;
+    sim.step([{ player: 0, cmd: build }]);
+    expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('round starts'))).toBe(true);
+    expect(sim.state.players[0].gold).toBe(gold);
+    while (sim.state.phaseTicks > 0) sim.step();
+    expect(sim.state.tick).toBe(sim.state.roundStartTick);
+    sim.step([{ player: 0, cmd: build }]);
+    expect(sim.state.players[0].gold).toBeLessThan(gold);
   });
 });
 

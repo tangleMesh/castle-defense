@@ -4,7 +4,7 @@ import { AiPlayer, BUILDINGS, Sim, UNITS, TICK_RATE, botLevel, isBotId, makeBotI
 
 function play(levels: ['easy' | 'normal' | 'hard', 'easy' | 'normal' | 'hard'], seed: number, maxMinutes = 45, swapFactions = false) {
   const f = swapFactions ? (['thornwild', 'ironvow'] as const) : (['ironvow', 'thornwild'] as const);
-  const sim = Sim.create({
+  const sim = Sim.create({ countdownTicks: 0,
     players: [
       { userId: makeBotId(levels[0], 'a'), name: 'a', team: 0, faction: f[0] },
       { userId: makeBotId(levels[1], 'b'), name: 'b', team: 1, faction: f[1] },
@@ -25,7 +25,7 @@ describe('AI players', () => {
   it('normal and hard bots build anti-air against a flyer army', () => {
     // Thornwild hard brain biased to pure flyers (moths) against an Ironvow bot.
     for (const level of ['normal', 'hard'] as const) {
-      const sim = Sim.create({
+      const sim = Sim.create({ countdownTicks: 0,
         players: [
           { userId: makeBotId(level, 'a'), name: 'a', team: 0, faction: 'ironvow' },
           { userId: makeBotId('hard', 'b'), name: 'b', team: 1, faction: 'thornwild' },
@@ -68,7 +68,7 @@ describe('AI players', () => {
   }, 120_000);
 
   it.each(['easy', 'normal', 'hard'] as const)('%s bot strikes to save a building about to fall', (level) => {
-    const sim = Sim.create({
+    const sim = Sim.create({ countdownTicks: 0,
       players: [
         { userId: makeBotId(level, 'a'), name: 'a', team: 0, faction: 'ironvow' },
         { userId: 'human', name: 'h', team: 1, faction: 'thornwild' },

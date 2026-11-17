@@ -316,6 +316,14 @@ button.mode { cursor: pointer; }
   position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 25; text-align: center; padding: 14px 28px; display: grid; gap: 6px;
   background: rgba(20, 17, 12, .92); border: 1px solid var(--edge); border-radius: 8px; min-width: 300px;
 }
+.countdown {
+  position: absolute; top: 28%; left: 50%; transform: translateX(-50%); z-index: 24; text-align: center; pointer-events: none;
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 2px;
+}
+.countdown-text { font-family: var(--head); font-size: 20px; color: var(--text); text-shadow: 0 2px 4px #000; }
+.countdown-num { font-family: var(--head); font-size: 96px; line-height: 1; color: #f0c860; text-shadow: 0 3px 0 #000, 0 0 24px rgba(240, 200, 96, .5); }
+.countdown.tick .countdown-num { animation: countdown-pulse 1s ease-out; }
+@keyframes countdown-pulse { from { transform: scale(1.5); opacity: .4; } 30% { transform: scale(1); opacity: 1; } }
 .banner-title { font-family: var(--head); font-size: 26px; }
 .banner-title.win { color: #8af08a; }
 .banner-title.lose { color: #ff7a6a; }

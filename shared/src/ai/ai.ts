@@ -172,7 +172,7 @@ export class AiPlayer {
   /** Call once per tick before `sim.step`; returns commands to queue for this player. */
   update(sim: Sim): Command[] {
     const s = sim.state;
-    if (s.phase !== 'playing') { this.rescueSeenAt = -1; return []; }
+    if (s.phase !== 'playing' || s.phaseTicks > 0) { this.rescueSeenAt = -1; return []; }
     const out: Command[] = [];
     // Teammates decide in the same tick before either strike is registered: claim it so two bots
     // never burn both strikes on the same wave.

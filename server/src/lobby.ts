@@ -77,7 +77,7 @@ export class Lobby {
     const room = this.roomOf(conn.userId);
     const err = (message: string) => conn.send({ type: 'error', message });
 
-    if (room?.match && ['cmd', 'game.pause', 'game.saveAndExit', 'chat'].includes(msg.type)) {
+    if (room?.match && ['cmd', 'game.pause', 'game.saveAndExit', 'match.loaded', 'chat'].includes(msg.type)) {
       room.match.handle(conn, msg);
       return;
     }

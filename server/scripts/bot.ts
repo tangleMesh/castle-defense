@@ -82,7 +82,7 @@ export class Bot {
     switch (m.type) {
       case 'lobby.room': this.room = m.room; break;
       case 'lobby.list': this.rooms = m.rooms; break;
-      case 'match.init': this.you = m.you; this.team = m.players[m.you].team; this.matchId = m.matchId; this.ended = null; break;
+      case 'match.init': this.you = m.you; this.team = m.players[m.you].team; this.matchId = m.matchId; this.ended = null; this.send({ type: 'match.loaded' }); break;
       case 'match.end': this.ended = m; break;
       case 'error': this.errors.push(m.message); break;
       case 'match.snapshot':

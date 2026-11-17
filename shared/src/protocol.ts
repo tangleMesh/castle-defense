@@ -42,6 +42,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('cmd'), cmd: CommandSchema }),
   z.object({ type: z.literal('game.pause'), pause: z.boolean() }),
   z.object({ type: z.literal('game.saveAndExit') }),
+  /** The client has loaded the battlefield (the round's start countdown waits for everyone). */
+  z.object({ type: z.literal('match.loaded') }),
   z.object({ type: z.literal('game.leave') }),
   z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(300) }),
 ]);

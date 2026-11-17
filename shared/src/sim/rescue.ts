@@ -19,6 +19,8 @@ export function stepStrikes(sim: Sim) {
       if (e.kind !== 'unit' || e.team === team || e.hp <= 0) continue;
       if (Math.hypot(e.x - st.x, e.y - st.y) - UNITS[e.type].radius <= RESCUE_RADIUS) {
         e.hp = 0;
+        // The strike wipes out everything in its circle, including what would hatch from the dead.
+        e.smitten = true;
         rewardKill(sim, e, st.player);
         kills++;
       }

@@ -13,7 +13,7 @@ const firsts = (ev: SimEvent[]) => ev.filter((e) => e.t === 'first') as Extract<
 
 describe('first-building bonus', () => {
   it('pays 20/15/10 gold to the first three players to finish a building, once each per round', () => {
-    const sim = Sim.create({ players, bestOf: 3, seed: 1 });
+    const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 1 });
     expect(FIRST_BUILD_BONUS).toEqual([20, 15, 10]);
     const gold = () => sim.state.players.map((p) => p.gold);
     const g0 = gold();
@@ -31,7 +31,7 @@ describe('first-building bonus', () => {
 
   it('resets every round', async () => {
     const { startRound } = await import('../src/sim/rounds');
-    const sim = Sim.create({ players, bestOf: 3, seed: 1 });
+    const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 1 });
     almostBuilt(sim, 0); sim.step([]);
     expect(sim.state.firstBuilds).toEqual([0]);
     startRound(sim);

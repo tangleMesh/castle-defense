@@ -53,6 +53,8 @@ export interface Entity {
   charge?: boolean;
   /** Active poison: damage per second, ticks left, slow and the player credited for kills. */
   poison?: { dps: number; left: number; slow: number; owner: number };
+  /** Killed by a rescue strike: nothing bursts out of it (no Sproutlings from a smitten Vineling). */
+  smitten?: boolean;
 
   // ---- builder
   orders?: BuildOrder[];
@@ -134,7 +136,10 @@ export interface SimState {
   score: [number, number];
   rounds: RoundRecord[];
   phase: Phase;
+  /** 'roundOver': ticks until the next round. 'playing': ticks of the start countdown left (frozen, no commands). */
   phaseTicks: number;
+  /** Length of the start countdown of each round (ticks; missing in old saves = none). */
+  countdownTicks?: number;
   winner: Team | null;
   incomeTicks: number;
   nextId: number;

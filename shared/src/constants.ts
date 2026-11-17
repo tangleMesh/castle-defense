@@ -42,12 +42,14 @@ export const BUILDER_SPEED = 7;
 export const BUILDER_REACH = 2.2;
 
 export const RESCUE_RANGE = 14;
-export const RESCUE_RADIUS = 5;
+export const RESCUE_RADIUS = 6;
 export const RESCUE_DELAY_TICKS = 1 * TICK_RATE;
 
 export const DEFAULT_AGGRO = 6;
 /** Pause between rounds (includes the ~4 s castle-collapse cinematic before the banner). */
 export const ROUND_END_TICKS = 15 * TICK_RATE;
+/** Countdown at the start of every round: the game is frozen and nobody can build, so every player gets the same start. */
+export const ROUND_COUNTDOWN_TICKS = 5 * TICK_RATE;
 /** Real seconds the server waits after the final castle falls before ending the match (collapse cinematic). */
 export const CASTLE_FALL_SECONDS = 5;
 

@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.23.0
+- **Start countdown:** every round begins with 5 seconds in which the game stands still and nobody can build. Everyone gets the same chance at the first building, however fast their connection or loading. A large countdown shows the seconds left. Commands sent during it are refused with a short note. The countdown only begins once every player has loaded the battlefield (at most 20 s; a "Getting ready" screen names who is still loading), so slow loaders don't lose their 5 seconds.
+- **Health bars by side:** your own units and buildings have green bars, your allies' teal, and the enemy's red. The length of the bar shows the health. Before, the colour showed health, so crowded fights were hard to read.
+- **Rescue strike:**
+  - Its circle is larger: radius 5 → 6 tiles.
+  - Units it kills no longer release what would hatch from them, such as a Vineling's Sproutlings or a treant's Saplings, so the strike really clears its area.
+
 ## 0.22.0+3 · balance
 First balancer run with the new bots (42 min instead of 182; full report in docs/balance-report.md).
 - **Factions:** no change needed. Verified at Ironvow 54% / Thornwild 46% over 646 games, statistically even.

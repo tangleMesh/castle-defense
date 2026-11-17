@@ -8,7 +8,7 @@ import { AiPlayer, MAP, Sim, makeBotId, type FactionId, type PlayerCommand } fro
  * processing order, tie-breaks, spawn jitter or random draws.
  */
 function firstAsymmetry(faction: FactionId, ticks: number): string | null {
-  const sim = Sim.create({
+  const sim = Sim.create({ countdownTicks: 0,
     players: [
       { userId: makeBotId('hard', 'a'), name: 'a', team: 0, faction },
       { userId: makeBotId('hard', 'b'), name: 'b', team: 1, faction },

@@ -65,6 +65,8 @@ export class Hud {
   private chatInput!: HTMLInputElement;
   private overlay!: HTMLElement;
   private banner!: HTMLElement;
+  /** Start countdown of a round (nobody can build until it ends). */
+  private countdown!: HTMLElement;
   private menu!: HTMLElement;
   private topLive!: HTMLElement;
   private board!: HTMLElement;
@@ -202,6 +204,8 @@ export class Hud {
     this.overlay.hidden = true;
     this.banner = h('div', { class: 'banner' });
     this.banner.hidden = true;
+    this.countdown = h('div', { class: 'countdown' });
+    this.countdown.hidden = true;
     this.menu = h('div', { class: 'overlay menu' });
     this.menu.hidden = true;
 
@@ -212,7 +216,7 @@ export class Hud {
     );
     this.board = h('div', { class: 'scoreboard' });
     this.board.hidden = true;
-    this.root.append(this.top, this.msg, this.chatLog, this.chatInput, consoleEl, this.bag, this.banner, this.board, this.overlay, this.menu);
+    this.root.append(this.top, this.msg, this.chatLog, this.chatInput, consoleEl, this.bag, this.banner, this.countdown, this.board, this.overlay, this.menu);
     this.refreshCard(true);
     this.refreshInfo(true);
   }
@@ -775,6 +779,7 @@ export class Hud {
     this.refreshCard();
     this.refreshInfo();
     this.updateSpawnBar();
+    this.renderCountdown(snap);
     // The banner waits until the castle-collapse cinematic has played.
     if (snap.phase === 'roundOver' && !this.scene.cinematic) this.renderRoundBanner(snap);
     else if (!this.banner.hidden && snap.phase === 'playing') {
@@ -832,6 +837,17 @@ export class Hud {
     setTimeout(() => el.remove(), 1400);
   }
 
+  private renderCountdown(snap: Snapshot) {
+    const left = snap.phase === 'playing' ? Math.ceil(snap.phaseTicks / TICK_RATE) : 0;
+    this.countdown.hidden = left <= 0;
+    if (left <= 0 || this.countdown.dataset.left === String(left)) return;
+    this.countdown.dataset.left = String(left);
+    clear(this.countdown);
+    this.countdown.append(h('div', { class: 'countdown-num' }, left), h('div', { class: 'countdown-text' }, 'Get ready: building starts in'));
+    // Restart the pulse animation for each new number.
+    this.countdown.classList.remove('tick'); void this.countdown.offsetWidth; this.countdown.classList.add('tick');
+  }
+
   private renderRoundBanner(snap: Snapshot) {
     const winner = snap.lastWinner ?? 0;
     const won = winner === this.session.team;
@@ -851,6 +867,12 @@ export class Hud {
     if (this.session.ended) return;
     if (!p.paused) { this.overlay.hidden = true; return; }
     clear(this.overlay);
+    // Waiting for slow loaders before the first start countdown: no pause controls needed.
+    if (/load/.test(p.reason)) {
+      this.overlay.append(h('div', { class: 'dialog' }, h('h2', null, 'Getting ready'), h('p', null, `Waiting for ${p.waitingFor.join(', ')} to load the battlefield`, p.resumeIn ? ` · starting in ${p.resumeIn}s at the latest` : '')));
+      this.overlay.hidden = false;
+      return;
+    }
     this.overlay.append(h('div', { class: 'dialog' },
       h('h2', null, 'Paused'),
       h('p', null, p.reason),

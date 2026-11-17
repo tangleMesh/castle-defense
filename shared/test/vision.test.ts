@@ -27,7 +27,7 @@ describe('fog of war', () => {
   });
 
   it('filters enemy entities and orders per team, keeps castles, reveals all between rounds', () => {
-    const sim = Sim.create({ players, bestOf: 3, seed: 7 });
+    const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 7 });
     const castle1 = sim.castle(1)!;
     const scout = spawnUnit(sim, castle1, 'tw_vineling', 0, 1);
     scout.x = 60; scout.y = 14;
@@ -55,7 +55,7 @@ describe('builder bounds', () => {
   it('the builder cannot leave its own build zone', async () => {
     const { builderBounds } = await import('../src/index');
     for (const team of [0, 1] as const) {
-      const sim = Sim.create({ players, bestOf: 3, seed: 3 });
+      const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 3 });
       const p = sim.state.players[team];
       const b = sim.get(p.builderId)!;
       const z = builderBounds(team);
