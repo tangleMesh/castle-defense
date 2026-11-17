@@ -5,7 +5,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Spawn buildings** train one unit at a time on a timer. Many of them can be upgraded (some offer a choice of two upgrades).
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
 - **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (Sun Citadel, Elder Heartwood: champions, upgradable twice) and elite upgrades of spawn buildings (Paladin Chapter, Sanctum of Dawn, Wild Hunt Grove, Tempest Circle) cost a sapphire on top of their gold.
-- **Distinct factions**: Ironvow fights in elite formations with healers, towers, cannons and charging cavalry; Thornwild swarms with poison, thorns, lifesteal, regrowth and a kill-bounty economy.
+- **Distinct factions**: Ironvow fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry; Thornwild swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy. Both are modelled on the classic castle-fight races (human and nature), see [docs/factions.md](docs/factions.md).
 - **Rescue strike**: once per round, call down sunfire near your own castle. It kills every enemy unit in a large circle (6 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
 - **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
   - *Horn of Valor* (660): +20% damage for every unit of your team.
@@ -24,7 +24,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Map**: 110×40 tiles, castle to castle from left to right. Each team builds in a 30-tile-wide zone at its end; the 48-tile neutral middle is split into three lanes by rock outcrops.
 - **Best-of rounds**: a round ends when a castle falls. Each new round starts on a fresh map with a new builder, fresh gold and a refreshed rescue strike, after a 5-second countdown in which nobody can build yet, so everyone gets the same start.
 - **Computer players**: the host can fill any slot with an AI at *Easy*, *Normal*, *Hard* or *Brutal* difficulty and pick its faction and team. The AI runs on the server and sends the same commands a player would. Easy, Normal and Hard don't cheat; Hard counters your army composition, builds a safe base behind its castle, plans its economy and strikes early waves before they snowball. *Brutal* openly cheats: +30% income, no fog of war and instant reactions. Every bot fires its strike to save a team building that is about to fall. Bots rejoin automatically when a saved game is resumed.
-- **Factions**: *Ironvow Order* (soldiers, siege, sunfire) and *Thornwild Circle* (swarms, beasts, lightning, treants).
+- **Factions**: *Ironvow Order* (soldiers, siege, sunfire) and *Thornwild Circle* (swarms, beasts, lightning, treants). Units have every-n-th-blow abilities (critical strikes, stuns, slams, lightning, evasion), and some buildings cast powers (artillery shells, cyclones).
 - **Persistence**: accounts, stats, match history, and live match snapshots in MongoDB. A host can **save & exit** and resume the match another day with the same players. Matches that a server crash or restart interrupts also become resumable.
 
 ## Versioning

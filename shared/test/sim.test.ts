@@ -177,13 +177,14 @@ describe('economy', () => {
   it('income bonus buildings scale income', () => {
     const sim = newSim();
     placeNow(sim, 0, 'iv_counting_house', 10, 6);
-    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * 150) * 1.15));
+    const ch = BUILDINGS.iv_counting_house;
+    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * ch.cost) * (1 + ch.incomeBonus!)));
   });
 
   it('income bonuses are capped', () => {
     const sim = newSim();
     for (let i = 0; i < 4; i++) placeNow(sim, 0, 'iv_counting_house', 14 + i * 2, 2);
-    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * 600) * (1 + MAX_INCOME_BONUS)));
+    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * 4 * BUILDINGS.iv_counting_house.cost) * (1 + MAX_INCOME_BONUS)));
   });
 });
 
@@ -191,7 +192,7 @@ describe('spawning & combat', () => {
   it('spawn buildings produce units that march to the enemy castle', () => {
     const sim = newSim();
     placeNow(sim, 0, 'iv_militia_hall', 20, 12);
-    for (let i = 0; i < 20 * 20; i++) sim.step();
+    for (let i = 0; i < 20 * (BUILDINGS.iv_militia_hall.spawn!.interval + 3); i++) sim.step();
     const units = sim.state.entities.filter((e) => e.kind === 'unit' && e.team === 0);
     expect(units.length).toBeGreaterThanOrEqual(BUILDINGS.iv_militia_hall.spawn!.count);
     expect(Math.max(...units.map((u) => u.x))).toBeGreaterThan(25);
@@ -204,7 +205,8 @@ describe('spawning & combat', () => {
     sim.step([{ player: 0, cmd: { c: 'upgrade', id: b.id, to: 'iv_shield_hall' } }]);
     expect(b.type).toBe('iv_shield_hall');
     expect(b.upgrading).toBe(true);
-    for (let i = 0; i < 20 * 28; i++) sim.step(); // 8 s upgrade + a full 18 s training cycle
+    // The upgrade, then a full training cycle.
+    for (let i = 0; i < 20 * (BUILDINGS.iv_shield_hall.buildTime + BUILDINGS.iv_shield_hall.spawn!.interval + 1); i++) sim.step();
     expect(sim.state.entities.some((e) => e.type === 'iv_shieldbearer')).toBe(true);
   });
 

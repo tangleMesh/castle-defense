@@ -62,12 +62,30 @@ export interface UnitDef {
   onDeath?: { unit: string; count: number };
   /** Innate regeneration in HP per second. */
   regen?: number;
+  /** Only attacks flyers (needs `targetsAir`). */
+  airOnly?: boolean;
+  /** Every `every`-th attack is a critical strike dealing `mult`× damage. */
+  crit?: { every: number; mult: number };
+  /** Every `every`-th attack stuns a unit for `stun` seconds. */
+  bash?: { every: number; stun: number };
+  /** Every `every`-th attack also slams the ground: `dmg` to every enemy ground unit within `radius` of the target. */
+  slam?: { every: number; dmg: number; radius: number };
+  /** Every `every`-th attack calls down lightning that jumps between `jumps` enemies, starting at the target. */
+  storm?: { every: number; dmg: number; jumps: number };
+  /** Every `every`-th attack aimed at this unit misses. */
+  evade?: number;
+  /** Share of damage from ranged attacks that this unit shrugs off (shield wall). */
+  rangedResist?: number;
+  /** Flat damage taken off every attack after armour (at least a quarter always gets through). */
+  block?: number;
+  /** Calls `count` units every `every` seconds; they fade after `ttl` seconds. */
+  summon?: { unit: string; count: number; every: number; ttl: number };
   model: UnitModel;
 }
 
 export interface AuraDef {
-  stat: 'dmg' | 'armor' | 'regen' | 'speed';
-  /** dmg/speed: multiplier delta (0.2 = +20%), armor: flat, regen: hp/s. */
+  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste';
+  /** dmg/speed/haste (attack speed): multiplier delta (0.2 = +20%), armor: flat, regen: hp/s. */
   value: number;
   radius: number;
   target: 'ally' | 'enemy';
@@ -98,8 +116,26 @@ export interface BuildingDef {
   regen?: number;
   /** Additional income multiplier (0.15 = +15%). */
   incomeBonus?: number;
+  /** A power the building casts on its own every `cooldown` seconds. */
+  power?: PowerDef;
   upgrades?: string[];
   model: BuildingModel;
+}
+
+/**
+ * Building powers. `bombard`: a shell flies at the nearest enemy building (or the castle) within
+ * `range` and deals `dmg` siege damage to structures within `radius` (half to ground units).
+ * `cyclone`: a storm settles on the nearest enemy ground unit within `range` for `duration` seconds;
+ * enemies inside take `dmg` magic damage per second and are slowed by `slow`.
+ */
+export interface PowerDef {
+  kind: 'bombard' | 'cyclone';
+  cooldown: number;
+  range: number;
+  radius: number;
+  dmg: number;
+  duration?: number;
+  slow?: number;
 }
 
 export interface FactionDef {

@@ -85,3 +85,20 @@ export function spawnUnit(sim: Sim, from: Entity, unitId: string, i: number, n: 
     x, y, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0,
   });
 }
+
+/** A unit calls helpers to its side (Grove Keeper's treants); they fade after `ttl` seconds. */
+export function summonUnits(sim: Sim, from: Entity, sm: { unit: string; count: number; ttl: number }) {
+  const u = UNITS[sm.unit];
+  const dir = from.team === 0 ? 1 : -1;
+  for (let i = 0; i < sm.count; i++) {
+    let x = from.x + dir * 0.6, y = from.y + dir * (i - (sm.count - 1) / 2) * 0.7;
+    if (!u.air) {
+      const tx = Math.floor(x), ty = Math.floor(y);
+      if (!inBounds(tx, ty) || sim.blockedGrid[idx(tx, ty)] !== 0) ({ x, y } = nearestFree(sim.blockedGrid, x, y));
+    }
+    sim.add({
+      kind: 'unit', type: sm.unit, owner: from.owner, team: from.team,
+      x, y, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0, ttl: Math.round(sm.ttl * TICK_RATE),
+    });
+  }
+}

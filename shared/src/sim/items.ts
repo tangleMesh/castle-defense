@@ -15,7 +15,7 @@ export function stepItems(sim: Sim) {
     const atk = itemEffect(p, 'builderAttack');
     if (atk) builderShoot(sim, b, {
       dmg: atk.dmg, attackType: atk.attackType, range: atk.range, cooldownTicks: Math.round(atk.cooldown * TICK_RATE),
-      targetsAir: atk.targetsAir, structuresOnly: false, splash: 0, chain: 0, aggro: atk.range,
+      targetsAir: atk.targetsAir, airOnly: false, structuresOnly: false, splash: 0, chain: 0, aggro: atk.range,
     });
     const rep = itemEffect(p, 'repair');
     if (rep) repair(sim, b, rep.hps, rep.range);

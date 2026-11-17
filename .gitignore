@@ -3,3 +3,4 @@ dist
 *.log
 .env
 lab-report.md
+*.w3x

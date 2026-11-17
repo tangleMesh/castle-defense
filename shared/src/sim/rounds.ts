@@ -14,6 +14,8 @@ export function startRound(sim: Sim) {
   if (s.mode === 'random') for (const p of s.players) p.faction = FACTION_IDS[Math.floor(nextRandom(s) * FACTION_IDS.length)];
   s.entities = [];
   s.strikes = [];
+  s.shells = [];
+  s.zones = [];
   s.phase = 'playing';
   s.phaseTicks = s.countdownTicks ?? 0;
   // The round's clock starts when the countdown ends.

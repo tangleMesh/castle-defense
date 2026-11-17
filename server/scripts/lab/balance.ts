@@ -181,13 +181,13 @@ async function stageUnits() {
   // Units whose value doesn't show in a straight fight are left alone.
   const eligible = (bid: string) => {
     const b = BUILDINGS[bid], u = b.spawn && UNITS[b.spawn.unit];
-    return !!u && tierOf(b) !== 'special' && !u.heal && !u.structuresOnly && !u.aura;
+    return !!u && tierOf(b) !== 'special' && !u.heal && !u.structuresOnly && !u.aura && !u.airOnly;
   };
   for (let k = 1; k <= (quick ? 2 : 4); k++) {
     const scores = await measureDuels();
     const outliers = [...scores].filter(([id, s]) => (s < 0.25 || s > 0.75) && eligible(id));
     const skipped = [...scores].filter(([id, s]) => (s < 0.25 || s > 0.75) && !eligible(id));
-    if (k === 1) for (const [id, s] of skipped) design.push(`${BUILDINGS[id].name} scores ${pct(s)} in duels but isn't auto-tuned (support/siege/champion unit)`);
+    if (k === 1) for (const [id, s] of skipped) design.push(`${BUILDINGS[id].name} scores ${pct(s)} in duels but isn't auto-tuned (support/siege/anti-air/champion unit)`);
     if (!outliers.length) { out.push(`Iteration ${k}: no outliers.`, ''); break; }
     if (check) {
       failed.add('units');

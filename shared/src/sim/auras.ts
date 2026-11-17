@@ -10,9 +10,11 @@ export interface Mods {
   armor: number;
   regen: number;
   speed: number;
+  /** Attack speed multiplier (1.3 = attacks 30% faster). */
+  haste: number;
 }
 
-const NONE: Mods = Object.freeze({ dmg: 1, armor: 0, regen: 0, speed: 1 });
+const NONE: Mods = Object.freeze({ dmg: 1, armor: 0, regen: 0, speed: 1, haste: 1 });
 
 export function modsOf(sim: Sim, id: number): Mods {
   return sim.mods.get(id) ?? NONE;
@@ -54,6 +56,14 @@ export function computeAuras(sim: Sim) {
     const m = modFor(sim, u);
     m.speed = Math.min(m.speed, 1 - u.poison.slow);
   }
+  // Cyclones slow every enemy unit inside them.
+  for (const z of sim.state.zones ?? []) {
+    for (const u of sim.hash.query(z.x, z.y, z.radius + 1)) {
+      if (u.team === z.team || u.hp <= 0 || Math.hypot(u.x - z.x, u.y - z.y) > z.radius) continue;
+      const m = modFor(sim, u);
+      m.speed = Math.min(m.speed, 1 - z.slow);
+    }
+  }
   applyItemAuras(sim);
 }
 
@@ -72,6 +82,7 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
     case 'armor': m.armor = Math.max(m.armor, aura.value); break;
     case 'regen': m.regen = Math.max(m.regen, aura.value); break;
     case 'speed': m.speed = aura.value < 0 ? Math.min(m.speed, 1 + aura.value) : Math.max(m.speed, 1 + aura.value); break;
+    case 'haste': m.haste = Math.max(m.haste, 1 + aura.value); break;
   }
 }
 
@@ -80,7 +91,7 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
  * on top of building auras. The same stat from several teammates' items doesn't stack.
  */
 function applyItemAuras(sim: Sim) {
-  const bonus: [Mods, Mods] = [{ dmg: 0, armor: 0, regen: 0, speed: 0 }, { dmg: 0, armor: 0, regen: 0, speed: 0 }];
+  const bonus: [Mods, Mods] = [{ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0 }, { dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0 }];
   let any = false;
   for (const p of sim.state.players) {
     for (const id of itemsOf(p)) {

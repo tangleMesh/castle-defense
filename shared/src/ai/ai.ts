@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
-import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
+import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
@@ -473,12 +473,15 @@ export class AiPlayer {
     const sp = def.spawn!;
     const u = UNITS[sp.unit];
     // Faction abilities, folded into rough damage and toughness factors.
+    const ab = abilityFactors(u);
     const dps = (u.dmg / u.cooldown * (u.chain ? 1 + (u.chain - 1) * 0.5 : 1) * (u.splash ? 1.6 : 1) * (u.heal ? 1.5 : 1)
-      + (u.poison ? u.poison.dps * 0.8 : 0)) * (u.charge ? 1.25 : 1) * (u.bonusVs ? 1.15 : 1) * (u.ignoreArmor ? 1.15 : 1) * (u.aura ? 1.25 : 1);
-    let hp = u.hp * (1 + (u.lifesteal ?? 0) * 0.8 + (u.thorns ?? 0) * 0.6) + (u.regen ?? 0) * 8;
+      + (u.poison ? u.poison.dps * 0.8 : 0)) * (u.charge ? 1.25 : 1) * (u.bonusVs ? 1.15 : 1) * (u.ignoreArmor ? 1.15 : 1) * (u.aura ? 1.25 : 1) * ab.dmg;
+    let hp = (u.hp * (1 + (u.lifesteal ?? 0) * 0.8 + (u.thorns ?? 0) * 0.6) + (u.regen ?? 0) * 8) * ab.hp;
     if (u.onDeath) hp += UNITS[u.onDeath.unit].hp * u.onDeath.count * 0.3;
     let power = Math.sqrt(hp * (1 + u.armor * 0.06) * dps) * sp.count / sp.interval;
     if (u.structuresOnly) power *= 0.6;
+    // Anti-air specialists are only worth their price against flyers.
+    if (u.airOnly) power *= enemy.total ? Math.min(1.6, (enemy.air / enemy.total) * 3) : 0.15;
     // Small bodies lose more to overkill, splash and towers than the formula suggests.
     if (u.hp < 150) power *= 0.75;
     // Ranged units keep shooting from behind the frontline.
@@ -494,6 +497,7 @@ export class AiPlayer {
     }
     // Air: ground units that can't shoot up are much worse, anti-air better.
     const air = enemy.air / enemy.total;
+    if (u.airOnly) return Math.max(0.2, f) ** 1.5; // judged by the share of flyers in computeSpawnScore
     if (!u.targetsAir && !u.air) f *= 1 - air * 0.8;
     else if (air > 0.15) f *= 1 + air * 0.5;
     // Defence: avoid units whose armour the enemy's attacks are strong against.

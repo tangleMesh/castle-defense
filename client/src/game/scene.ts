@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, FX_POISON, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
+  BUILDINGS, FX_POISON, FX_STUN, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -487,6 +487,7 @@ export class GameScene extends Phaser.Scene {
       if (v.kind === KIND_UNIT) v.sprite.setScale(sc(UNIT_SCALE), sc(UNIT_SCALE * breathe));
       else v.sprite.setScale(sc(1.1), sc(1.1 * breathe));
       if (v.flash > 0) v.sprite.setTint(0xffaaaa);
+      else if ((v.fx ?? 0) & FX_STUN) v.sprite.setTint(0xb8c0ff);
       else if ((v.fx ?? 0) & FX_POISON) v.sprite.setTint(0xa8f080);
       else v.sprite.clearTint();
       v.shadow?.setPosition(p.x, p.y).setDepth(d - 0.5);
@@ -1077,6 +1078,63 @@ export class GameScene extends Phaser.Scene {
         const ring = this.img(p.x, p.y, 'ringthin').setDepth(7e6).setTint(0xffc080).setDisplaySize(e.w * 0.3, e.h * 0.3);
         this.tweens.add({ targets: ring, displayWidth: e.w, displayHeight: e.h, alpha: 0, duration: 350, onComplete: () => ring.destroy() });
         this.puff(p.x, p.y, 0x9a8a6a, 6, 20);
+        return;
+      }
+      case 'shell': {
+        // Siege Battery: a heavy shell arcs across the battlefield; the target spot glows until it lands.
+        const from = this.views.get(ev.a);
+        const to = toScreen(ev.x, ev.y);
+        const e = isoEllipse(ev.r);
+        const mark = this.img(to.x, to.y, 'disc').setDisplaySize(e.w, e.h).setTint(0xff6030).setDepth(-7e6).setAlpha(0);
+        const dur = (ev.f / TICK_RATE) * 1000;
+        this.tweens.add({ targets: mark, alpha: 0.28, duration: dur, onComplete: () => mark.destroy() });
+        if (!from) return;
+        const size = BUILDINGS[from.type]?.size ?? 2;
+        const a = toScreen(from.x + size / 2, from.y + size / 2);
+        const ay = a.y - 50;
+        const shell = this.img(a.x, ay, 'boulder').setTint(0x403830).setDepth(8.6e6).setScale(sc(1.6));
+        this.puff(a.x, ay, 0x9a948a, 6, 16);
+        const arc = 220;
+        this.tweens.addCounter({
+          from: 0, to: 1, duration: dur,
+          onUpdate: (tw) => {
+            const t = tw.getValue() ?? 0;
+            shell.setPosition(a.x + (to.x - a.x) * t, ay + (to.y - ay) * t - Math.sin(t * Math.PI) * arc).setRotation(t * 10);
+          },
+          onComplete: () => {
+            shell.destroy();
+            this.puff(to.x, to.y - 10, 0xff9a40, 10, 40);
+            this.puff(to.x, to.y - 6, 0x6a5a4a, 14, 50);
+            if (this.cameras.main.worldView.contains(to.x, to.y)) this.cameras.main.shake(160, 0.004);
+          },
+        });
+        return;
+      }
+      case 'zone': {
+        // Howling Hollow: a whirlwind of leaves and dust spins on the spot for the cyclone's lifetime.
+        const c = toScreen(ev.x, ev.y);
+        const e = isoEllipse(ev.r);
+        const dur = (ev.d / TICK_RATE) * 1000;
+        const ring = this.img(c.x, c.y, 'ringthin').setDisplaySize(e.w, e.h).setTint(0xa8e0c0).setDepth(-6.9e6).setAlpha(0);
+        this.tweens.add({ targets: ring, alpha: 0.7, duration: 300 });
+        this.tweens.add({ targets: ring, alpha: 0, delay: dur - 400, duration: 400, onComplete: () => ring.destroy() });
+        const bits = Array.from({ length: 14 }, (_, i) => this.img(c.x, c.y, 'puff')
+          .setTint(i % 3 ? 0xc8d8c0 : 0x6aa050).setDepth(8.2e6).setAlpha(0).setScale(sc(0.12 + (i % 4) * 0.04)));
+        this.tweens.addCounter({
+          from: 0, to: 1, duration: dur,
+          onUpdate: (tw) => {
+            const t = tw.getValue() ?? 0, ms = t * dur;
+            const fade = Math.min(1, ms / 300, (dur - ms) / 400);
+            bits.forEach((b, i) => {
+              const h = (i / bits.length);
+              const ang = ms / 160 + i * 2.4;
+              const rad = 0.25 + 0.75 * h;
+              b.setPosition(c.x + Math.cos(ang) * e.w * 0.5 * rad, c.y + Math.sin(ang) * e.h * 0.5 * rad - h * 70)
+                .setAlpha(0.75 * fade);
+            });
+          },
+          onComplete: () => bits.forEach((b) => b.destroy()),
+        });
         return;
       }
       case 'heal': {

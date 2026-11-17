@@ -55,6 +55,16 @@ export interface Entity {
   poison?: { dps: number; left: number; slow: number; owner: number };
   /** Killed by a rescue strike: nothing bursts out of it (no Sproutlings from a smitten Vineling). */
   smitten?: boolean;
+  /** Attacks made so far (every-nth abilities: critical strikes, bashes, slams, storms). */
+  hits?: number;
+  /** Attacks aimed at this unit so far (evasion). */
+  dodges?: number;
+  /** Stunned for this many more ticks. */
+  stun?: number;
+  /** Summoned unit: fades after this many more ticks. */
+  ttl?: number;
+  /** Ticks until the next summon (units) or power (buildings). */
+  abilityCd?: number;
 
   // ---- builder
   orders?: BuildOrder[];
@@ -95,10 +105,37 @@ export interface PendingStrike {
   ticksLeft: number;
 }
 
+/** A building power's shell in flight (Siege Battery). */
+export interface Shell {
+  owner: number;
+  team: Team;
+  x: number;
+  y: number;
+  radius: number;
+  dmg: number;
+  ticksLeft: number;
+}
+
+/** A lingering area effect (Howling Hollow's cyclone): damage per second and a slow for enemies inside. */
+export interface Zone {
+  owner: number;
+  team: Team;
+  x: number;
+  y: number;
+  radius: number;
+  dps: number;
+  slow: number;
+  ticksLeft: number;
+}
+
 export type SimEvent =
   | { t: 'atk'; a: number; b: number; r: 0 | 1 }
   | { t: 'chain'; ids: number[] }
   | { t: 'splash'; x: number; y: number; r: number }
+  /** Building `a` fired a shell that lands at x/y after `f` ticks. */
+  | { t: 'shell'; a: number; x: number; y: number; f: number; r: number }
+  /** A cyclone of radius `r` settles at x/y for `d` ticks. */
+  | { t: 'zone'; x: number; y: number; r: number; d: number }
   | { t: 'heal'; a: number; b: number }
   | { t: 'die'; id: number; x: number; y: number; k: EntityKind }
   /** Kill bounty paid to player `p` (last hit). */
@@ -148,6 +185,9 @@ export interface SimState {
   entities: Entity[];
   castleIds: [number, number];
   strikes: PendingStrike[];
+  /** Building powers in flight / on the ground (optional: absent in older saves). */
+  shells?: Shell[];
+  zones?: Zone[];
   /** Players who already finished a building this round, in order (optional: absent in older saves). */
   firstBuilds?: number[];
   /** Transient: events produced in the last step (not meaningful after restore). */

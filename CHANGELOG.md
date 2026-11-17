@@ -7,6 +7,55 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.24.0
+**Factions reworked after the classic castle-fight races.** Ironvow follows the "human" race and Thornwild the "nature" race of a well-known Warcraft III castle-fight map. Its tech trees, stat ratios and signature abilities were translated to our scale: hit points about 1:1, damage per second ×0.6, range and speed ÷100, training times about 0.9×. Names, look and theme stay our own. Full overview: docs/factions.md.
+
+*New mechanics* (all deterministic, so mirror matches stay mirror images):
+- **Critical strike:** every n-th blow deals extra damage.
+- **Bash:** every n-th blow stuns; stunned units glow pale blue.
+- **Slam:** every n-th blow also hits the ground around the target.
+- **Storm:** every n-th blow calls a lightning chain.
+- **Evasion:** every n-th attack against the unit misses.
+- **Shield wall:** half damage from ranged attacks.
+- **Hardened skin:** blocks a flat amount of every hit.
+- **Anti-air:** units that only shoot flyers.
+- **Summons:** units that call helpers, which fade after a while.
+- **Attack-speed aura.**
+- **Building powers:**
+  - Bombard: a shell arcs over the battlefield onto the nearest enemy building.
+  - Cyclone: a whirlwind that damages and slows enemies.
+
+*Ironvow*
+- **Militia** wear heavy armour (4).
+- **Shieldbearers** take half damage from ranged attacks, evade every 7th blow and still give nearby allies +2 armour.
+- **Crossbow Lodge** has two upgrades:
+  - Arbalest Range: anti-air only, very long range, triple damage on every 3rd bolt.
+  - Powder Range (new): Grenadiers with splash bombs against ground units.
+- **Mangonel:** fragile, very long range.
+- **Cavalry line** follows the crusader → paladin → holy-warrior ratios:
+  - Lancers stun with every 5th blow.
+  - Vow Knights give +3 armour.
+  - Paladins stun every 3rd blow and give +4 armour.
+- **Thunderhawk Roost** replaces the Skyhawk Roost: sturdy flyers with holy bolts against air and ground. Every 7th bolt stuns and every 10th calls a lightning chain.
+- **War Horn** replaces the War Banner: +25% attack speed instead of +20% damage.
+- **Bastion Tower** is sturdier with more range. It can now also upgrade into a **Siege Battery** (new) that shells the nearest enemy building within 30 tiles every 15 s.
+- **Counting House:** 180 gold, +20% income.
+
+*Thornwild*
+- **Vinelings** are bigger (120 HP) and their bites poison.
+- **Briarlings** also burst into Sproutlings.
+- **Gnashers** land a critical bite every 4th attack.
+- **Thorn Archers** are tougher.
+- **Elder Grove** now spawns a **Grove Keeper** that calls two thorny Treantlings every 24 s.
+- **Storm Shamans and Stormcallers** are tougher.
+- **Standing Stones** replace the Boulder Ram Pen. Their **Stonehide Giant** has hardened skin (blocks 5 per hit), slams the ground every 3rd blow and hits buildings 30% harder.
+- **Stags** land critical blows and stun.
+- **Moth Hive** upgrades into the **Jade Wyrm Roost** (new): an armoured flyer with splashing magic breath.
+- **Mossheart** upgrades into the **Howling Hollow** (new): it keeps the regrowth aura and drops a cyclone on the nearest enemy every 14 s.
+- **Strangle-Root** hurls splashing boulders.
+
+Old ids were kept where a role changed (e.g. `tw_boulder_ram` is the Stonehide Giant), so saved matches still load.
+
 ## 0.23.0
 - **Start countdown:** every round begins with 5 seconds in which the game stands still and nobody can build. Everyone gets the same chance at the first building, however fast their connection or loading. A large countdown shows the seconds left. Commands sent during it are refused with a short note. The countdown only begins once every player has loaded the battlefield (at most 20 s; a "Getting ready" screen names who is still loading), so slow loaders don't lose their 5 seconds.
 - **Health bars by side:** your own units and buildings have green bars, your allies' teal, and the enemy's red. The length of the bar shows the health. Before, the colour showed health, so crowded fights were hard to read.

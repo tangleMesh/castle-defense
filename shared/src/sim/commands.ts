@@ -76,6 +76,7 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       e.buildLeft = e.buildTotal = Math.round(to.buildTime * TICK_RATE);
       e.upgrading = true;
       delete e.spawnTimer;
+      delete e.abilityCd;
       return;
     }
     case 'sell': {

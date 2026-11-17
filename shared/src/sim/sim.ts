@@ -8,6 +8,7 @@ import type { Entity, PlayerCommand, PlayerSetup, SimEvent, SimState, Team } fro
 import { buildBlockedGrid, computeFlowField, footprint } from './grid';
 import { SpatialHash } from './spatialHash';
 import { applyCommand } from './commands';
+import { stepPowers } from './powers';
 import { stepEconomy } from './economy';
 import { stepBuildings } from './spawning';
 import { computeAuras, type Mods } from './auras';
@@ -123,7 +124,8 @@ export class Sim {
       if (e.hp > 0 || e.kind === 'builder' || e.kind === 'castle') { alive.push(e); continue; }
       this.byId.delete(e.id);
       if (e.kind === 'unit') {
-        const p = this.state.players[e.owner]; if (p) p.lost = (p.lost ?? 0) + 1;
+        // Summons that faded (ttl 0) weren't lost in battle.
+        const p = this.state.players[e.owner]; if (p && e.ttl !== 0) p.lost = (p.lost ?? 0) + 1;
         if (UNITS[e.type].onDeath && !e.smitten) released.push(e);
       }
       this.emit({ t: 'die', id: e.id, x: round2(e.x), y: round2(e.y), k: e.kind });
@@ -242,6 +244,7 @@ export class Sim {
     this.hash.rebuild(s.entities.filter((e) => e.kind === 'unit' && e.hp > 0));
     stepEconomy(this);
     stepBuildings(this);
+    stepPowers(this);
     computeAuras(this);
     stepCombatUnits(this);
     stepStructureAttacks(this);
