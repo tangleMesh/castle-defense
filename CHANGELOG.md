@@ -7,6 +7,12 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.22.0+3 · balance
+First balancer run with the new bots (42 min instead of 182; full report in docs/balance-report.md).
+- **Factions:** no change needed. Verified at Ironvow 54% / Thornwild 46% over 646 games, statistically even.
+- **Bots:** Easy income 0.79 → 0.89, because the smarter Normal beat it 94% of the time. Brutal beats Hard 79%, Hard beats Normal 88%, Normal beats Easy 85%.
+- **Strategies:** no bot level has a blind spot any more. Hard beats pure air, turtle and greed 100% of the time. Normal is clearly weaker against Thornwild strategists (13–44%) than against Ironvow ones (56–81%).
+
 ## 0.22.0
 **Bots react to flyers**
 - Bots now count how many of their spawners can hit flyers and keep that share in line with the share of flyers in the enemy army (up to 75%). Hard saves up to ~40 s of income and Normal ~25 s for an anti-air building instead of buying another ground spawner. Easy reacts too, but only every other decision.
