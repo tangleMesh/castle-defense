@@ -140,7 +140,9 @@ export class Sim {
       for (let i = 0; i < od.count; i++) {
         // Side-symmetric: team 1's burst is the point mirror of team 0's in the same spot.
         const rx = e.team === 0 ? e.x : MAP.width - e.x, ry = e.team === 0 ? e.y : MAP.height - e.y;
-        const a = (i / od.count) * Math.PI * 2 + sideRandom(this.state, Math.floor(rx * 64) * 7 + Math.floor(ry * 64) * 8191 + i)
+        // Rounded, not floored: units often stand on exact grid values (the centre line x = 55), and
+        // W - (W - x) can land a hair below x, which flipped floor() to the neighbouring key.
+        const a = (i / od.count) * Math.PI * 2 + sideRandom(this.state, Math.round(rx * 64) * 7 + Math.round(ry * 64) * 8191 + i)
           + (e.team === 0 ? 0 : Math.PI);
         this.add({
           kind: 'unit', type: od.unit, owner: e.owner, team: e.team,

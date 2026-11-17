@@ -26,6 +26,8 @@ function firstAsymmetry(faction: FactionId, ticks: number): string | null {
     const a = sim.state.entities.filter((e) => e.team === 0 && e.kind !== 'castle');
     const b = sim.state.entities.filter((e) => e.team === 1 && e.kind !== 'castle');
     if (a.length !== b.length) return `tick ${sim.state.tick}: ${a.length} vs ${b.length} entities`;
+    const [g0, g1] = sim.state.players.map((p) => p.gold);
+    if (g0 !== g1) return `tick ${sim.state.tick}: gold ${g0} vs ${g1}`;
     for (const e of a) {
       const m = b.find((o) => o.type === e.type && Math.abs(o.x - (W - e.x)) < 1e-3 && Math.abs(o.y - (H - e.y)) < 1e-3 && Math.abs(o.hp - e.hp) < 1e-3);
       if (!m) return `tick ${sim.state.tick}: ${e.type}#${e.id} at ${e.x.toFixed(4)},${e.y.toFixed(4)} has no mirror`;
@@ -35,8 +37,10 @@ function firstAsymmetry(faction: FactionId, ticks: number): string | null {
 }
 
 describe('side symmetry', () => {
-  // ~55 s of play: buildings, spawns, marching and the first clashes in the middle.
+  // 90 s of play: buildings, spawns, marching, the first clashes in the middle, units bursting
+  // on the centre line. Later, float rounding of mirrored coordinates (W - x) grows chaotically in
+  // crowded fights (about ×10 every 7 ticks from ~1e-14), so exact mirrors end around 1.5–2.5 min.
   it.each(['ironvow', 'thornwild'] as const)('a %s mirror match stays an exact mirror image', (f) => {
-    expect(firstAsymmetry(f, 1100)).toBeNull();
+    expect(firstAsymmetry(f, 1800)).toBeNull();
   });
 });

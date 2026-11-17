@@ -10,6 +10,7 @@ export function startRound(sim: Sim) {
   const s = sim.state;
   s.round++;
   s.firstBuilds = [];
+  delete s.firstBuildTie;
   // Random factions mode: everyone draws a faction for this round (seeded, so deterministic).
   if (s.mode === 'random') for (const p of s.players) p.faction = FACTION_IDS[Math.floor(nextRandom(s) * FACTION_IDS.length)];
   s.entities = [];

@@ -190,6 +190,8 @@ export interface SimState {
   zones?: Zone[];
   /** Players who already finished a building this round, in order (optional: absent in older saves). */
   firstBuilds?: number[];
+  /** Place handed out on the latest tick a first-building bonus was paid (same-tick finishers share it). */
+  firstBuildTie?: { tick: number; place: number };
   /** Transient: events produced in the last step (not meaningful after restore). */
   events: SimEvent[];
 }

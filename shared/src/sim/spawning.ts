@@ -6,14 +6,21 @@ import { sideRandom } from './rng';
 import { MAP } from '../map/map';
 import type { Entity } from './state';
 
-/** The first three players to finish a building in a round earn a small gold bonus. */
+/**
+ * The first three players to finish a building in a round earn a small gold bonus. Players who
+ * finish on the same tick share the place (otherwise the player processed first, always the left
+ * side in a mirror match, got 5 gold more every round).
+ */
 function firstBuildBonus(sim: Sim, e: Entity) {
   const s = sim.state;
   const list = (s.firstBuilds ??= []);
-  if (list.length >= FIRST_BUILD_BONUS.length || list.includes(e.owner)) return;
+  if (list.includes(e.owner)) return;
   const p = s.players[e.owner];
   if (!p) return;
-  const place = list.length;
+  const tie = s.firstBuildTie?.tick === s.tick;
+  const place = tie ? s.firstBuildTie!.place : list.length;
+  if (place >= FIRST_BUILD_BONUS.length) return;
+  if (!tie) s.firstBuildTie = { tick: s.tick, place };
   const g = FIRST_BUILD_BONUS[place];
   list.push(e.owner);
   p.gold += g;
