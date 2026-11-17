@@ -7,6 +7,19 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.24.0+4 · balance
+First balancer run for the reworked factions. It started from an untuned game and took 73 min; the full report is in docs/balance-report.md.
+- **Factions:** Ironvow power 0.911, Thornwild 1.098. Untuned, Ironvow won 73%. Verified at 46% / 54% over 646 games, which is even within the margin.
+- **Team sizes still differ.** Ironvow wins 20% in 1v1, 39% in 2v2, 61% in 3v3 and 65% in 4v4. One power knob per faction can only even out the average, so this needs a design change.
+- **Units:**
+  - Stonehide Giant ×0.89
+  - Thunder Stag ×0.85
+  - Lancer ×0.96
+  - Mangonel ×1.08
+  - Tempest Caller ×1.04
+- **Bots:** Normal income 0.92 and Brutal 1.12 (was 1.30); Easy returns to 1.0. Brutal beats Hard 81% of the time, Hard beats Normal 90% and Normal beats Easy 75%.
+- **Strategies:** Hard wins only 6% against Thornwild players who mass ranged units, and 19% against Thornwild swarms. Against Ironvow it does well.
+
 ## 0.24.0
 **Factions reworked after the classic castle-fight races.** Ironvow follows the "human" race and Thornwild the "nature" race of a well-known Warcraft III castle-fight map. Its tech trees, stat ratios and signature abilities were translated to our scale: hit points about 1:1, damage per second ×0.6, range and speed ÷100, training times about 0.9×. Names, look and theme stay our own. Full overview: docs/factions.md.
 
