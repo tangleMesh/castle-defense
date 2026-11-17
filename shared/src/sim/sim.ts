@@ -160,6 +160,17 @@ export class Sim {
   invalidateGrid() {
     this.blocked = null;
     this.fields = [null, null];
+    this.structureList = null;
+  }
+
+  private structureList: Entity[] | null = null;
+  /**
+   * Buildings and castles in entity order (cached; every change of the structure set goes through
+   * `invalidateGrid`). Units without a target look for structures every tick, and scanning
+   * all entities for them was a large share of a lab game's run time.
+   */
+  structures(): Entity[] {
+    return this.structureList ??= this.state.entities.filter((e) => this.isStructure(e));
   }
 
   get blockedGrid(): Uint8Array {

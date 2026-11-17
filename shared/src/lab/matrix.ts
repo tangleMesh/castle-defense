@@ -60,6 +60,24 @@ export function ladderMatrix(opts: { hi: AiLevel; lo: AiLevel; seeds: number; fa
   return jobs;
 }
 
+/**
+ * A bot level against human-style strategies (`partners`: the same level's brain with a strategy
+ * bias, see sparring.ts), every faction pairing, both sides. Keys: [`<level>:<bot faction>`,
+ * `<strategy>:<strategist faction>`]; the bot is tagged 'bot'.
+ */
+export function strategyMatrix(opts: { level: AiLevel; partners: Record<string, Partial<Profile>>; seeds: number; factions?: readonly FactionId[]; maxMinutes?: number; seedBase?: number }): MatrixJob[] {
+  const fs = opts.factions ?? FACTION_IDS;
+  const jobs: MatrixJob[] = [];
+  let n = 0;
+  for (const [name, profile] of Object.entries(opts.partners)) {
+    for (const fb of fs) for (const fp of fs) for (let s = 0; s < opts.seeds; s++) for (const swap of [false, true]) {
+      const bot: LabPlayer = { faction: fb, level: opts.level, tag: 'bot' }, partner: LabPlayer = { faction: fp, level: opts.level, profile, tag: name };
+      jobs.push({ teams: swap ? [[partner], [bot]] : [[bot], [partner]], seed: (opts.seedBase ?? 7000) + n++ * 7919 + s, key: [`${opts.level}:${fb}`, `${name}:${fp}`], maxMinutes: opts.maxMinutes });
+    }
+  }
+  return jobs;
+}
+
 // ---------------------------------------------------------------- statistics
 
 /** 95% Wilson score interval of a win rate. */

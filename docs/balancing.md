@@ -66,6 +66,7 @@ so the game, the bots, the tooltips and the lab all use the tuned values. The fa
 | 1 · units | building duels, same tier, equal gold, no AI | unit hp and dmg of clear outliers (outside 25–75%): ±4% per step, 0.8–1.25 in total. Support, siege and champion units are skipped and listed instead |
 | 2 · factions | every line-up against every other at 1v1–4v4, both sides, hard bots | faction `power`: hp and dmg of every unit × √power |
 | 3 · bots | brutal>hard, hard>normal, normal>easy, all faction pairings | income of brutal / normal / easy (hard stays 1, so stage 2 is unaffected); target ~80% |
+| 4 · strategies | normal and hard bots against human-style strategies (pure air, swarm, turtle, rush, …; `sparring.ts`) played by the same level's brain, every faction pairing | none: measure only. A bot that wins less than 40% against one strategy (95% CI below 50%) fails the check |
 
 The game snowballs, so single results are noisy, and small changes can flip a matchup. Three things keep a run short:
 
@@ -82,6 +83,11 @@ The game snowballs, so single results are noisy, and small changes can flip a ma
 - **Lenient verification.** A result only counts after a **verification run** of the full grid on new seeds with 2.5× the
   games. The verification starts as soon as a step lands within tolerance, or once the fit has settled: its step moves power by less than 0.5%, from step 3 on. It passes when each faction is within the tolerance, or within ±5% with a 95% CI that includes 50%.
 
+- **Decided games end early.** A game is called once one castle is at least 20 points healthier and that team also
+  has 1.2× the base value and the bigger army (`decided` in `shared/src/lab/match.ts`). The rule was fitted on 220 traced games:
+  it ended 217 early and named the wrong winner in none, saving ~7% of the time. Games snowball fast, so earlier calls (from base value
+  alone) start to pick wrong winners. `--no-adjudicate` plays every game to the end.
+
 With 4 cores, a tuning step takes about 8 minutes and a verification about 20–25 minutes; 3v3 and 4v4 games are the slow ones.
 `LAB_THREADS` and more cores scale almost linearly.
 
@@ -90,8 +96,10 @@ With 4 cores, a tuning step takes about 8 minutes and a verification about 20–
 - lopsided individual line-ups such as mixed teams against pure teams
 - a side bias of the map
 - support units whose value doesn't show in duels
+- a bot with a blind spot (stage 4), e.g. it never built anti-air, so pure flyers beat it every time. The check
+  fails and names the strategy and faction; teach the bot to counter it in `shared/src/ai/ai.ts`
 
-These need a design change. The lab commands above help find the cause.
+These need a design or AI change. The lab commands above help find the cause.
 
 Bots stand in for players: hard bots approximate competent play, but people find strategies bots don't use. So keep
 an eye on `npm run lab -- sparring`, and on real games.

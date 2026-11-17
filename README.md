@@ -65,7 +65,7 @@ No MongoDB at hand? Run `npm run build && npm run dev:memory` to get a server wi
 npm test             # simulation unit tests + websocket end-to-end tests (in-memory DB, accelerated ticks)
 npm run typecheck
 npm run balance      # auto-tune factions, units and bot levels → shared/src/data/tuning.ts + docs/balance-report.md
-npm run balance -- --check   # only check, exit 1 when out of band
+npm run balance -- --check   # only check (incl. bots vs human-style strategies), exit 1 when out of band
 npm run lab -- all   # balance + AI report (faction matrix, difficulty ladder, sparring, duels) → lab-report.md
 BALANCE=1 npx vitest run shared/test/lab.test.ts   # slow statistical balance gate
 ```

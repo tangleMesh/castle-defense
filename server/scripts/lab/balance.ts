@@ -7,7 +7,7 @@
  *   npm run balance                     tune units, factions and bots; write tuning.ts + docs/balance-report.md
  *   npm run balance -- --quick --dry    smoke test (~5 min), writes nothing
  *
- * Options: --stages units,factions,bots · --sizes 1,2,3,4 · --games 48 / --verify-games 120 (non-mirror
+ * Options: --no-adjudicate (play every game to the end) · --stages units,factions,bots,strategies · --strategy-seeds 4 · --strategy-levels normal,hard · --sizes 1,2,3,4 · --games 48 / --verify-games 120 (non-mirror
  * games per team size, per step / per verification) · --pairings 4 (line-up pairings per team size and step) · --iterations 8 · --tolerance 0.03 (faction win rate 50% ± this) · --reset (start
  * from an untuned game) · --out <file> · LAB_THREADS limits worker threads.
  *
@@ -20,11 +20,13 @@
  *     tolerance triggers a verification run of the full grid on fresh seeds.
  *  3. bots: adjacent ladder steps (brutal>hard>normal>easy) aim for ~80% by tuning the income of
  *     brutal / normal / easy (fitted the same way); hard is the anchor and keeps income 1.
+ *  4. strategies (measure only): normal and hard bots against human-style strategies (pure air,
+ *     swarm, turtle, rush, …). A blind spot fails the check; the fix belongs in the AI.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
-  AI_LEVELS, BUILDINGS, COMMITTED_TUNING, FACTION_IDS, NEUTRAL_TUNING, UNITS, duelJobs, factionMatrix, formatReport, ladderMatrix,
-  fitLogistic, fitTarget, summarize, summarizeLadder, tierOf,
+  AI_LEVELS, BUILDINGS, COMMITTED_TUNING, FACTION_IDS, NEUTRAL_TUNING, SPARRING, UNITS, duelJobs, factionMatrix, formatReport, ladderMatrix,
+  fitLogistic, fitTarget, strategyMatrix, summarize, summarizeLadder, tierOf, wilson,
   type AiLevel, type FitPoint, type MatrixJob, type MatrixReport, type Rate, type Tuning,
 } from '@bc/shared';
 import { LabPool, progress } from './pool';
@@ -39,7 +41,7 @@ const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const quick = flag('quick');
 const check = flag('check');
 const dry = flag('dry') || check;
-const stages = arg('stages', 'units,factions,bots').split(',');
+const stages = arg('stages', 'units,factions,bots,strategies').split(',');
 const sizes = arg('sizes', quick ? '1,2' : '1,2,3,4').split(',').map(Number);
 /** Non-mirror games per team size: per tuning step, and per verification of the full grid. */
 const stepGames = Number(arg('games', quick ? '16' : '48'));
@@ -48,6 +50,8 @@ const iterations = Number(arg('iterations', quick ? '3' : '8'));
 const tol = Number(arg('tolerance', '0.03'));
 const pairingsPerSize = Number(arg('pairings', '4'));
 const botSeeds = Number(arg('bot-seeds', quick ? '2' : '6'));
+const strategySeeds = Number(arg('strategy-seeds', quick ? '2' : '4'));
+const strategyLevels = arg('strategy-levels', 'normal,hard').split(',') as AiLevel[];
 const outFile = arg('out', dry ? '' : 'docs/balance-report.md');
 const LADDER_TARGET = 0.8, LADDER_BAND: [number, number] = [0.7, 0.9];
 
@@ -63,10 +67,13 @@ let seedCounter = 0;
 /** Fresh, never reused seed base for every measurement. */
 const freshSeeds = () => 200_000 + 1_000_003 * ++seedCounter;
 
+/** End decided games early (shared/src/lab/match.ts `decided`): the balancer only needs winners. */
+const adjudicate = !flag('no-adjudicate');
+
 async function play(label: string, jobs: MatrixJob[]) {
   pool.tuning = structuredClone(tuning);
   pool.done = 0; pool.total = 0; pool.onProgress = progress(label);
-  return Promise.all(jobs.map((j) => pool.match(j)));
+  return Promise.all(jobs.map((j) => pool.match(adjudicate ? { ...j, adjudicate } : j)));
 }
 
 // ------------------------------------------------------------------ measurements
@@ -322,6 +329,44 @@ async function stageBots() {
   }
 }
 
+/**
+ * Stage 4 (measure only): each bot level against human-style strategies (sparring.ts) played by the
+ * same level's brain. A bot that loses clearly to one strategy, e.g. pure flyers when it never builds
+ * anti-air, is an exploit players will find. No multiplier can fix that, so it fails the check and
+ * points at the bot (or the faction) instead.
+ */
+async function stageStrategies() {
+  out.push('## 4 · Bots against human-style strategies (1v1)', '',
+    'Each strategy is the same level\'s brain pushed towards one style (shared/src/lab/sparring.ts). The bot should win about half of these games or more; '
+    + 'below 40% with the whole 95% CI under 50% it has a blind spot.', '');
+  for (const level of strategyLevels) {
+    const jobs = strategyMatrix({ level, partners: SPARRING, seeds: strategySeeds, seedBase: freshSeeds() });
+    const res = await play(`strategies (${level})`, jobs);
+    // Per strategy, and per strategist faction (which faction's version of it is the problem).
+    const agg = new Map<string, { w: number; n: number; by: Map<string, { w: number; n: number }> }>();
+    jobs.forEach((j, i) => {
+      const botTeam = j.teams[0][0].tag === 'bot' ? 0 : 1;
+      const [name, fp] = j.key[1].split(':');
+      const w = res[i].winner === null ? 0.5 : res[i].winner === botTeam ? 1 : 0;
+      const a = agg.get(name) ?? { w: 0, n: 0, by: new Map() };
+      a.w += w; a.n++;
+      const b = a.by.get(fp) ?? { w: 0, n: 0 }; b.w += w; b.n++; a.by.set(fp, b);
+      agg.set(name, a);
+    });
+    out.push(`### ${level}`, '', `| strategy | ${level} wins | 95% CI | ${FACTION_IDS.map((f) => `vs ${f}`).join(' | ')} | games |`, `|---|---|---|${FACTION_IDS.map(() => '---|').join('')}---|`);
+    for (const [name, a] of [...agg].sort((x, y) => x[1].w / x[1].n - y[1].w / y[1].n)) {
+      const rate = a.w / a.n, ci = wilson(a.w, a.n);
+      out.push(`| ${name} | ${pct(rate)} | ${pct(ci[0])}–${pct(ci[1])} | ${FACTION_IDS.map((f) => { const b = a.by.get(f); return b ? pct(b.w / b.n) : '–'; }).join(' | ')} | ${a.n} |`);
+      if (rate < 0.4 && ci[1] < 0.5) {
+        failed.add('strategies');
+        const worst = [...a.by].sort((x, y) => x[1].w / x[1].n - y[1].w / y[1].n)[0];
+        problems.push(`${level} bot loses to the "${name}" strategy: wins ${pct(rate)} (CI ${pct(ci[0])}–${pct(ci[1])}), worst against ${worst[0]} ${name} (${pct(worst[1].w / worst[1].n)})`);
+      }
+    }
+    out.push('');
+  }
+}
+
 // ------------------------------------------------------------------ output
 
 const gameVersion = JSON.parse(readFileSync('package.json', 'utf8')).version as string;
@@ -355,6 +400,7 @@ try {
   if (stages.includes('units')) await stageUnits();
   if (stages.includes('factions')) fm = await stageFactions();
   if (stages.includes('bots')) await stageBots();
+  if (stages.includes('strategies')) await stageStrategies();
 } finally {
   await pool.close();
 }
@@ -375,14 +421,17 @@ const head = [
   '',
 ];
 // After a check: which stages to re-tune (units feed into factions, so they go together).
-const next = [...failed];
+const next = [...failed].filter((f) => f !== 'strategies');
 if (failed.has('units') && !failed.has('factions')) next.splice(next.indexOf('units') + 1, 0, 'factions');
-const nextStep = check
-  ? (next.length ? ['## Next step', '', 'Re-tune only what failed:', '', '```bash', `npm run balance -- --stages ${next.join(',')}`, '```', ''] : ['## Next step', '', 'Nothing to do: everything checked is within band.', ''])
+const aiHint = failed.has('strategies')
+  ? ['A bot loses to a single strategy (stage 4): no multiplier fixes that. Teach the bot to counter it (shared/src/ai/ai.ts, e.g. `counterFactor` / `antiAirGap`) or change the faction, then re-check with `npm run balance:check -- --stages strategies`.', '']
   : [];
+const nextStep = check
+  ? ['## Next step', '', ...(next.length ? ['Re-tune only what failed:', '', '```bash', `npm run balance -- --stages ${next.join(',')}`, '```', ''] : failed.size ? [] : ['Nothing to do: everything checked is within band.', '']), ...aiHint]
+  : aiHint.length ? ['## Next step', '', ...aiHint] : [];
 const tail = [
   ...nextStep,
-  problems.length ? '## ✗ Out of band' : '## ✓ Factions and bot levels within band', '', ...problems.map((p) => `- ${p}`), ...(problems.length ? [''] : []),
+  problems.length ? '## ✗ Out of band' : '## ✓ Factions, bot levels and strategies within band', '', ...problems.map((p) => `- ${p}`), ...(problems.length ? [''] : []),
   ...(design.length ? ['## Needs a design look (knobs can\'t fix these)', '', ...design.map((p) => `- ${p}`), ''] : []),
   ...(fm ? [formatReport(`All line-ups (verification run, ${fm.games} games)`, fm.all, [0.3, 0.7]), ''] : []),
 ];
@@ -390,4 +439,8 @@ const text = [...head, ...out, ...tail].join('\n');
 console.log(text);
 if (outFile) writeFileSync(outFile, text);
 if (!dry && changed) writeTuning(fm, revision);
-if (check && failed.size) { process.stderr.write(`\nOut of band: npm run balance -- --stages ${next.join(',')}\n`); process.exit(1); }
+if (check && failed.size) {
+  if (next.length) process.stderr.write(`\nOut of band: npm run balance -- --stages ${next.join(',')}\n`);
+  if (failed.has('strategies')) process.stderr.write('\nA bot loses to a single strategy: fix the AI (see the report), then npm run balance:check -- --stages strategies\n');
+  process.exit(1);
+}

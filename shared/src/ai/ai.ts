@@ -75,6 +75,10 @@ export interface Profile {
   fullVision?: boolean;
   /** Income ticks the bot may wait for a better option instead of buying another fragile-unit spawner (0 = never waits). */
   chaffWait?: number;
+  /** Normal-style planners: income ticks (10 s each) they save up for a better pick instead of buying the cheapest affordable one. */
+  saveWindow?: number;
+  /** Income ticks the bot saves up for anti-air when enemy flyers outnumber its anti-air (0: never reacts). */
+  antiAirWait?: number;
   /** Where spawn buildings go: around the castle (default), towards the front, or behind the castle. */
   place?: Placement;
   /** Per-faction placement (wins over `place`): each faction has its own best base layout. */
@@ -104,11 +108,14 @@ export const PROFILES: Record<AiLevel, Profile> = {
     think: 4 * TICK_RATE, maxQueue: 1, idle: 0.15, upgradeAfter: 10, specialAt: 14, planner: false, counter: false,
     saves: false, tidy: false, rescueAt: 14, rescueDelay: 2 * TICK_RATE, rescueAim: 2.5, upgradeBias: 1, rangedShare: 0, safeSpots: false, saveForSpecial: 0,
     itemsAfterMin: 8, items: ['chalice', 'boots', 'hammer'],
+    // Even a beginner notices flyers it can't hit, but reacts late and only half the time (see decide()).
+    antiAirWait: 0,
   },
   normal: {
     think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: true,
     saves: false, tidy: true, rescueAt: 6, rescueDelay: TICK_RATE, rescueAim: 0.5, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
     itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'],
+    saveWindow: 1.5, antiAirWait: 2.5,
   },
   hard: {
     think: Math.round(0.5 * TICK_RATE), maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
@@ -116,13 +123,13 @@ export const PROFILES: Record<AiLevel, Profile> = {
     itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'],
     // Found with the simulation lab (npm run lab -- search / tune): a base behind the castle wins ~65% against one
     // around it, and striking early at small waves (rescueAt 3 instead of 8) another ~70%.
-    place: 'back', chaffWait: 0,
+    place: 'back', chaffWait: 0, antiAirWait: 4,
   },
   // Hard's brain, faster, without fog of war and with +30% income (AI_INCOME): openly cheating.
   brutal: {
     think: 3, maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], place: 'back', chaffWait: 0, fullVision: true,
+    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], place: 'back', chaffWait: 0, antiAirWait: 4, fullVision: true,
   },
 };
 
@@ -144,6 +151,13 @@ export class AiPlayer {
   private rescueSeenAt = -1;
   private wish: string | null = null;
   private rnd: () => number;
+  /**
+   * What this bot has seen of the enemy (id → type and when), so a wave of flyers that died at our
+   * walls still counts a minute later, and a scouted base is remembered. A soft cache: losing it on
+   * save/resume only makes the bot forget like a human after a break.
+   */
+  private intel = new Map<number, { type: string; kind: 'unit' | 'building'; tick: number }>();
+  private profileCache: { tick: number; p: EnemyProfile } | null = null;
 
   /** `overrides` tweak the level's profile (used by the simulation lab to compare AI variants). */
   constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17, overrides?: Partial<Profile>) {
@@ -287,17 +301,20 @@ export class AiPlayer {
       const waitTicks = ((goal.def.cost - me.gold) / Math.max(1, incomeFor(sim, this.player))) * INCOME_INTERVAL_TICKS;
       if (waitTicks < P.saveForSpecial * TICK_RATE) return null;
     }
+    const perTick = incomeFor(sim, this.player);
+    // Enemy flyers outnumber our anti-air: the best anti-air spawner comes first, and the bot saves
+    // up for it (hard ~40 s, normal ~25 s) instead of buying yet another ground spawner that can't
+    // hit them. Easy reacts too, but only every other decision.
+    const aa = (P.antiAirWait !== undefined && this.antiAirGap(sim, me, mine, queued) > 0 && (P.counter || this.rnd() < 0.5))
+      ? options.filter((o) => o.kind === 'build' && o.def.spawn && canHitAir(UNITS[o.def.spawn.unit])).sort((a, b) => b.score - a.score)[0]
+      : undefined;
     if (goal && goal.def.cost <= me.gold) pick = goal;
+    else if (aa && aa.def.cost <= me.gold) pick = aa;
+    else if (aa && aa.def.cost <= me.gold + perTick * (P.antiAirWait ?? 0)) return null;
     else if (P.saves) {
       // Go for the best option; wait for it when it's within ~15 s of income.
       options.sort((a, b) => b.score - a.score);
-      const perTick = incomeFor(sim, this.player);
-      // Enemy flyers and no way to hit them: save up (up to ~40 s) for anti-air instead of
-      // buying yet another cheap ground spawner.
-      const aa = this.needsAntiAir(sim, me, mine) ? options.find((o) => o.def.spawn && (UNITS[o.def.spawn.unit].targetsAir || UNITS[o.def.spawn.unit].air)) : undefined;
-      if (aa && aa.def.cost > me.gold && aa.def.cost <= me.gold + perTick * 4) return null;
-      if (aa && aa.def.cost <= me.gold) pick = aa;
-      else {
+      {
         // Don't flood the field with cheap chaff: if the affordable choice is a spawner of fragile
         // units, wait up to ~30 s of income for a clearly better option (unless under pressure).
         const cheap = options.find((o) => o.def.cost <= me.gold);
@@ -314,10 +331,19 @@ export class AiPlayer {
         }
       }
     } else if (P.planner) {
-      const affordable = options.filter((o) => o.def.cost <= me.gold);
-      if (!affordable.length) return null;
-      affordable.sort((a, b) => b.score * (0.7 + this.rnd() * 0.6) - a.score * (0.7 + this.rnd() * 0.6));
-      pick = affordable[0];
+      // Picks among what it can afford soon (not only right now, which is mostly the cheapest
+      // spawner), with some noise, and then sticks to that wish until it can pay for it.
+      const reach = options.filter((o) => o.def.cost <= me.gold + perTick * (P.saveWindow ?? 0));
+      if (!reach.length) return null;
+      let want = this.wish ? reach.find((o) => o.def.id === this.wish) : undefined;
+      if (!want) {
+        const noisy = reach.map((o) => ({ o, s: o.score * (0.7 + this.rnd() * 0.6) })).sort((a, b) => b.s - a.s);
+        want = noisy[0].o;
+        this.wish = want.def.id;
+      }
+      if (want.def.cost > me.gold) return null;
+      pick = want;
+      this.wish = null;
     } else {
       // Easy: wants something at random and waits until it can pay for it.
       if (!this.wish || !options.some((o) => o.def.id === this.wish)) this.wish = options[Math.floor(this.rnd() * options.length)].def.id;
@@ -434,6 +460,16 @@ export class AiPlayer {
 
   /** Army strength per second a spawn building adds, adjusted against the enemy army. */
   private spawnScore(def: BuildingDef, enemy: EnemyProfile): number {
+    // Called for every option several times per decision: cache per enemy picture (one per tick).
+    if (this.scoreCache.enemy !== enemy) this.scoreCache = { enemy, scores: new Map() };
+    let v = this.scoreCache.scores.get(def.id);
+    if (v === undefined) { v = this.computeSpawnScore(def, enemy); this.scoreCache.scores.set(def.id, v); }
+    return v;
+  }
+
+  private scoreCache: { enemy: EnemyProfile | null; scores: Map<string, number> } = { enemy: null, scores: new Map() };
+
+  private computeSpawnScore(def: BuildingDef, enemy: EnemyProfile): number {
     const sp = def.spawn!;
     const u = UNITS[sp.unit];
     // Faction abilities, folded into rough damage and toughness factors.
@@ -471,16 +507,25 @@ export class AiPlayer {
     return Math.max(0.2, f) ** 1.5;
   }
 
-  /** The enemy fields a real air force and less than a fifth of our spawners can shoot it down. */
-  private needsAntiAir(sim: Sim, me: PlayerState, mine: Entity[]): boolean {
+  /**
+   * How many anti-air spawners we are short of (0: enough). The share of our spawners that can hit
+   * flyers should follow the share of flyers in the enemy army (capped at 75%: someone still has
+   * to fight the ground units). Queued builds count, so the bot doesn't queue three at once.
+   */
+  private antiAirGap(sim: Sim, me: PlayerState, mine: Entity[], queued: { building: string }[]): number {
     const enemy = this.enemyProfile(sim, me);
-    if (!enemy.total || enemy.air / enemy.total < 0.2) return false;
-    const spawners = mine.filter((e) => BUILDINGS[e.type].spawn);
-    const aa = spawners.filter((e) => { const u = UNITS[BUILDINGS[e.type].spawn!.unit]; return u.targetsAir || u.air; });
-    return aa.length < Math.max(1, spawners.length * 0.2);
+    const air = enemy.total ? enemy.air / enemy.total : 0;
+    if (air < 0.15) return 0;
+    const types = [...mine.map((e) => e.type), ...queued.map((o) => o.building)].map((t) => BUILDINGS[t]).filter((d) => d.spawn && !d.special);
+    const aa = types.filter((d) => canHitAir(UNITS[d.spawn!.unit])).length;
+    // Towers that shoot up help too, a bit.
+    const towers = mine.filter((e) => BUILDINGS[e.type].attack?.targetsAir).length;
+    const want = Math.max(1, Math.ceil(Math.min(0.75, air) * (types.length + 1)));
+    return want - aa - Math.floor(towers / 2);
   }
 
   private enemyProfile(sim: Sim, me: PlayerState): EnemyProfile {
+    if (this.profileCache?.tick === sim.state.tick) return this.profileCache.p;
     const p: EnemyProfile = { armor: {}, attack: {}, air: 0, ranged: 0, splash: 0, total: 0, pressure: false };
     const c = rectCenter(MAP.castles[me.team]);
     const add = (u: UnitDef, w: number) => {
@@ -492,23 +537,36 @@ export class AiPlayer {
       p.total += w;
     };
     let near = 0;
-    // Bots play under the same fog of war as humans: they only judge what their team can see.
-    const own = sim.state.entities.filter((e) => e.team === me.team);
-    const vision = computeVision(me.team, own);
+    const tick = sim.state.tick;
+    // Bots play under the same fog of war as humans: they only judge what their team has seen.
+    const vision = teamVision(sim, me.team);
+    const alive = new Set<number>();
     for (const e of sim.state.entities) {
       if (e.team === me.team || e.hp <= 0) continue;
+      if (e.kind === 'building') alive.add(e.id);
       if (!this.profile.fullVision && e.kind !== 'castle' && !entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
       if (e.kind === 'unit') {
-        const u = UNITS[e.type];
-        // Small units still count: a cloud of moths is a threat even at 85 HP each.
-        if (u) add(u, Math.max(0.6, u.hp / 200));
+        if (UNITS[e.type]) this.intel.set(e.id, { type: e.type, kind: 'unit', tick });
         if (Math.hypot(e.x - c.x, e.y - c.y) < 18) near++;
-      } else if (e.kind === 'building') {
-        const sp = BUILDINGS[e.type].spawn;
-        if (sp) { const u = UNITS[sp.unit]; add(u, Math.max(0.6, u.hp / 200) * sp.count * 2); }
+      } else if (e.kind === 'building' && BUILDINGS[e.type].spawn) this.intel.set(e.id, { type: e.type, kind: 'building', tick });
+    }
+    // Units seen within the last minute count (dead or alive: the next wave is coming), buildings
+    // as long as they stand (their ruin is visible to everyone).
+    for (const [id, m] of this.intel) {
+      if (m.kind === 'unit') {
+        if (tick - m.tick > INTEL_UNIT_TICKS) { this.intel.delete(id); continue; }
+        const u = UNITS[m.type];
+        // Small units still count: a cloud of moths is a threat even at 85 HP each.
+        add(u, Math.max(0.6, u.hp / 200));
+      } else {
+        if (!alive.has(id)) { this.intel.delete(id); continue; }
+        const sp = BUILDINGS[m.type].spawn!;
+        const u = UNITS[sp.unit];
+        add(u, Math.max(0.6, u.hp / 200) * sp.count * 2);
       }
     }
     p.pressure = near >= 6;
+    this.profileCache = { tick, p };
     return p;
   }
 
@@ -566,6 +624,24 @@ export class AiPlayer {
     return null;
   }
 }
+
+/** Vision grid per simulation, team and tick: teammates share it (it's a whole-map pass). */
+const VISION = new WeakMap<Sim, Map<number, { tick: number; grid: Uint8Array }>>();
+function teamVision(sim: Sim, team: number): Uint8Array {
+  const m = VISION.get(sim) ?? new Map<number, { tick: number; grid: Uint8Array }>();
+  VISION.set(sim, m);
+  const c = m.get(team);
+  if (c?.tick === sim.state.tick) return c.grid;
+  const grid = computeVision(team as 0 | 1, sim.state.entities.filter((e) => e.team === team));
+  m.set(team, { tick: sim.state.tick, grid });
+  return grid;
+}
+
+/** Units seen up to a minute ago still shape the bot's picture of the enemy army. */
+const INTEL_UNIT_TICKS = 60 * TICK_RATE;
+
+/** The unit can fight flyers (shoots up, or flies itself). */
+const canHitAir = (u: UnitDef) => !!(u.targetsAir || u.air);
 
 interface EnemyProfile {
   armor: Partial<Record<ArmorType, number>>;

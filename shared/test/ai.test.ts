@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { spawnUnit } from '../src/sim/spawning';
-import { AiPlayer, Sim, TICK_RATE, botLevel, isBotId, makeBotId, type PlayerCommand, type SimEvent } from '../src';
+import { AiPlayer, BUILDINGS, Sim, UNITS, TICK_RATE, botLevel, isBotId, makeBotId, type PlayerCommand, type SimEvent } from '../src';
 
 function play(levels: ['easy' | 'normal' | 'hard', 'easy' | 'normal' | 'hard'], seed: number, maxMinutes = 45, swapFactions = false) {
   const f = swapFactions ? (['thornwild', 'ironvow'] as const) : (['ironvow', 'thornwild'] as const);
@@ -22,6 +22,28 @@ function play(levels: ['easy' | 'normal' | 'hard', 'easy' | 'normal' | 'hard'], 
 }
 
 describe('AI players', () => {
+  it('normal and hard bots build anti-air against a flyer army', () => {
+    // Thornwild hard brain biased to pure flyers (moths) against an Ironvow bot.
+    for (const level of ['normal', 'hard'] as const) {
+      const sim = Sim.create({
+        players: [
+          { userId: makeBotId(level, 'a'), name: 'a', team: 0, faction: 'ironvow' },
+          { userId: makeBotId('hard', 'b'), name: 'b', team: 1, faction: 'thornwild' },
+        ],
+        bestOf: 1, seed: 1,
+      });
+      const ais = [new AiPlayer(0, level, 32), new AiPlayer(1, 'hard', 39, { bias: { air: 10 } })];
+      while (sim.state.phase === 'playing' && sim.state.tick < TICK_RATE * 60 * 9) {
+        const cmds: PlayerCommand[] = [];
+        for (const ai of ais) for (const cmd of ai.update(sim)) cmds.push({ player: ai.player, cmd });
+        sim.step(cmds);
+      }
+      const spawners = sim.playerBuildings(0).map((e) => BUILDINGS[e.type].spawn).filter((sp) => !!sp);
+      const aa = spawners.filter((sp) => UNITS[sp!.unit].targetsAir || UNITS[sp!.unit].air).length;
+      expect(aa, `${level}: ${aa} of ${spawners.length} spawners shoot up`).toBeGreaterThanOrEqual(Math.ceil(spawners.length / 2));
+    }
+  }, 60_000);
+
   it('encodes the difficulty in the bot id', () => {
     expect(isBotId(makeBotId('hard', 'x'))).toBe(true);
     expect(botLevel(makeBotId('easy', 'x'))).toBe('easy');

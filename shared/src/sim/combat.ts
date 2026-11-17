@@ -106,8 +106,11 @@ export function findTarget(sim: Sim, a: Entity, st: AttackStats, radius: number)
     }
     if (best) return best;
   }
-  for (const b of sim.state.entities) {
-    if (!sim.isStructure(b) || !canTarget(sim, a, st, b)) continue;
+  // Bounding-box pre-check (exact: edgeDist can't be within `radius` outside it).
+  const reach = radius + sim.radius(a) + 0.01;
+  for (const b of sim.structures()) {
+    if (a.x < b.tx! - reach || a.x > b.tx! + b.size! + reach || a.y < b.ty! - reach || a.y > b.ty! + b.size! + reach) continue;
+    if (!canTarget(sim, a, st, b)) continue;
     const d = sim.edgeDist(a, b);
     if (d <= radius && d < bestD) { best = b; bestD = d; }
   }

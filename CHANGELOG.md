@@ -7,6 +7,21 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.22.0
+**Bots react to flyers**
+- Bots now count how many of their spawners can hit flyers and keep that share in line with the share of flyers in the enemy army (up to 75%). Hard saves up to ~40 s of income and Normal ~25 s for an anti-air building instead of buying another ground spawner. Easy reacts too, but only every other decision.
+- Bots remember what they have seen: flyers that died at the walls still count for a minute, and scouted spawn buildings count while they stand. Before, a wave that had just died was forgotten at once.
+- Normal no longer buys whatever is cheapest the moment it can. It picks from what it can afford within ~15 s, with some randomness, and saves up for that pick.
+- Pure flyers (moths) beat the Hard bot 69% of the time before. Now they win 0% (48 games). The other strategies are unchanged.
+
+**Simulation lab**
+- New balancer stage 4 · strategies, which only measures. Normal and Hard bots play every human-style strategy (pure air, swarm, turtle, rush, …) for every faction pairing. A bot that clearly loses to one strategy fails `npm run balance:check`, and the report names the strategy and faction. Multipliers can't fix that kind of gap, so the report points at the AI.
+- Lab games run ~27% faster with identical results:
+  - Units look for buildings in a cached list instead of scanning every entity.
+  - Teammates share one vision grid.
+  - The bot caches its unit scores.
+- The balancer ends games once they are decided: one castle at least 20 points healthier, plus 1.2× the base value and the bigger army. In 220 traced games, this rule ended 217 early and named the wrong winner in none, saving ~7% of the playing time. `--no-adjudicate` turns it off.
+
 ## 0.21.2+2 · balance
 First tuning for the 110×40 map (`npm run balance`, 182 min; full report in docs/balance-report.md).
 - **Factions:** Ironvow power 1.008 → 0.979, Thornwild 0.992 → 1.021. The wider map favoured Ironvow (65% before tuning). Verified at 54% / 46% over 646 games, statistically even.
