@@ -20,7 +20,7 @@ services:
       PORT: "3000"
       TICK_MS: ${TICK_MS:-50}
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-5173}:3000"
     depends_on:
       mongo:
         condition: service_healthy

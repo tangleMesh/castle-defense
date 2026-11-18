@@ -45,7 +45,7 @@ The server is authoritative. Clients send only intents (move, build, upgrade, se
 
 ```bash
 docker compose up --build
-# open http://localhost:3000
+# open http://localhost:5173 (HOST_PORT=… to use another port)
 ```
 
 ## Local development
@@ -79,7 +79,7 @@ To run the bot scenarios against a real MongoDB-backed deployment:
 
 ```bash
 TICK_MS=2 docker compose up -d --build
-BASE_URL=http://localhost:3000 RESTART_CMD="docker compose restart server" npm run bots
+BASE_URL=http://localhost:5173 RESTART_CMD="docker compose restart server" npm run bots
 ```
 
 ## Controls
