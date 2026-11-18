@@ -1,34 +1,48 @@
 # Castle Defense · automatic balance report
 
-Version 0.24.0+4 (balance revision 3 → 4)
+Version 0.25.0+5
 
-2026-11-17T20:12:50.152Z · tuning run · stages units, factions, bots, strategies · 73 min
+2026-11-18T03:00:41.809Z · check only · stages factions · 23 min
 
-- Faction power: ironvow 0.911 · thornwild 1.098
+- Faction power: ironvow 0.914 · thornwild 1.094 (early 1.030)
 - Bot income: easy 1.00 · normal 0.92 · hard 1.00 · brutal 1.12
-- Unit multipliers: Stonehide Giant ×0.887/0.887, Thunder Stag ×0.852/0.852, Mangonel ×1.083/1.083, Tempest Caller ×1.041/1.041, Lancer ×0.961/0.961
-- shared/src/data/tuning.ts updated
+- Unit multipliers: Lancer ×0.961/0.961, Militia ×1.04/1.04, Mangonel ×1.127/1.127, Stonehide Giant ×0.819/0.819, Tempest Caller ×0.961/0.961, Thunder Stag ×0.8/0.8
+
+## Hand adjustment after the run
+
+The full balancer run (`npm run balance`) reached 53% / 47% overall, but 1v1 sat at Ironvow 73%. Its duel stage had given the Militia +8%,
+and the 1v1 game between hard bots hinges on that opening: Militia ±4% or Ironvow power ±1.5% swings 1v1 by about 20 points.
+The shipped tuning keeps the run's unit multipliers except Militia (+4% instead of +8%) and sits between two measured power settings:
+
+| Ironvow power · Militia | 1v1 | 2v2 | 3v3 | 4v4 | overall |
+|---|---|---|---|---|---|
+| 0.898 · ×1.083 (run result) | 73% | 41% | 51% | 48% | 53% |
+| 0.898 · ×1.04 | 48% | 37% | 44% | 44% | 43% |
+| 0.930 · ×1.04 | 70% | 42% | 46% | 50% | 52% |
+| **0.914 · ×1.04 (shipped)** | **50%** | **37%** | **45%** | **43%** | **44%** |
+
+Overall Ironvow stays a few points short, mostly from 2v2. Evening it out needs a design change rather than a global knob (see "Needs a design look").
 
 ## 1 · Unit outliers (building duels)
 
 Iteration 1:
-- Standing Stones 83% → Stonehide Giant ×0.961 hp, ×0.961 dmg
-- Stag Den 85% → Thunder Stag ×0.961 hp, ×0.961 dmg
-- Siege Yard 24% → Mangonel ×1.041 hp, ×1.041 dmg
-- Tempest Circle 24% → Tempest Caller ×1.041 hp, ×1.041 dmg
+- Militia Hall 17% → Militia ×1.041 hp, ×1.041 dmg
+- Standing Stones 83% → Stonehide Giant ×0.852 hp, ×0.852 dmg
+- Stag Den 87% → Thunder Stag ×0.819 hp, ×0.819 dmg
+- Siege Yard 23% → Mangonel ×1.127 hp, ×1.127 dmg
+- Tempest Circle 89% → Tempest Caller ×1.000 hp, ×1.000 dmg
 
 Iteration 2:
-- Standing Stones 83% → Stonehide Giant ×0.923 hp, ×0.923 dmg
-- Stag Den 83% → Thunder Stag ×0.923 hp, ×0.923 dmg
-- Siege Yard 24% → Mangonel ×1.083 hp, ×1.083 dmg
+- Militia Hall 17% → Militia ×1.083 hp, ×1.083 dmg
+- Standing Stones 77% → Stonehide Giant ×0.819 hp, ×0.819 dmg
+- Stag Den 83% → Thunder Stag ×0.800 hp, ×0.800 dmg
+- Tempest Circle 78% → Tempest Caller ×0.961 hp, ×0.961 dmg
 
 Iteration 3:
-- Stag Den 83% → Thunder Stag ×0.887 hp, ×0.887 dmg
-- Lancer Stables 83% → Lancer ×0.961 hp, ×0.961 dmg
+- Stag Den 78% → Thunder Stag ×0.800 hp, ×0.800 dmg
 
 Iteration 4:
-- Standing Stones 75% → Stonehide Giant ×0.887 hp, ×0.887 dmg
-- Stag Den 83% → Thunder Stag ×0.852 hp, ×0.852 dmg
+- Stag Den 78% → Thunder Stag ×0.800 hp, ×0.800 dmg
 
 ## 2 · Factions (hard bots, all line-ups, team sizes 1/2/3/4)
 
@@ -36,22 +50,20 @@ Tuning steps play a sample of 4 line-up pairings per team size (drawn at random)
 
 | Step | power | win rate | games | fitted slope |
 |---|---|---|---|---|
-| 1 | ironvow 1.000 · thornwild 1.000 | ironvow 73% · thornwild 26% | 192 | 30 |
-| 2 | ironvow 0.967 · thornwild 1.034 | ironvow 68% · thornwild 31% | 192 | 8 |
-| 3 | ironvow 0.911 · thornwild 1.098 | ironvow 53% · thornwild 47% | 192 | |
-| 3 ✓ verify | ironvow 0.911 · thornwild 1.098 | ironvow 46% · thornwild 54% | 646 | |
 
-Power now: ironvow 0.911 · thornwild 1.098
+Power now: ironvow 0.914 · thornwild 1.094 (early 1.030)
 
 ### Faction win rate per team size (verification run)
 
 | Team size | ironvow | thornwild | games |
 |---|---|---|---|
-| 1v1 | 20% (14%–28%) | 80% (72%–86%) | 200 |
-| 2v2 | 39% (31%–48%) | 61% (52%–69%) | 162 |
-| 3v3 | 61% (52%–69%) | 39% (31%–48%) | 144 |
-| 4v4 | 65% (56%–73%) | 35% (27%–44%) | 140 |
-| **average** | **46%** | **54%** | 646 |
+| 1v1 | 50% (41%–59%) | 50% (41%–59%) | 200 |
+| 2v2 | 37% (29%–46%) | 63% (54%–71%) | 162 |
+| 3v3 | 45% (37%–54%) | 55% (46%–63%) | 144 |
+| 4v4 | 43% (35%–52%) | 57% (48%–65%) | 140 |
+| **average** | **44%** | **56%** | 646 |
+
+Small (1v1, 2v2) minus big games (3v3, 4v4): ironvow -1% · thornwild +1% (the `early` knob targets ±15%)
 
 ## 3 · Bot levels (1v1, all faction pairings)
 
@@ -59,8 +71,7 @@ Target: the higher level wins ~80% (band 70%–90%). Hard keeps income 1.
 
 | Iteration | income | brutal>hard | hard>normal | normal>easy |
 |---|---|---|---|---|
-| 1 | easy 1.00 · normal 1.00 · hard 1.00 · brutal 1.30 | 98% | 65% | 88% |
-| 2 | easy 1.00 · normal 0.92 · hard 1.00 · brutal 1.12 | 81% | 90% | 75% |
+| 1 | easy 1.00 · normal 0.92 · hard 1.00 · brutal 1.12 | 81% | 88% | 90% |
 
 Income now: easy 1.00 · normal 0.92 · hard 1.00 · brutal 1.12
 
@@ -72,98 +83,87 @@ Each strategy is the same level's brain pushed towards one style (shared/src/lab
 
 | strategy | normal wins | 95% CI | vs ironvow | vs thornwild | games |
 |---|---|---|---|---|---|
-| ranged | 41% | 26%–58% | 50% | 31% | 32 |
-| melee | 44% | 28%–61% | 44% | 44% | 32 |
-| greed | 44% | 28%–61% | 44% | 44% | 32 |
-| tech | 44% | 28%–61% | 38% | 50% | 32 |
-| scout | 44% | 28%–61% | 63% | 25% | 32 |
-| turtle | 47% | 31%–64% | 50% | 44% | 32 |
-| siege | 50% | 34%–66% | 50% | 50% | 32 |
-| rush | 50% | 34%–66% | 50% | 50% | 32 |
-| swarm | 53% | 36%–69% | 56% | 50% | 32 |
-| air | 53% | 36%–69% | 69% | 38% | 32 |
+| siege | 34% | 20%–52% | 31% | 38% | 32 |
+| tech | 34% | 20%–52% | 50% | 19% | 32 |
+| swarm | 44% | 28%–61% | 63% | 25% | 32 |
+| rush | 44% | 28%–61% | 56% | 31% | 32 |
+| melee | 47% | 31%–64% | 50% | 44% | 32 |
+| scout | 47% | 31%–64% | 63% | 31% | 32 |
+| ranged | 56% | 39%–72% | 75% | 38% | 32 |
+| air | 59% | 42%–74% | 56% | 63% | 32 |
+| greed | 63% | 45%–77% | 69% | 56% | 32 |
+| turtle | 70% | 53%–83% | 75% | 66% | 32 |
 
 ### hard
 
 | strategy | hard wins | 95% CI | vs ironvow | vs thornwild | games |
 |---|---|---|---|---|---|
-| ranged | 31% | 18%–49% | 56% | 6% | 32 |
-| scout | 34% | 20%–52% | 38% | 31% | 32 |
-| swarm | 44% | 28%–61% | 69% | 19% | 32 |
-| rush | 44% | 28%–61% | 63% | 25% | 32 |
-| melee | 53% | 36%–69% | 81% | 25% | 32 |
-| tech | 53% | 36%–69% | 81% | 25% | 32 |
-| siege | 59% | 42%–74% | 75% | 44% | 32 |
-| air | 75% | 58%–87% | 56% | 94% | 32 |
-| turtle | 100% | 89%–100% | 100% | 100% | 32 |
-| greed | 100% | 89%–100% | 100% | 100% | 32 |
+| rush | 22% | 11%–39% | 19% | 25% | 32 |
+| ranged | 38% | 23%–55% | 50% | 25% | 32 |
+| swarm | 47% | 31%–64% | 50% | 44% | 32 |
+| siege | 47% | 31%–64% | 25% | 69% | 32 |
+| scout | 56% | 39%–72% | 44% | 69% | 32 |
+| air | 59% | 42%–74% | 44% | 75% | 32 |
+| tech | 59% | 42%–74% | 63% | 56% | 32 |
+| melee | 63% | 45%–77% | 63% | 63% | 32 |
+| greed | 84% | 68%–93% | 75% | 94% | 32 |
+| turtle | 94% | 80%–98% | 94% | 94% | 32 |
 
 ## Next step
 
-A bot loses to a single strategy (stage 4): no multiplier fixes that. Teach the bot to counter it (shared/src/ai/ai.ts, e.g. `counterFactor` / `antiAirGap`) or change the faction, then re-check with `npm run balance:check -- --stages strategies`.
+Re-tune only what failed:
+
+```bash
+npm run balance -- --stages factions
+```
 
 ## ✗ Out of band
 
-- hard bot loses to the "ranged" strategy: wins 31% (CI 18%–49%), worst against thornwild ranged (6%)
-
-## Needs a design look (knobs can't fix these)
-
-- Chapel scores 17% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- Arbalest Range scores 9% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- Knight Stables scores 90% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- Sanctum of Dawn scores 99% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- Sun Citadel scores 12% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- World Root scores 98% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- Radiant Citadel scores 13% in duels but isn't auto-tuned (support/siege/anti-air/champion unit)
-- ironvow wins 20% at 1v1 (CI 14%–28%): size-dependent, a single power knob can't fix it
-- thornwild wins 80% at 1v1 (CI 72%–86%): size-dependent, a single power knob can't fix it
-- ironvow vs thornwild: 20% (CI 14%–28%)
-- ironvow+ironvow+ironvow+ironvow vs thornwild+thornwild+thornwild+thornwild: 100% (CI 76%–100%)
-- ironvow+ironvow+ironvow+thornwild vs thornwild+thornwild+thornwild+thornwild: 100% (CI 76%–100%)
-- left side wins 56% (CI 52%–60%): the map or the simulation favours one side
+- faction ironvow wins 44% overall (want 50% ± 5%)
+- faction thornwild wins 56% overall (want 50% ± 5%)
 
 ## All line-ups (verification run, 646 games)
 
 | Line-up A | Line-up B | A wins | 95% CI | games | avg min | |
 |---|---|---|---|---|---|---|
-| ironvow | ironvow | 65% | 50%–78% | 40 | 9.2 | mirror |
-| ironvow | thornwild | 20% | 14%–28% | 120 | 8.9 | ⚠ |
-| ironvow+ironvow | ironvow+ironvow | 64% | 39%–84% | 14 | 13.0 | mirror |
-| ironvow+ironvow | ironvow+thornwild | 30% | 18%–45% | 40 | 11.6 |  |
-| ironvow+ironvow | thornwild+thornwild | 40% | 26%–55% | 40 | 11.0 |  |
-| ironvow+ironvow+ironvow | ironvow+ironvow+ironvow | 17% | 3%–56% | 6 | 13.7 | mirror |
-| ironvow+ironvow+ironvow | ironvow+ironvow+thornwild | 30% | 15%–52% | 20 | 15.4 |  |
-| ironvow+ironvow+ironvow | ironvow+thornwild+thornwild | 65% | 43%–82% | 20 | 12.7 |  |
-| ironvow+ironvow+ironvow | thornwild+thornwild+thornwild | 90% | 70%–97% | 20 | 12.6 | ⚠ |
-| ironvow+ironvow+ironvow+ironvow | ironvow+ironvow+ironvow+ironvow | 75% | 30%–95% | 4 | 14.1 | mirror |
-| ironvow+ironvow+ironvow+ironvow | ironvow+ironvow+ironvow+thornwild | 33% | 14%–61% | 12 | 14.6 |  |
-| ironvow+ironvow+ironvow+ironvow | ironvow+ironvow+thornwild+thornwild | 58% | 32%–81% | 12 | 14.8 |  |
-| ironvow+ironvow+ironvow+ironvow | ironvow+thornwild+thornwild+thornwild | 75% | 47%–91% | 12 | 14.1 | ⚠ |
-| ironvow+ironvow+ironvow+ironvow | thornwild+thornwild+thornwild+thornwild | 100% | 76%–100% | 12 | 13.0 | ⚠ |
-| ironvow+ironvow+ironvow+thornwild | ironvow+ironvow+ironvow+thornwild | 50% | 15%–85% | 4 | 16.3 | mirror |
-| ironvow+ironvow+ironvow+thornwild | ironvow+ironvow+thornwild+thornwild | 67% | 39%–86% | 12 | 16.4 |  |
-| ironvow+ironvow+ironvow+thornwild | ironvow+thornwild+thornwild+thornwild | 75% | 47%–91% | 12 | 15.1 | ⚠ |
-| ironvow+ironvow+ironvow+thornwild | thornwild+thornwild+thornwild+thornwild | 100% | 76%–100% | 12 | 13.8 | ⚠ |
-| ironvow+ironvow+thornwild | ironvow+ironvow+thornwild | 33% | 10%–70% | 6 | 14.1 | mirror |
-| ironvow+ironvow+thornwild | ironvow+thornwild+thornwild | 70% | 48%–85% | 20 | 13.6 |  |
-| ironvow+ironvow+thornwild | thornwild+thornwild+thornwild | 70% | 48%–85% | 20 | 13.1 |  |
-| ironvow+ironvow+thornwild+thornwild | ironvow+ironvow+thornwild+thornwild | 0% | 0%–49% | 4 | 16.1 | mirror |
-| ironvow+ironvow+thornwild+thornwild | ironvow+thornwild+thornwild+thornwild | 92% | 65%–99% | 12 | 16.6 | ⚠ |
-| ironvow+ironvow+thornwild+thornwild | thornwild+thornwild+thornwild+thornwild | 75% | 47%–91% | 12 | 15.3 | ⚠ |
-| ironvow+thornwild | ironvow+thornwild | 50% | 27%–73% | 14 | 13.9 | mirror |
-| ironvow+thornwild | thornwild+thornwild | 23% | 12%–38% | 40 | 9.7 | ⚠ |
-| ironvow+thornwild+thornwild | ironvow+thornwild+thornwild | 50% | 19%–81% | 6 | 16.2 | mirror |
-| ironvow+thornwild+thornwild | thornwild+thornwild+thornwild | 60% | 39%–78% | 20 | 12.2 |  |
-| ironvow+thornwild+thornwild+thornwild | ironvow+thornwild+thornwild+thornwild | 75% | 30%–95% | 4 | 17.1 | mirror |
-| ironvow+thornwild+thornwild+thornwild | thornwild+thornwild+thornwild+thornwild | 67% | 39%–86% | 12 | 14.7 |  |
-| thornwild | thornwild | 57% | 42%–71% | 40 | 9.0 | mirror |
-| thornwild+thornwild | thornwild+thornwild | 71% | 45%–88% | 14 | 11.3 | mirror |
-| thornwild+thornwild+thornwild | thornwild+thornwild+thornwild | 83% | 44%–97% | 6 | 13.8 | mirror |
-| thornwild+thornwild+thornwild+thornwild | thornwild+thornwild+thornwild+thornwild | 75% | 30%–95% | 4 | 16.1 | mirror |
+| ironvow | ironvow | 53% | 37%–67% | 40 | 10.9 | mirror |
+| ironvow | thornwild | 50% | 41%–59% | 120 | 10.3 |  |
+| ironvow+ironvow | ironvow+ironvow | 43% | 21%–67% | 14 | 10.6 | mirror |
+| ironvow+ironvow | ironvow+thornwild | 18% | 9%–32% | 40 | 10.2 | ⚠ |
+| ironvow+ironvow | thornwild+thornwild | 38% | 24%–53% | 40 | 10.6 |  |
+| ironvow+ironvow+ironvow | ironvow+ironvow+ironvow | 67% | 30%–90% | 6 | 11.3 | mirror |
+| ironvow+ironvow+ironvow | ironvow+ironvow+thornwild | 35% | 18%–57% | 20 | 11.0 |  |
+| ironvow+ironvow+ironvow | ironvow+thornwild+thornwild | 10% | 3%–30% | 20 | 11.7 | ⚠ |
+| ironvow+ironvow+ironvow | thornwild+thornwild+thornwild | 75% | 53%–89% | 20 | 12.0 | ⚠ |
+| ironvow+ironvow+ironvow+ironvow | ironvow+ironvow+ironvow+ironvow | 50% | 15%–85% | 4 | 13.5 | mirror |
+| ironvow+ironvow+ironvow+ironvow | ironvow+ironvow+ironvow+thornwild | 17% | 5%–45% | 12 | 11.3 | ⚠ |
+| ironvow+ironvow+ironvow+ironvow | ironvow+ironvow+thornwild+thornwild | 17% | 5%–45% | 12 | 12.6 | ⚠ |
+| ironvow+ironvow+ironvow+ironvow | ironvow+thornwild+thornwild+thornwild | 17% | 5%–45% | 12 | 13.1 | ⚠ |
+| ironvow+ironvow+ironvow+ironvow | thornwild+thornwild+thornwild+thornwild | 50% | 25%–75% | 12 | 13.4 |  |
+| ironvow+ironvow+ironvow+thornwild | ironvow+ironvow+ironvow+thornwild | 25% | 5%–70% | 4 | 12.2 | mirror |
+| ironvow+ironvow+ironvow+thornwild | ironvow+ironvow+thornwild+thornwild | 25% | 9%–53% | 12 | 12.9 | ⚠ |
+| ironvow+ironvow+ironvow+thornwild | ironvow+thornwild+thornwild+thornwild | 58% | 32%–81% | 12 | 13.1 |  |
+| ironvow+ironvow+ironvow+thornwild | thornwild+thornwild+thornwild+thornwild | 42% | 19%–68% | 12 | 14.0 |  |
+| ironvow+ironvow+thornwild | ironvow+ironvow+thornwild | 67% | 30%–90% | 6 | 12.0 | mirror |
+| ironvow+ironvow+thornwild | ironvow+thornwild+thornwild | 45% | 26%–66% | 20 | 12.3 |  |
+| ironvow+ironvow+thornwild | thornwild+thornwild+thornwild | 35% | 18%–57% | 20 | 12.5 |  |
+| ironvow+ironvow+thornwild+thornwild | ironvow+ironvow+thornwild+thornwild | 25% | 5%–70% | 4 | 14.3 | mirror |
+| ironvow+ironvow+thornwild+thornwild | ironvow+thornwild+thornwild+thornwild | 33% | 14%–61% | 12 | 12.6 |  |
+| ironvow+ironvow+thornwild+thornwild | thornwild+thornwild+thornwild+thornwild | 42% | 19%–68% | 12 | 13.1 |  |
+| ironvow+thornwild | ironvow+thornwild | 57% | 33%–79% | 14 | 11.7 | mirror |
+| ironvow+thornwild | thornwild+thornwild | 30% | 18%–45% | 40 | 9.9 |  |
+| ironvow+thornwild+thornwild | ironvow+thornwild+thornwild | 50% | 19%–81% | 6 | 11.6 | mirror |
+| ironvow+thornwild+thornwild | thornwild+thornwild+thornwild | 20% | 8%–42% | 20 | 12.4 | ⚠ |
+| ironvow+thornwild+thornwild+thornwild | ironvow+thornwild+thornwild+thornwild | 75% | 30%–95% | 4 | 13.5 | mirror |
+| ironvow+thornwild+thornwild+thornwild | thornwild+thornwild+thornwild+thornwild | 42% | 19%–68% | 12 | 13.5 |  |
+| thornwild | thornwild | 53% | 37%–67% | 40 | 10.7 | mirror |
+| thornwild+thornwild | thornwild+thornwild | 64% | 39%–84% | 14 | 11.5 | mirror |
+| thornwild+thornwild+thornwild | thornwild+thornwild+thornwild | 67% | 30%–90% | 6 | 11.9 | mirror |
+| thornwild+thornwild+thornwild+thornwild | thornwild+thornwild+thornwild+thornwild | 25% | 5%–70% | 4 | 16.1 | mirror |
 
 | Faction | win rate (non-mirror) | 95% CI | weighted games |
 |---|---|---|---|
-| ironvow | 46% | 42%–51% | 480.0 |
-| thornwild | 54% | 49%–58% | 480.0 |
+| ironvow | 44% | 39%–48% | 480.0 |
+| thornwild | 56% | 52%–61% | 480.0 |
 
-Left side wins 56% (CI 52%–60%) · draws 0 · avg 11.9 min
+Left side wins 52% (CI 48%–56%) · draws 0 · avg 11.4 min

@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.25.0+5 · balance
+
+- Balancer fix: the power fit now works relative to the starting tuning, and counts the `early` knob as strength. The `early` knob now moves only beyond its tolerance. The first run with the old fit drifted to Ironvow 30% and was discarded.
+- Faction power: Ironvow 0.914, Thornwild 1.094 (Thornwild's first tier ×1.03).
+- Units: Militia +4%, Mangonel +13%, Stonehide Giant −18%, Tempest Caller −4%, Thunder Stag −20%, Lancer −4%.
+- Hard bots (verification): Ironvow wins 50% in 1v1, 37% in 2v2, 45% in 3v3, 43% in 4v4, and 44% overall. 1v1 is very sensitive to the opening: Militia +8%, as the balancer proposed, put Ironvow at 73% in 1v1, so it was hand-tuned down (see `docs/balance-report.md`).
+- Bot ladder unchanged and in band: Brutal beats Hard 81%, Hard beats Normal 88%, Normal beats Easy 90%.
+
 ## 0.25.0
 **Bots build varied armies**
 - **Before:** bots only looked about 15 s ahead. Early income is around 1 gold/s, so the cheapest spawner was the only thing in reach: Normal and Hard bots built Militia Hall after Militia Hall (or Burrow after Burrow) and never upgraded.
