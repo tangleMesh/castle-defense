@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.26.3+7 · balance
+
+- Rebalanced after free repair, slower repair and stacking castle repair. Stonehide Giant −20% (was −18%); everything else is unchanged.
+- Hard bots (verification): Ironvow wins 68% in 1v1, 50% in 2v2, 48% in 3v3, 48% in 4v4, and 53% overall.
+- Bot ladder: Brutal beats Hard 81%, Hard beats Normal 85%, Normal beats Easy 90%.
+- Known issue: 1v1 favours Ironvow. Its Militia opening decides most 1v1 games. A smaller Militia buff evens 1v1 but drops Ironvow to about 40% in 2v2, so it needs a design change rather than a knob.
+
 ## 0.26.3
 
 - **Castle repair stacks:** every builder on the castle adds its 12 HP/s. A bigger team also faces more enemy units.
