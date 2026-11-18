@@ -7,6 +7,27 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.27.1
+
+- **Shardbound and Cogspark get their own look.** Every unit and building is painted in its own style, inspired by the castle-fight map's elementals and mechanical race. Before, they reused the existing shapes in new colours.
+  - **Shardbound units:**
+    - water spirits rising from a wave;
+    - wind vortices;
+    - living flames (horned Blaze Elementals, small Cinders);
+    - floating lightning crystals;
+    - boulder elementals with crystal veins;
+    - a robed Master of Elements with four orbiting element orbs;
+    - the Avatar champions (rock legs, a molten core, a water arm and a lightning fist).
+  - **Shardbound buildings** stand on violet flagstones with crystal shards: fountains, wind cages, fire altars, storm pillars, rock piles with a glowing fissure, floating codices, an obelisk, a guard tower with orbiting boulders, a mana well and the four-pillar Nexus.
+  - **Cogspark units:**
+    - goblins with ears and goggles: flamegunners with fuel tanks, and Lunatic Goblins with a lit keg overhead;
+    - tracked tanks in five builds;
+    - rotorcraft;
+    - clockwork golems;
+    - a saw-bladed Shredder;
+    - Goliath mechs with missile pods.
+  - **Cogspark buildings** stand on hazard-striped steel decks: corrugated factories with sawtooth roofs and smokestacks, Quonset hangars, a demolition bunker with powder barrels, shield-dome generators, a coil tower, a scrap heap with a crane, a brass-domed exchange and the Goliath foundry.
+
 ## 0.27.0
 
 - **Two new factions**, modelled on the next two races of the classic castle-fight map, the elementals and the mechanical race. As before, we took only the structure and numbers; names, text and look are our own.

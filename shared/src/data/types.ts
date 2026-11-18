@@ -5,14 +5,24 @@ export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
-  shape: 'infantry' | 'shield' | 'polearm' | 'archer' | 'caster' | 'cavalry' | 'siege' | 'flyer' | 'beast' | 'giant' | 'ram';
+  shape: 'infantry' | 'shield' | 'polearm' | 'archer' | 'caster' | 'cavalry' | 'siege' | 'flyer' | 'beast' | 'giant' | 'ram'
+    // Shardbound elementals
+    | 'water' | 'wisp' | 'flame' | 'spark' | 'rock' | 'elementalist' | 'avatar'
+    // Cogspark machines
+    | 'goblin' | 'tank' | 'copter' | 'golem' | 'shredder' | 'mech';
   body: number;
   accent: number;
   scale: number;
+  /** Gear / build variant within a shape (e.g. tank: 'light' | 'mine' | 'assault' | 'heavy' | 'rocket'). */
+  variant?: string;
 }
 
 export interface BuildingModel {
-  style: 'hall' | 'tower' | 'temple' | 'workshop' | 'stable' | 'nest' | 'banner' | 'citadel' | 'tree' | 'hut' | 'mound' | 'shrine';
+  style: 'hall' | 'tower' | 'temple' | 'workshop' | 'stable' | 'nest' | 'banner' | 'citadel' | 'tree' | 'hut' | 'mound' | 'shrine'
+    // Shardbound
+    | 'fountain' | 'cage' | 'altar' | 'pillar' | 'rockpile' | 'codex' | 'obelisk' | 'guardspire' | 'well' | 'nexus'
+    // Cogspark
+    | 'factory' | 'hangar' | 'lab' | 'generator' | 'tesla' | 'scrapheap' | 'exchange' | 'foundry';
   wall: number;
   roof: number;
   height: number;
