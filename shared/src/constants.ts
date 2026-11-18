@@ -41,6 +41,13 @@ export const BUILDER_SPEED = 7;
 /** Builder must be this close to a footprint centre to start construction. */
 export const BUILDER_REACH = 2.2;
 
+/**
+ * Builder repair (like the classic castle-fight builders): repairing a building from 0 to full
+ * takes REPAIR_TIME_RATIO × its build time and costs REPAIR_COST_RATIO × the gold invested in it.
+ */
+export const REPAIR_TIME_RATIO = 2.5;
+export const REPAIR_COST_RATIO = 0.35;
+
 export const RESCUE_RADIUS = 7;
 export const RESCUE_DELAY_TICKS = 1 * TICK_RATE;
 

@@ -11,6 +11,7 @@ export const CommandSchema = z.discriminatedUnion('c', [
   z.object({ c: z.literal('build'), building: z.string().max(64), tx: z.number().int(), ty: z.number().int(), queue: z.boolean().optional() }),
   z.object({ c: z.literal('upgrade'), id: z.number().int(), to: z.string().max(64) }),
   z.object({ c: z.literal('sell'), id: z.number().int() }),
+  z.object({ c: z.literal('repair'), id: z.number().int() }),
   z.object({ c: z.literal('rescue'), x: num, y: num }),
   z.object({ c: z.literal('buy'), item: z.string().max(64) }),
   z.object({ c: z.literal('stop') }),

@@ -68,6 +68,8 @@ export interface Entity {
 
   // ---- builder
   orders?: BuildOrder[];
+  /** Building the builder walks to and repairs (one at a time). */
+  repairId?: number;
   moveX?: number;
   moveY?: number;
 }
@@ -211,6 +213,7 @@ export type Command =
   | { c: 'buySapphire' }
   | { c: 'upgrade'; id: number; to: string }
   | { c: 'sell'; id: number }
+  | { c: 'repair'; id: number }
   | { c: 'rescue'; x: number; y: number }
   | { c: 'buy'; item: string }
   | { c: 'stop' };

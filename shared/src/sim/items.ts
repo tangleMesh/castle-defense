@@ -40,16 +40,14 @@ function builderShoot(sim: Sim, b: Entity, st: AttackStats) {
   b.cd = st.cooldownTicks;
 }
 
+/** Mason's Hammer: every damaged own-team building near the builder regains HP (slower than a builder repair). */
 function repair(sim: Sim, b: Entity, hps: number, range: number) {
-  let best: Entity | undefined, bestFrac = 1;
+  const sparkle = (sim.state.tick + b.id) % TICK_RATE === 0;
   for (const e of sim.state.entities) {
-    if ((e.kind !== 'building' && e.kind !== 'castle') || e.team !== b.team || e.hp <= 0 || e.buildLeft) continue;
-    const frac = e.hp / e.maxHp;
-    if (frac >= bestFrac || distToRect(footprint(e), b.x, b.y) > range) continue;
-    best = e; bestFrac = frac;
+    if (e.kind !== 'building' || e.team !== b.team || e.hp <= 0 || e.buildLeft || e.hp >= e.maxHp) continue;
+    if (distToRect(footprint(e), b.x, b.y) > range) continue;
+    e.hp = Math.min(e.maxHp, e.hp + hps / TICK_RATE);
+    // One sparkle per second and building is enough for the client.
+    if (sparkle) sim.emit({ t: 'heal', a: b.id, b: e.id });
   }
-  if (!best) return;
-  best.hp = Math.min(best.maxHp, best.hp + hps / TICK_RATE);
-  // One sparkle per second is enough for the client.
-  if ((sim.state.tick + b.id) % TICK_RATE === 0) sim.emit({ t: 'heal', a: b.id, b: best.id });
 }

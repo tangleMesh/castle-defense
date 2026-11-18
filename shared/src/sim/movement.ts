@@ -1,4 +1,4 @@
-import { BUILDER_REACH, BUILDER_SPEED, START_SAPPHIRES, TICK_RATE } from '../constants';
+import { BUILDER_REACH, BUILDER_SPEED, REPAIR_COST_RATIO, REPAIR_TIME_RATIO, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, itemEffect } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { footprint, idx, inBounds, flowStep, nearestFree } from './grid';
@@ -104,11 +104,37 @@ export function stepBuilders(sim: Sim) {
       });
       continue;
     }
+    if (b.repairId !== undefined) { stepRepair(sim, b, step); continue; }
     if (b.moveX !== undefined && b.moveY !== undefined) {
       moveToward(sim, b, b.moveX, b.moveY, step);
       if (Math.hypot(b.moveX - b.x, b.moveY - b.y) < 0.05) { delete b.moveX; delete b.moveY; }
     }
   }
+}
+
+/**
+ * Builder repair: walk next to the building, then restore REPAIR_TIME_RATIO-scaled HP each tick,
+ * paying REPAIR_COST_RATIO of the gold invested per full repair. Ends when the building is
+ * whole, gone, busy again (upgrade) or the player runs out of gold.
+ */
+function stepRepair(sim: Sim, b: Entity, step: number) {
+  const p = sim.state.players[b.owner];
+  const e = sim.get(b.repairId);
+  const stop = (msg?: string) => { delete b.repairId; if (msg) sim.emit({ t: 'err', p: p.index, msg }); };
+  if (!e || e.hp <= 0 || e.kind !== 'building') return stop();
+  if (e.buildLeft) return stop();
+  if (e.hp >= e.maxHp) return stop();
+  const at = nearestPointOn(e, b.x, b.y);
+  if (Math.hypot(at.x - b.x, at.y - b.y) > BUILDER_REACH - 1) { moveToward(sim, b, at.x, at.y, step); return; }
+  const def = BUILDINGS[e.type];
+  const hp = Math.min(e.maxHp - e.hp, e.maxHp / (REPAIR_TIME_RATIO * def.buildTime * TICK_RATE));
+  const cost = (hp / e.maxHp) * (e.value ?? def.cost) * REPAIR_COST_RATIO;
+  if (p.gold < cost) return stop('Not enough gold to repair');
+  p.gold -= cost;
+  e.hp += hp;
+  // One sparkle per second is enough for the client.
+  if ((sim.state.tick + b.id) % TICK_RATE === 0) sim.emit({ t: 'heal', a: b.id, b: e.id });
+  if (e.hp >= e.maxHp) { e.hp = e.maxHp; stop(); }
 }
 
 /** Separation between overlapping units, un-sticking from blocked tiles and map clamping. */

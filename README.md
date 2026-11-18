@@ -6,6 +6,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
 - **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (Sun Citadel, Elder Heartwood: champions, upgradable twice) and elite upgrades of spawn buildings (Paladin Chapter, Sanctum of Dawn, Wild Hunt Grove, Tempest Circle) cost a sapphire on top of their gold.
 - **Distinct factions**: Ironvow fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry; Thornwild swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy. Both are modelled on the classic castle-fight races (human and nature), see [docs/factions.md](docs/factions.md).
+- **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: a full repair takes 2.5× the build time and costs 35% of the gold invested. It slows down snowballing: a base that holds can mend itself.
 - **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
 - **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
   - *Horn of Valor* (660): +20% damage for every unit of your team.
@@ -15,7 +16,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
   - *War Drum* (720): every spawn building of your team trains units 15% faster.
   - *Bulwark Seal* (480): +4 armor for every building of your team and the castle.
   - *Warden's Crossbow* (540): your builder shoots nearby enemy units (it stays invulnerable).
-  - *Mason's Hammer* (450): your builder repairs nearby buildings and the castle, 10 HP/s.
+  - *Mason's Hammer* (420): every building of your team within 6 tiles of your builder regains 5 HP/s, for free.
 
   The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long and they can afford them.
 - **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 100 gold, enough for one cheap spawn building.
@@ -86,9 +87,9 @@ BASE_URL=http://localhost:5173 RESTART_CMD="docker compose restart server" npm r
 
 | Input | Action |
 | --- | --- |
-| Right-click | Move builder (cancels its queue) |
+| Right-click | Move builder (cancels its queue); on an own damaged building: repair it |
 | Left-click | Select a unit or building |
-| `Q W E R / A S D F / Z X C V` | Command card (build, upgrade, rescue strike, stop/sell) |
+| `Q W E R / A S D F / Z X C V` | Command card (build, upgrade, repair, rescue strike, stop/sell) |
 | Shift + click | Queue several buildings |
 | `T` | Rescue strike targeting |
 | `B` | Castle shop (builder items) |

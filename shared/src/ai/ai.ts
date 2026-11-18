@@ -90,6 +90,8 @@ export interface Profile {
   noise?: number;
   /** Income ticks the bot saves up for anti-air when enemy flyers outnumber its anti-air (0: never reacts). */
   antiAirWait?: number;
+  /** The idle builder repairs an own building below this share of its HP (0 = never). */
+  repairBelow?: number;
   /** Where spawn buildings go: around the castle (default), towards the front, or behind the castle. */
   place?: Placement;
   /** Per-faction placement (wins over `place`): each faction has its own best base layout. */
@@ -118,20 +120,20 @@ export const PROFILES: Record<AiLevel, Profile> = {
   easy: {
     think: 4 * TICK_RATE, maxQueue: 1, idle: 0.15, upgradeAfter: 10, specialAt: 14, planner: false, counter: false,
     saves: false, tidy: false, rescueAt: 14, rescueDelay: 2 * TICK_RATE, rescueAim: 2.5, upgradeBias: 1, rangedShare: 0, safeSpots: false, saveForSpecial: 0,
-    itemsAfterMin: 8, items: ['chalice', 'boots', 'hammer'],
+    itemsAfterMin: 8, items: ['chalice', 'boots', 'hammer'], repairBelow: 0.3,
     // Even a beginner notices flyers it can't hit, but reacts late and only half the time (see decide()).
     antiAirWait: 0,
   },
   normal: {
     think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: true,
     saves: false, tidy: true, rescueAt: 6, rescueDelay: TICK_RATE, rescueAim: 0.5, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
-    itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'],
+    itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'], repairBelow: 0.6,
     waitCost: 1.5, maxWait: 120, doctrine: 0.5, noise: 0.3, antiAirWait: 2.5,
   },
   hard: {
     think: Math.round(0.5 * TICK_RATE), maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'],
+    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], repairBelow: 0.75,
     // Found with the simulation lab (npm run lab -- search / tune): a base behind the castle wins ~65% against one
     // around it, and striking early at small waves (rescueAt 3 instead of 8) another ~70%.
     place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4,
@@ -140,7 +142,7 @@ export const PROFILES: Record<AiLevel, Profile> = {
   brutal: {
     think: 3, maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
+    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], repairBelow: 0.75, place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
   },
 };
 
@@ -289,6 +291,18 @@ export class AiPlayer {
     const mine = sim.playerBuildings(this.player);
     const queued = builder.orders ?? [];
 
+    // An idle builder repairs the most valuable badly damaged building (cheap: 35% of its price for a full repair).
+    if (P.repairBelow && !queued.length && builder.repairId === undefined) {
+      let best: Entity | undefined, bestW = 0;
+      for (const b of mine) {
+        const frac = b.hp / b.maxHp;
+        if (b.buildLeft || frac >= P.repairBelow) continue;
+        const w = (1 - frac) * (b.value ?? 1);
+        if (w > bestW) { best = b; bestW = w; }
+      }
+      if (best && me.gold >= (1 - best.hp / best.maxHp) * (best.value ?? 0) * 0.35 * 0.5) return { c: 'repair', id: best.id };
+    }
+
     const item = this.wantedItem(sim, mine.length);
     if (item) {
       if (me.gold >= item.cost) return { c: 'buy', item: item.id };
@@ -419,7 +433,7 @@ export class AiPlayer {
     const top = Math.max(...spawnOpts.map((d) => this.spawnScore(d, enemy) / d.cost));
     const towers = count((d) => !!d.attack);
     const ranged = count((d) => !!d.spawn && !d.special && UNITS[d.spawn.unit].range >= 4);
-    const wantTowers = enemy.pressure ? 2 : spawners >= (P.counter ? 3 : 5) ? 1 : 0;
+    const wantTowers = enemy.pressure ? 3 : spawners >= (P.counter ? 3 : 5) ? 1 + Math.floor(spawners / 6) : 0;
 
     const gems = me.sapphires ?? START_SAPPHIRES;
     for (const id of faction.build) {

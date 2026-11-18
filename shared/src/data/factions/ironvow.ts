@@ -128,14 +128,14 @@ export const IRONVOW: FactionDef = {
     {
       id: 'iv_bastion_tower', name: 'Bastion Tower', faction: 'ironvow', cost: 150, hp: 1200, armor: 6, buildTime: 12, size: 2,
       desc: 'Defensive tower. Shoots air and ground within 7.5 tiles. Upgrades into Cannon Bastion or Siege Battery.',
-      attack: { dmg: 32, attackType: 'pierce', range: 7.5, cooldown: 1.1, targetsAir: true },
+      attack: { dmg: 75, attackType: 'pierce', range: 7.5, cooldown: 1.1, targetsAir: true },
       upgrades: ['iv_cannon_bastion', 'iv_siege_battery'],
       model: { style: 'tower', wall: STEEL, roof: IRON_ROOF, height: 44 },
     },
     {
       id: 'iv_cannon_bastion', name: 'Cannon Bastion', faction: 'ironvow', cost: 170, hp: 1500, armor: 7, buildTime: 10, size: 2, upgradeOnly: true,
-      desc: 'Heavy cannon tower: siege shots with splash damage on ground units within 7.5 tiles.',
-      attack: { dmg: 58, attackType: 'siege', range: 7.5, cooldown: 2.2, targetsAir: false, splash: 1.4 },
+      desc: 'Heavy cannon tower: grapeshot that splashes over ground units within 7.5 tiles (strong against medium armour).',
+      attack: { dmg: 90, attackType: 'normal', range: 7.5, cooldown: 2, targetsAir: false, splash: 1.6 },
       model: { style: 'tower', wall: 0x6e7888, roof: 0x2c3a52, height: 50 },
     },
     {

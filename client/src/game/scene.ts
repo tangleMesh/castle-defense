@@ -331,6 +331,13 @@ export class GameScene extends Phaser.Scene {
       }
       if (p.rightButtonDown()) {
         if (s.mode.kind !== 'none') { s.setMode({ kind: 'none' }); return; }
+        // Right-click on an own damaged building: the builder repairs it.
+        const hit = this.pick(p);
+        const row = hit !== null ? s.latestById.get(hit) : undefined;
+        if (row && row[1] === KIND_BUILDING && row[3] === s.you && row[9] === 100 && row[7] < row[8]) {
+          s.send({ c: 'repair', id: row[0] });
+          return;
+        }
         s.send({ c: 'move', x: t.x, y: t.y });
         // The builder can't leave its build zone: show where it will actually stop.
         const z = builderBounds(s.team);

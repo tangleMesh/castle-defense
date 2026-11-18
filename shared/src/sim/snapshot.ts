@@ -70,7 +70,8 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
       const prog = e.buildLeft ? Math.round(100 * (1 - e.buildLeft / (e.buildTotal || 1))) : 100;
       extra = e.upgrading ? -Math.max(1, prog) : prog;
     }
-    const spawn = e.kind === 'building' && !e.buildLeft ? e.spawnTimer ?? 0 : 0;
+    // Builders use the spawn column for the building they repair.
+    const spawn = e.kind === 'building' && !e.buildLeft ? e.spawnTimer ?? 0 : e.kind === 'builder' ? e.repairId ?? 0 : 0;
     ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), Math.round(e.maxHp), extra, spawn, (e.poison ? FX_POISON : 0) | (e.stun ? FX_STUN : 0)]);
     if (e.kind === 'builder') for (const o of e.orders ?? []) orders.push([e.owner, o.building, o.tx, o.ty]);
   }

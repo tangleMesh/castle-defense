@@ -8,6 +8,8 @@ import { builderBounds } from './movement';
 
 function refundOrders(sim: Sim, builder: Entity) {
   const p = sim.state.players[builder.owner];
+  // Any new order also ends a repair.
+  delete builder.repairId;
   for (const o of builder.orders ?? []) { p.gold += o.paid; if (o.paidS) p.sapphires = sapphiresOf(p) + o.paidS; }
   builder.orders = [];
 }
@@ -89,6 +91,17 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       if (fresh && gems) p.sapphires = sapphiresOf(p) + gems;
       sim.removeNow(e);
       sim.emit({ t: 'die', id: e.id, x: e.x, y: e.y, k: 'building' });
+      return;
+    }
+    case 'repair': {
+      const e = sim.get(cmd.id);
+      if (!builder || !e || e.kind !== 'building' || e.owner !== player || e.hp <= 0) return;
+      if (e.buildLeft) return fail('Building is under construction');
+      if (e.hp >= e.maxHp) return fail('Building is undamaged');
+      if (p.gold < 1) return fail('Not enough gold to repair');
+      refundOrders(sim, builder);
+      delete builder.moveX; delete builder.moveY;
+      builder.repairId = e.id;
       return;
     }
     case 'rescue': {

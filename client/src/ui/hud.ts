@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_COST_RATIO, REPAIR_TIME_RATIO, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -39,8 +39,15 @@ const SVG = {
   stop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2a1a1a"/><rect x="13" y="13" width="22" height="22" rx="3" fill="#c84040" stroke="#ffb0a0" stroke-width="2"/></svg>`,
   sell: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2a2410"/><circle cx="24" cy="24" r="13" fill="#e0b040" stroke="#fff0a0" stroke-width="2"/><text x="24" y="30" font-size="16" text-anchor="middle" fill="#6a4a10" font-family="Georgia" font-weight="bold">$</text></svg>`,
   sapphire: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ad8ff"/><stop offset=".5" stop-color="#2a6ae0"/><stop offset="1" stop-color="#102a80"/></linearGradient></defs><rect width="48" height="48" fill="#141a2a"/><path d="M14 18 L20 11 H28 L34 18 L24 38 Z" fill="url(#sg)" stroke="#d8f0ff" stroke-width="1.5"/><path d="M14 18 H34 M20 11 L24 18 L28 11 M24 18 L24 38" stroke="#d8f0ff" stroke-width=".8" opacity=".7" fill="none"/></svg>`,
+  repair: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a2418"/><g transform="rotate(-40 24 24)"><rect x="21.5" y="18" width="5" height="22" rx="1.5" fill="#a07040" stroke="#e0c090" stroke-width="1"/><rect x="13" y="10" width="22" height="9" rx="2" fill="#b8c0c8" stroke="#f0f4f8" stroke-width="1.5"/></g><path d="M33 31 l2.5 -5 l2.5 5 l-2.5 5 z" fill="#80ff90"/></svg>`,
   cancel: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1a1a"/><path d="M14 14 L34 34 M34 14 L14 34" stroke="#e05040" stroke-width="5" stroke-linecap="round"/></svg>`,
 };
+/** Invested value isn't in the snapshot; approximate from building costs incl. the upgrade chain. */
+function chainCost(id: string): number {
+  const d = BUILDINGS[id];
+  const from = Object.values(BUILDINGS).find((b) => b.upgrades?.includes(id));
+  return d.cost + (from ? chainCost(from.id) : 0);
+}
 const svgUrl = (s: string) => `data:image/svg+xml;utf8,${encodeURIComponent(s)}`;
 
 const ATTACK_LABEL: Record<AttackType, string> = { normal: 'Normal', pierce: 'Pierce', siege: 'Siege', magic: 'Magic', chaos: 'Chaos' };
@@ -253,12 +260,6 @@ export class Hud {
         if (d.special) r.special = d.name + (e[9] !== 100 ? ' (building)' : '');
       }
     }
-    // Invested value isn't in the snapshot; approximate from building costs incl. the upgrade chain.
-    const chainCost = (id: string): number => {
-      const d = BUILDINGS[id];
-      const from = Object.values(BUILDINGS).find((b) => b.upgrades?.includes(id));
-      return d.cost + (from ? chainCost(from.id) : 0);
-    };
     for (const e of snap.ents) if (e[1] === 1 && per.has(e[3])) per.get(e[3])!.value += chainCost(e[2]);
 
     const num = (v: number) => v.toLocaleString();
@@ -420,6 +421,22 @@ export class Hud {
           s.send({ c: 'upgrade', id: row[0], to: id });
         },
       };
+    });
+    // Builder repair (one building at a time); the builder row carries its repair target.
+    const builder = s.latestById.get(me.builderId);
+    const repairing = builder?.[10] === row[0];
+    const damaged = row[7] < row[8];
+    const fullCost = Math.round(((row[8] - row[7]) / row[8]) * chainCost(row[2]) * REPAIR_COST_RATIO);
+    out.push({
+      slot: 3, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing…' : 'Repair',
+      tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: a full repair takes ${REPAIR_TIME_RATIO}× the build time and costs ${Math.round(REPAIR_COST_RATIO * 100)}% of the gold invested.`
+        + (damaged && !busy ? `<br>This one: about ${fullCost} gold.` : '') + '<br>One building at a time; any other builder order stops it.',
+      disabled: busy || !damaged, active: repairing,
+      run: () => {
+        if (busy) return this.error('Building is under construction');
+        if (!damaged) return this.error('Building is undamaged');
+        s.send({ c: 'repair', id: row[0] });
+      },
     });
     out.push(this.rescueButton(), {
       slot: 11, icon: svgUrl(SVG.sell), name: this.sellArmed === row[0] ? 'Confirm sell' : 'Sell',

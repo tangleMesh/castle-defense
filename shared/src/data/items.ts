@@ -15,7 +15,7 @@ export interface ItemDef {
   teamAura?: { stat: 'dmg' | 'armor' | 'regen' | 'speed'; value: number };
   /** The builder shoots enemy units in range on its own. */
   builderAttack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean };
-  /** The builder repairs the most damaged own-team structure in range (HP per second). */
+  /** Every own-team building within `range` tiles of the builder regains `hps` HP per second (free; not the castle). */
   repair?: { hps: number; range: number };
   /** Spawn buildings of the carrier's team train this much faster (0.15 = +15%). Doesn't stack between teammates. */
   spawnSpeed?: number;
@@ -62,9 +62,9 @@ export const ITEMS: ItemDef[] = [
     builderAttack: { dmg: 30, attackType: 'pierce', range: 5.5, cooldown: 1, targetsAir: true },
   },
   {
-    id: 'hammer', name: "Mason's Hammer", cost: 450,
-    desc: 'Your builder repairs the most damaged building or castle of your team within 3 tiles, 10 HP per second.',
-    repair: { hps: 10, range: 3 },
+    id: 'hammer', name: "Mason's Hammer", cost: 420,
+    desc: 'Every building of your team within 6 tiles of your builder regains 5 HP per second, for free. Stacks with the builder\'s own repair.',
+    repair: { hps: 5, range: 6 },
   },
 ];
 

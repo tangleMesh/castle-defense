@@ -7,6 +7,19 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.26.0
+
+- **Builder repair.** Select a damaged building of yours and press Repair (R), or right-click it. The builder walks over and repairs it, one building at a time.
+  - A full repair takes 2.5× the build time (about 40 HP/s on a tower) and costs 35% of the gold invested. This follows the classic castle-fight builders: their repair takes 1.5× the build time and costs 35% of the price; ours is slower because our build times are short.
+  - Bots repair too: Easy below 30% HP, Normal below 60%, Hard and Brutal below 75%.
+- **Mason's Hammer** (420 gold, was 450) is now the slow area repair: every building of your team within 6 tiles of the builder regains 5 HP/s, for free. It no longer heals the castle. It is inspired by the map's Rune of Repair.
+- **Towers hit hard now.** They used to kill one medium unit in 20+ seconds.
+  - Bastion Tower: 75 pierce (was 32).
+  - Cannon Bastion: 90 normal damage every 2 s with a wider splash. It was siege, which does only half damage to Thornwild's medium armour.
+  - Strangle-Root: 115 siege (was 52).
+  - Planning bots also build an extra tower per 6 spawners, and up to 3 under pressure.
+- **Rescue strike:** 7-tile circle (was 6). It can now target anywhere in your own build zone, the same area your builder can build in.
+
 ## 0.25.0+5 · balance
 
 - Balancer fix: the power fit now works relative to the starting tuning, and counts the `early` knob as strength. The `early` knob now moves only beyond its tolerance. The first run with the old fit drifted to Ironvow 30% and was discarded.

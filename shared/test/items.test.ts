@@ -63,7 +63,7 @@ describe('builder items', () => {
     expect(foe.hp).toBeLessThan(hp);
   });
 
-  it("the Mason's Hammer repairs the castle", () => {
+  it("the Mason's Hammer repairs buildings, not the castle", () => {
     const sim = newSim();
     const me = sim.state.players[0];
     me.gold = 2000;
@@ -71,7 +71,7 @@ describe('builder items', () => {
     const castle = sim.castle(0);
     castle.hp = 5000;
     for (let i = 0; i < 10 * TICK_RATE; i++) sim.step();
-    expect(castle.hp).toBeCloseTo(5100, 0); // 10 HP per second
+    expect(castle.hp).toBe(5000); // area repair of buildings: see repair.test.ts
   });
 
   it('the War Drum makes the team spawn 15% faster', () => {

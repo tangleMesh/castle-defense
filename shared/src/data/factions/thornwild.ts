@@ -141,7 +141,7 @@ export const THORNWILD: FactionDef = {
       id: 'tw_strangle_root', name: 'Strangle-Root', faction: 'thornwild', cost: 150, hp: 1100, armor: 5, buildTime: 11, size: 2,
       desc: 'Ancient defender: roots slow enemies within 6 tiles by 30% and it hurls boulders that splash over ground units within 7 tiles.',
       aura: { stat: 'speed', value: -0.3, radius: 6, target: 'enemy' },
-      attack: { dmg: 52, attackType: 'siege', range: 7, cooldown: 1.7, targetsAir: false, splash: 1.2 },
+      attack: { dmg: 115, attackType: 'siege', range: 7, cooldown: 1.7, targetsAir: false, splash: 1.2 },
       model: { style: 'tree', wall: 0x4a3020, roof: 0x5a3a5a, height: 26 },
     },
     {
