@@ -7,6 +7,11 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.26.2
+
+- **Builder repair is half as fast:** a full repair takes 8× the build time, about 12 HP/s on a tower.
+- **The builder can repair your castle**, for free, at 12 HP/s: about 11 minutes from half to full. Use Repair castle on the castle's card, or right-click the castle. Several builders on one castle don't stack, so a 4v4 castle can't be healed out of reach. Bots repair their castle too when their builder is idle.
+
 ## 0.26.1
 
 - **Builder repair is free now, and slower to make up for it.** A full repair takes 4× the build time (was 2.5×, at 35% of the price). That is about 25 HP/s on a tower: enough to mend a base between waves, but not enough to out-heal a push. The Mason's Hammer (5 HP/s on every nearby building) still stacks with it.

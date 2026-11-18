@@ -43,9 +43,11 @@ export const BUILDER_REACH = 2.2;
 
 /**
  * Builder repair is free but slow: repairing a building from 0 to full takes REPAIR_TIME_RATIO ×
- * its build time (~25 HP/s on a tower), so it mends a base between waves but can't out-heal a push.
+ * its build time (~12 HP/s on a tower), so it mends a base between waves but can't out-heal a push.
  */
-export const REPAIR_TIME_RATIO = 4;
+export const REPAIR_TIME_RATIO = 8;
+/** Builder repair of the own castle, HP per second (several builders on one castle don't stack). */
+export const CASTLE_REPAIR_HPS = 12;
 
 export const RESCUE_RADIUS = 7;
 export const RESCUE_DELAY_TICKS = 1 * TICK_RATE;

@@ -294,10 +294,12 @@ export class AiPlayer {
     // An idle builder repairs the most valuable badly damaged building (repair is free).
     if (P.repairBelow && !queued.length && builder.repairId === undefined) {
       let best: Entity | undefined, bestW = 0;
-      for (const b of mine) {
+      const castle = sim.castle(me.team);
+      for (const b of [...mine, castle]) {
         const frac = b.hp / b.maxHp;
         if (b.buildLeft || frac >= P.repairBelow) continue;
-        const w = (1 - frac) * (b.value ?? 1);
+        // The castle counts like a valuable building (its loss ends the round).
+        const w = (1 - frac) * (b === castle ? 600 : b.value ?? 1);
         if (w > bestW) { best = b; bestW = w; }
       }
       if (best) return { c: 'repair', id: best.id };

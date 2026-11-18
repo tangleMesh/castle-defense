@@ -95,9 +95,11 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
     }
     case 'repair': {
       const e = sim.get(cmd.id);
-      if (!builder || !e || e.kind !== 'building' || e.owner !== player || e.hp <= 0) return;
+      if (!builder || !e || e.hp <= 0) return;
+      // Own buildings and the own castle.
+      if (!(e.kind === 'building' && e.owner === player) && !(e.kind === 'castle' && e.team === p.team)) return;
       if (e.buildLeft) return fail('Building is under construction');
-      if (e.hp >= e.maxHp) return fail('Building is undamaged');
+      if (e.hp >= e.maxHp) return fail(e.kind === 'castle' ? 'Castle is undamaged' : 'Building is undamaged');
       refundOrders(sim, builder);
       delete builder.moveX; delete builder.moveY;
       builder.repairId = e.id;

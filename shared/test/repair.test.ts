@@ -2,7 +2,7 @@
  * Builder repair (one building at a time, costs gold) and the Mason's Hammer (slow area repair).
  */
 import { describe, expect, it } from 'vitest';
-import { BUILDINGS, ITEM_BY_ID, REPAIR_TIME_RATIO, Sim, TICK_RATE, type Entity, type PlayerSetup } from '../src/index';
+import { BUILDINGS, CASTLE_REPAIR_HPS, ITEM_BY_ID, REPAIR_TIME_RATIO, Sim, TICK_RATE, type Entity, type PlayerSetup } from '../src/index';
 
 const players: PlayerSetup[] = [
   { userId: 'a', name: 'A', team: 0, faction: 'ironvow' },
@@ -38,7 +38,7 @@ describe('builder repair', () => {
     expect(b.hp - hp0).toBeCloseTo(rate, 0);
     expect(p.gold).toBeGreaterThanOrEqual(gold0);
     // Repairs to full, then stops on its own.
-    for (let i = 0; i < 60 * TICK_RATE && builder.repairId !== undefined; i++) sim.step();
+    for (let i = 0; i < 120 * TICK_RATE && builder.repairId !== undefined; i++) sim.step();
     expect(b.hp).toBe(b.maxHp);
     expect(builder.repairId).toBeUndefined();
   });
@@ -77,6 +77,30 @@ describe('builder repair', () => {
     const hp = full.hp;
     sim.step();
     expect(full.hp).toBeGreaterThan(hp);
+  });
+});
+
+describe('castle repair', () => {
+  it('the builder repairs its own castle, teammates don\'t stack, the enemy castle is refused', () => {
+    const four: PlayerSetup[] = [
+      { userId: 'a', name: 'A', team: 0, faction: 'ironvow' }, { userId: 'c', name: 'C', team: 0, faction: 'thornwild' },
+      { userId: 'b', name: 'B', team: 1, faction: 'thornwild' }, { userId: 'd', name: 'D', team: 1, faction: 'ironvow' },
+    ];
+    const sim = Sim.create({ countdownTicks: 0, players: four, bestOf: 1, seed: 5 });
+    const own = sim.castle(0), enemy = sim.castle(1);
+    own.hp = enemy.hp = 4000;
+    sim.step([
+      { player: 0, cmd: { c: 'repair', id: own.id } }, { player: 1, cmd: { c: 'repair', id: own.id } },
+      { player: 0, cmd: { c: 'repair', id: enemy.id } },
+    ]);
+    // The order for the enemy castle is ignored, so player 0 keeps repairing its own.
+    expect(sim.get(sim.state.players[0].builderId)!.repairId).toBe(own.id);
+    expect(sim.get(sim.state.players[1].builderId)!.repairId).toBe(own.id);
+    for (let i = 0; i < 5 * TICK_RATE; i++) sim.step();
+    const hp0 = own.hp;
+    for (let i = 0; i < 2 * TICK_RATE; i++) sim.step();
+    expect(own.hp - hp0).toBeCloseTo(2 * CASTLE_REPAIR_HPS, 0);
+    expect(enemy.hp).toBe(4000);
   });
 });
 

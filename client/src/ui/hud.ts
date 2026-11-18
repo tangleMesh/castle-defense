@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -535,11 +535,25 @@ export class Hud {
       tip: `<span class="tip-desc">A rare gem. Special buildings and elite upgrades cost a sapphire on top of their gold.</span><br><span class="tip-meta">You start every round with ${START_SAPPHIRES}. You have ${me.sapphires ?? START_SAPPHIRES}.</span>`,
       disabled: me.gold < SAPPHIRE_GOLD,
       run: () => me.gold < SAPPHIRE_GOLD ? this.error('Not enough gold') : s.send({ c: 'buySapphire' }),
-    }, this.rescueButton(), {
+    }, this.castleRepairButton(), this.rescueButton(), {
       slot: 11, icon: svgUrl(SVG.cancel), name: 'Close shop', tip: 'Back to your builder (B / Esc).',
       run: () => s.select(s.me.builderId),
     });
     return out;
+  }
+
+  private castleRepairButton(): CardButton {
+    const s = this.session;
+    const me = s.latest.players[s.you];
+    const castle = s.latest.ents.find((e) => e[1] === 3 && e[4] === s.team);
+    const repairing = !!castle && s.latestById.get(me.builderId)?.[10] === castle[0];
+    const damaged = !!castle && castle[7] < castle[8];
+    return {
+      slot: 9, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing castle…' : 'Repair castle',
+      tip: `<b>Repair castle</b> (or right-click it)<br>Your builder repairs the castle for free, ${CASTLE_REPAIR_HPS} HP per second. Several builders on the castle don't stack.<br>Any other builder order stops it.`,
+      disabled: !damaged, active: repairing,
+      run: () => (!castle || !damaged ? this.error('Castle is undamaged') : s.send({ c: 'repair', id: castle[0] })),
+    };
   }
 
   private renderBag(force = false) {

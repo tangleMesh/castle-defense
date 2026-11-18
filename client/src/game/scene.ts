@@ -334,7 +334,8 @@ export class GameScene extends Phaser.Scene {
         // Right-click on an own damaged building: the builder repairs it.
         const hit = this.pick(p);
         const row = hit !== null ? s.latestById.get(hit) : undefined;
-        if (row && row[1] === KIND_BUILDING && row[3] === s.you && row[9] === 100 && row[7] < row[8]) {
+        const own = row && ((row[1] === KIND_BUILDING && row[3] === s.you && row[9] === 100) || (row[1] === KIND_CASTLE && row[4] === s.team));
+        if (row && own && row[7] < row[8]) {
           s.send({ c: 'repair', id: row[0] });
           return;
         }
