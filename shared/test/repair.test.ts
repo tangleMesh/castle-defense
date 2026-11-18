@@ -64,7 +64,7 @@ describe('builder repair', () => {
     expect(c.hp).toBe(hp);
   });
 
-  it('refuses other players\' and undamaged buildings, and stops when gold runs out', () => {
+  it('refuses other players\' and undamaged buildings, and pauses without gold', () => {
     const sim = newSim();
     const enemy = building(sim, 1, 'tw_burrow', 85, 6);
     enemy.hp = 10;
@@ -75,9 +75,13 @@ describe('builder repair', () => {
     const p = sim.state.players[0];
     p.gold = 2;
     sim.step([{ player: 0, cmd: { c: 'repair', id: full.id } }]);
-    for (let i = 0; i < 8 * TICK_RATE; i++) { p.gold = Math.min(p.gold, 2); sim.step(); }
-    expect(sim.get(p.builderId)!.repairId).toBeUndefined();
-    expect(full.hp).toBeLessThan(full.maxHp);
+    for (let i = 0; i < 8 * TICK_RATE; i++) { p.gold = 0; sim.step(); }
+    // Paused, not cancelled: it resumes once gold comes in.
+    expect(sim.get(p.builderId)!.repairId).toBe(full.id);
+    const hp = full.hp;
+    p.gold = 1000;
+    sim.step();
+    expect(full.hp).toBeGreaterThan(hp);
   });
 });
 

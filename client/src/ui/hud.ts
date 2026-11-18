@@ -430,7 +430,7 @@ export class Hud {
     out.push({
       slot: 3, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing…' : 'Repair',
       tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: a full repair takes ${REPAIR_TIME_RATIO}× the build time and costs ${Math.round(REPAIR_COST_RATIO * 100)}% of the gold invested.`
-        + (damaged && !busy ? `<br>This one: about ${fullCost} gold.` : '') + '<br>One building at a time; any other builder order stops it.',
+        + (damaged && !busy ? `<br>This one: about ${fullCost} gold.` : '') + '<br>One building at a time; any other builder order stops it. Without gold it pauses until income arrives.',
       disabled: busy || !damaged, active: repairing,
       run: () => {
         if (busy) return this.error('Building is under construction');

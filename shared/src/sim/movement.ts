@@ -115,12 +115,12 @@ export function stepBuilders(sim: Sim) {
 /**
  * Builder repair: walk next to the building, then restore REPAIR_TIME_RATIO-scaled HP each tick,
  * paying REPAIR_COST_RATIO of the gold invested per full repair. Ends when the building is
- * whole, gone, busy again (upgrade) or the player runs out of gold.
+ * whole, gone or busy again (upgrade); without gold it pauses until income arrives.
  */
 function stepRepair(sim: Sim, b: Entity, step: number) {
   const p = sim.state.players[b.owner];
   const e = sim.get(b.repairId);
-  const stop = (msg?: string) => { delete b.repairId; if (msg) sim.emit({ t: 'err', p: p.index, msg }); };
+  const stop = () => { delete b.repairId; };
   if (!e || e.hp <= 0 || e.kind !== 'building') return stop();
   if (e.buildLeft) return stop();
   if (e.hp >= e.maxHp) return stop();
@@ -129,7 +129,7 @@ function stepRepair(sim: Sim, b: Entity, step: number) {
   const def = BUILDINGS[e.type];
   const hp = Math.min(e.maxHp - e.hp, e.maxHp / (REPAIR_TIME_RATIO * def.buildTime * TICK_RATE));
   const cost = (hp / e.maxHp) * (e.value ?? def.cost) * REPAIR_COST_RATIO;
-  if (p.gold < cost) return stop('Not enough gold to repair');
+  if (p.gold < cost) return;
   p.gold -= cost;
   e.hp += hp;
   // One sparkle per second is enough for the client.
