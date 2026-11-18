@@ -175,6 +175,8 @@ function spreadOf(m: FactionMeasure, f: string): number {
   const d = avg((n) => n <= 2) - avg((n) => n >= 3);
   return Number.isNaN(d) ? 0 : d;
 }
+/** Share of `early` counted as faction strength in the power fit. */
+const EARLY_WEIGHT = 0.5;
 /** Allowed small-vs-big gap before `early` has to move (and before a verification counts). */
 const SPREAD_TOL = 0.15;
 const incomeLine = () => AI_LEVELS.map((l) => `${l} ${(tuning.aiIncome[l] ?? (l === 'brutal' ? 1.3 : 1)).toFixed(2)}`).join(' · ');
@@ -228,6 +230,11 @@ async function stageFactions(): Promise<FactionMeasure> {
   const lp: Record<string, number> = Object.fromEntries(FACTION_IDS.map((f) => [f, Math.log(tuning.factions[f]?.power ?? 1)]));
   // Second knob per faction: the strength of its first tier, against the small-vs-big-game gap.
   const le: Record<string, number> = Object.fromEntries(FACTION_IDS.map((f) => [f, Math.log(tuning.factions[f]?.early ?? 1)]));
+  // The fit works relative to the starting tuning (its intercept prior then means "the current
+  // tuning is about right", not "power 1.0 is balanced"), and counts half of `early` as strength:
+  // the first tier is roughly half of what a faction fields over a game.
+  const lp0 = { ...lp }, le0 = { ...le };
+  const strength = (f: string) => lp[f] - lp0[f] + EARLY_WEIGHT * (le[f] - le0[f]);
   const setPower = () => {
     const mean = FACTION_IDS.reduce((a, f) => a + lp[f], 0) / FACTION_IDS.length;
     for (const f of FACTION_IDS) {
@@ -236,12 +243,13 @@ async function stageFactions(): Promise<FactionMeasure> {
       tuning.factions[f] = { power: r3(Math.exp(lp[f])), ...(early !== 1 ? { early } : {}) };
     }
   };
-  // Proportional steps (≤ ±5% per step, 0.75–1.33 in total): a 30-point gap moves `early` by ~7%.
+  // Proportional steps (≤ ±3% per step, 0.75–1.33 in total), only for a gap beyond the tolerance:
+  // a step sample's small-vs-big gap has a ±7% standard error, so smaller gaps are mostly noise.
   const stepEarly = (m: FactionMeasure) => {
     if (sizes.length < 2) return;
     for (const f of FACTION_IDS) {
       const d = spreadOf(m, f);
-      if (Math.abs(d) > SPREAD_TOL / 2) le[f] = clamp(le[f] + clamp(-0.25 * d, -0.05, 0.05), Math.log(0.75), Math.log(1.33));
+      if (Math.abs(d) > SPREAD_TOL) le[f] = clamp(le[f] + clamp(-0.2 * d, -0.03, 0.03), Math.log(0.75), Math.log(1.33));
     }
     setPower();
   };
@@ -252,13 +260,13 @@ async function stageFactions(): Promise<FactionMeasure> {
   const record = (m: FactionMeasure) => FACTION_IDS.forEach((f, g) => {
     // Effective sample size of the size-averaged rate (from its standard error).
     const n = m.se[f] > 0 ? 0.25 / m.se[f] ** 2 : 0;
-    if (n) points.push({ group: g, x: lp[f], rate: clamp(m.overall[f], 0.02, 0.98), n });
+    if (n) points.push({ group: g, x: strength(f), rate: clamp(m.overall[f], 0.02, 0.98), n });
   });
   const step = () => {
     const fit = fitLogistic(points, FACTION_IDS.length, { b0: 30, bSd: 15 });
     const b = Math.max(fit.b, 8); // never trust a flat or inverted slope
     const before = { ...lp };
-    FACTION_IDS.forEach((f, g) => { lp[f] += clamp(-fit.a[g] / b - lp[f], -0.06, 0.06); });
+    FACTION_IDS.forEach((f, g) => { lp[f] += clamp(-fit.a[g] / b - strength(f), -0.06, 0.06); });
     setPower();
     return { b, moved: Math.max(...FACTION_IDS.map((f) => Math.abs(lp[f] - before[f]))) };
   };
