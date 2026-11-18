@@ -550,7 +550,7 @@ export class Hud {
     const damaged = !!castle && castle[7] < castle[8];
     return {
       slot: 9, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing castle…' : 'Repair castle',
-      tip: `<b>Repair castle</b> (or right-click it)<br>Your builder repairs the castle for free, ${CASTLE_REPAIR_HPS} HP per second. Several builders on the castle don't stack.<br>Any other builder order stops it.`,
+      tip: `<b>Repair castle</b> (or right-click it)<br>Your builder repairs the castle for free, ${CASTLE_REPAIR_HPS} HP per second; every builder on it adds another ${CASTLE_REPAIR_HPS}.<br>Any other builder order stops it.`,
       disabled: !damaged, active: repairing,
       run: () => (!castle || !damaged ? this.error('Castle is undamaged') : s.send({ c: 'repair', id: castle[0] })),
     };

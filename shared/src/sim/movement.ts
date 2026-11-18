@@ -79,8 +79,6 @@ export function followFlow(sim: Sim, e: Entity, step: number) {
 
 /** Builders walk to their move target or to the next build site and place foundations. */
 export function stepBuilders(sim: Sim) {
-  // Castles already repaired this tick (teammates' builders on the same castle don't stack).
-  const castlesDone = new Set<number>();
   for (const p of sim.state.players) {
     const b = sim.get(p.builderId);
     if (!b) continue;
@@ -106,7 +104,7 @@ export function stepBuilders(sim: Sim) {
       });
       continue;
     }
-    if (b.repairId !== undefined) { stepRepair(sim, b, step, castlesDone); continue; }
+    if (b.repairId !== undefined) { stepRepair(sim, b, step); continue; }
     if (b.moveX !== undefined && b.moveY !== undefined) {
       moveToward(sim, b, b.moveX, b.moveY, step);
       if (Math.hypot(b.moveX - b.x, b.moveY - b.y) < 0.05) { delete b.moveX; delete b.moveY; }
@@ -119,7 +117,7 @@ export function stepBuilders(sim: Sim) {
  * (buildings: REPAIR_TIME_RATIO × build time for a full repair; castle: CASTLE_REPAIR_HPS).
  * Ends when it is whole, gone or busy again (upgrade).
  */
-function stepRepair(sim: Sim, b: Entity, step: number, castlesDone: Set<number>) {
+function stepRepair(sim: Sim, b: Entity, step: number) {
   const e = sim.get(b.repairId);
   const stop = () => { delete b.repairId; };
   if (!e || e.hp <= 0 || (e.kind !== 'building' && e.kind !== 'castle') || e.team !== b.team) return stop();
@@ -127,12 +125,8 @@ function stepRepair(sim: Sim, b: Entity, step: number, castlesDone: Set<number>)
   if (e.hp >= e.maxHp) return stop();
   const at = nearestPointOn(e, b.x, b.y);
   if (Math.hypot(at.x - b.x, at.y - b.y) > BUILDER_REACH - 1) { moveToward(sim, b, at.x, at.y, step); return; }
-  let rate: number;
-  if (e.kind === 'castle') {
-    if (castlesDone.has(e.id)) return;
-    castlesDone.add(e.id);
-    rate = CASTLE_REPAIR_HPS / TICK_RATE;
-  } else rate = e.maxHp / (REPAIR_TIME_RATIO * BUILDINGS[e.type].buildTime * TICK_RATE);
+  // Several builders on the same target stack.
+  const rate = e.kind === 'castle' ? CASTLE_REPAIR_HPS / TICK_RATE : e.maxHp / (REPAIR_TIME_RATIO * BUILDINGS[e.type].buildTime * TICK_RATE);
   const hp = Math.min(e.maxHp - e.hp, rate);
   e.hp += hp;
   // One sparkle per second is enough for the client.

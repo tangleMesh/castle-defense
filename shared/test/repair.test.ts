@@ -81,7 +81,7 @@ describe('builder repair', () => {
 });
 
 describe('castle repair', () => {
-  it('the builder repairs its own castle, teammates don\'t stack, the enemy castle is refused', () => {
+  it('builders repair their own castle, teammates stack, the enemy castle is refused', () => {
     const four: PlayerSetup[] = [
       { userId: 'a', name: 'A', team: 0, faction: 'ironvow' }, { userId: 'c', name: 'C', team: 0, faction: 'thornwild' },
       { userId: 'b', name: 'B', team: 1, faction: 'thornwild' }, { userId: 'd', name: 'D', team: 1, faction: 'ironvow' },
@@ -99,7 +99,7 @@ describe('castle repair', () => {
     for (let i = 0; i < 5 * TICK_RATE; i++) sim.step();
     const hp0 = own.hp;
     for (let i = 0; i < 2 * TICK_RATE; i++) sim.step();
-    expect(own.hp - hp0).toBeCloseTo(2 * CASTLE_REPAIR_HPS, 0);
+    expect(own.hp - hp0).toBeCloseTo(2 * 2 * CASTLE_REPAIR_HPS, 0); // two builders, two seconds
     expect(enemy.hp).toBe(4000);
   });
 });
