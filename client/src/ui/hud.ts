@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_COST_RATIO, REPAIR_TIME_RATIO, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -426,11 +426,10 @@ export class Hud {
     const builder = s.latestById.get(me.builderId);
     const repairing = builder?.[10] === row[0];
     const damaged = row[7] < row[8];
-    const fullCost = Math.round(((row[8] - row[7]) / row[8]) * chainCost(row[2]) * REPAIR_COST_RATIO);
     out.push({
       slot: 3, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing…' : 'Repair',
-      tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: a full repair takes ${REPAIR_TIME_RATIO}× the build time and costs ${Math.round(REPAIR_COST_RATIO * 100)}% of the gold invested.`
-        + (damaged && !busy ? `<br>This one: about ${fullCost} gold.` : '') + '<br>One building at a time; any other builder order stops it. Without gold it pauses until income arrives.',
+      tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: free, but slow (a full repair takes ${REPAIR_TIME_RATIO}× the build time).`
+        + (damaged && !busy ? `<br>This one: about ${Math.ceil(((row[8] - row[7]) / row[8]) * REPAIR_TIME_RATIO * BUILDINGS[row[2]].buildTime)} s.` : '') + '<br>One building at a time; any other builder order stops it.',
       disabled: busy || !damaged, active: repairing,
       run: () => {
         if (busy) return this.error('Building is under construction');

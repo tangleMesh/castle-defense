@@ -98,7 +98,6 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       if (!builder || !e || e.kind !== 'building' || e.owner !== player || e.hp <= 0) return;
       if (e.buildLeft) return fail('Building is under construction');
       if (e.hp >= e.maxHp) return fail('Building is undamaged');
-      if (p.gold < 1) return fail('Not enough gold to repair');
       refundOrders(sim, builder);
       delete builder.moveX; delete builder.moveY;
       builder.repairId = e.id;

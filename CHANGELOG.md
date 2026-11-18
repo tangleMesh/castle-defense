@@ -7,6 +7,10 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.26.1
+
+- **Builder repair is free now, and slower to make up for it.** A full repair takes 4× the build time (was 2.5×, at 35% of the price). That is about 25 HP/s on a tower: enough to mend a base between waves, but not enough to out-heal a push. The Mason's Hammer (5 HP/s on every nearby building) still stacks with it.
+
 ## 0.26.0+6 · balance
 
 - Rebalanced after repair and the tower buff. Every check passes.

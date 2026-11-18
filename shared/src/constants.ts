@@ -42,11 +42,10 @@ export const BUILDER_SPEED = 7;
 export const BUILDER_REACH = 2.2;
 
 /**
- * Builder repair (like the classic castle-fight builders): repairing a building from 0 to full
- * takes REPAIR_TIME_RATIO × its build time and costs REPAIR_COST_RATIO × the gold invested in it.
+ * Builder repair is free but slow: repairing a building from 0 to full takes REPAIR_TIME_RATIO ×
+ * its build time (~25 HP/s on a tower), so it mends a base between waves but can't out-heal a push.
  */
-export const REPAIR_TIME_RATIO = 2.5;
-export const REPAIR_COST_RATIO = 0.35;
+export const REPAIR_TIME_RATIO = 4;
 
 export const RESCUE_RADIUS = 7;
 export const RESCUE_DELAY_TICKS = 1 * TICK_RATE;

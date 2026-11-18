@@ -2,7 +2,7 @@
  * Builder repair (one building at a time, costs gold) and the Mason's Hammer (slow area repair).
  */
 import { describe, expect, it } from 'vitest';
-import { BUILDINGS, ITEM_BY_ID, REPAIR_COST_RATIO, REPAIR_TIME_RATIO, Sim, TICK_RATE, type Entity, type PlayerSetup } from '../src/index';
+import { BUILDINGS, ITEM_BY_ID, REPAIR_TIME_RATIO, Sim, TICK_RATE, type Entity, type PlayerSetup } from '../src/index';
 
 const players: PlayerSetup[] = [
   { userId: 'a', name: 'A', team: 0, faction: 'ironvow' },
@@ -19,7 +19,7 @@ function building(sim: Sim, player: number, type: string, tx: number, ty: number
 }
 
 describe('builder repair', () => {
-  it('walks over, restores HP at the repair rate and charges gold', () => {
+  it('walks over, restores HP at the repair rate, for free', () => {
     const sim = newSim();
     const def = BUILDINGS.iv_bastion_tower;
     const b = building(sim, 0, 'iv_bastion_tower', 20, 6);
@@ -36,10 +36,7 @@ describe('builder repair', () => {
     for (let i = 0; i < TICK_RATE; i++) sim.step();
     const rate = def.hp / (REPAIR_TIME_RATIO * def.buildTime);
     expect(b.hp - hp0).toBeCloseTo(rate, 0);
-    const spent = gold0 - p.gold;
-    // Income may arrive during that second; the repair itself costs the share of the price.
-    const expected = (rate / def.hp) * def.cost * REPAIR_COST_RATIO;
-    expect(spent === 0 ? 0 : Math.abs(spent - expected)).toBeLessThan(expected * 0.05 + 1e-9);
+    expect(p.gold).toBeGreaterThanOrEqual(gold0);
     // Repairs to full, then stops on its own.
     for (let i = 0; i < 60 * TICK_RATE && builder.repairId !== undefined; i++) sim.step();
     expect(b.hp).toBe(b.maxHp);
@@ -64,7 +61,7 @@ describe('builder repair', () => {
     expect(c.hp).toBe(hp);
   });
 
-  it('refuses other players\' and undamaged buildings, and pauses without gold', () => {
+  it('refuses other players\' and undamaged buildings, and repairs without any gold', () => {
     const sim = newSim();
     const enemy = building(sim, 1, 'tw_burrow', 85, 6);
     enemy.hp = 10;
@@ -73,13 +70,11 @@ describe('builder repair', () => {
     expect(sim.get(sim.state.players[0].builderId)!.repairId).toBeUndefined();
     full.hp = 100;
     const p = sim.state.players[0];
-    p.gold = 2;
+    p.gold = 0;
     sim.step([{ player: 0, cmd: { c: 'repair', id: full.id } }]);
     for (let i = 0; i < 8 * TICK_RATE; i++) { p.gold = 0; sim.step(); }
-    // Paused, not cancelled: it resumes once gold comes in.
     expect(sim.get(p.builderId)!.repairId).toBe(full.id);
     const hp = full.hp;
-    p.gold = 1000;
     sim.step();
     expect(full.hp).toBeGreaterThan(hp);
   });

@@ -291,7 +291,7 @@ export class AiPlayer {
     const mine = sim.playerBuildings(this.player);
     const queued = builder.orders ?? [];
 
-    // An idle builder repairs the most valuable badly damaged building (cheap: 35% of its price for a full repair).
+    // An idle builder repairs the most valuable badly damaged building (repair is free).
     if (P.repairBelow && !queued.length && builder.repairId === undefined) {
       let best: Entity | undefined, bestW = 0;
       for (const b of mine) {
@@ -300,7 +300,7 @@ export class AiPlayer {
         const w = (1 - frac) * (b.value ?? 1);
         if (w > bestW) { best = b; bestW = w; }
       }
-      if (best && me.gold >= (1 - best.hp / best.maxHp) * (best.value ?? 0) * 0.35 * 0.5) return { c: 'repair', id: best.id };
+      if (best) return { c: 'repair', id: best.id };
     }
 
     const item = this.wantedItem(sim, mine.length);

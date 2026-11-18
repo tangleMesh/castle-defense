@@ -1,4 +1,4 @@
-import { BUILDER_REACH, BUILDER_SPEED, REPAIR_COST_RATIO, REPAIR_TIME_RATIO, START_SAPPHIRES, TICK_RATE } from '../constants';
+import { BUILDER_REACH, BUILDER_SPEED, REPAIR_TIME_RATIO, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, itemEffect } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { footprint, idx, inBounds, flowStep, nearestFree } from './grid';
@@ -113,12 +113,10 @@ export function stepBuilders(sim: Sim) {
 }
 
 /**
- * Builder repair: walk next to the building, then restore REPAIR_TIME_RATIO-scaled HP each tick,
- * paying REPAIR_COST_RATIO of the gold invested per full repair. Ends when the building is
- * whole, gone or busy again (upgrade); without gold it pauses until income arrives.
+ * Builder repair (free): walk next to the building, then restore REPAIR_TIME_RATIO-scaled HP each
+ * tick. Ends when the building is whole, gone or busy again (upgrade).
  */
 function stepRepair(sim: Sim, b: Entity, step: number) {
-  const p = sim.state.players[b.owner];
   const e = sim.get(b.repairId);
   const stop = () => { delete b.repairId; };
   if (!e || e.hp <= 0 || e.kind !== 'building') return stop();
@@ -128,9 +126,6 @@ function stepRepair(sim: Sim, b: Entity, step: number) {
   if (Math.hypot(at.x - b.x, at.y - b.y) > BUILDER_REACH - 1) { moveToward(sim, b, at.x, at.y, step); return; }
   const def = BUILDINGS[e.type];
   const hp = Math.min(e.maxHp - e.hp, e.maxHp / (REPAIR_TIME_RATIO * def.buildTime * TICK_RATE));
-  const cost = (hp / e.maxHp) * (e.value ?? def.cost) * REPAIR_COST_RATIO;
-  if (p.gold < cost) return;
-  p.gold -= cost;
   e.hp += hp;
   // One sparkle per second is enough for the client.
   if ((sim.state.tick + b.id) % TICK_RATE === 0) sim.emit({ t: 'heal', a: b.id, b: e.id });
