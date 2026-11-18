@@ -4,8 +4,12 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 
 - **Spawn buildings** train one unit at a time on a timer. Many of them can be upgraded (some offer a choice of two upgrades).
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
-- **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (Sun Citadel, Elder Heartwood: champions, upgradable twice) and elite upgrades of spawn buildings (Paladin Chapter, Sanctum of Dawn, Wild Hunt Grove, Tempest Circle) cost a sapphire on top of their gold.
-- **Distinct factions**: Ironvow fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry; Thornwild swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy. Both are modelled on the classic castle-fight races (human and nature), see [docs/factions.md](docs/factions.md).
+- **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (each faction's champion building, upgradable twice) and elite upgrades of spawn buildings cost a sapphire on top of their gold.
+- **Four distinct factions**, each modelled on a classic castle-fight race, see [docs/factions.md](docs/factions.md):
+  - *Ironvow* (human) fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry.
+  - *Thornwild* (nature) swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy.
+  - *Shardbound* (elementals) binds missile-proof water spirits, sky-hunting wind, splitting fire, chain lightning and siege earth, and its storm books rain on the ground or burn the sky.
+  - *Cogspark* (mechanical) fields flamegunners, plated tanks, rotorcraft, golems and suicide goblins, with shield generators, a bouncing energy tower and scrap heaps that mend buildings.
 - **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 8× the build time, about 12 HP/s on a tower). The builder can also repair your castle (select it or right-click it): 12 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
 - **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
 - **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
@@ -25,7 +29,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Map**: 110×40 tiles, castle to castle from left to right. Each team builds in a 30-tile-wide zone at its end; the 48-tile neutral middle is split into three lanes by rock outcrops.
 - **Best-of rounds**: a round ends when a castle falls. Each new round starts on a fresh map with a new builder, fresh gold and a refreshed rescue strike, after a 5-second countdown in which nobody can build yet, so everyone gets the same start.
 - **Computer players**: the host can fill any slot with an AI at *Easy*, *Normal*, *Hard* or *Brutal* difficulty and pick its faction and team. The AI runs on the server and sends the same commands a player would. Easy, Normal and Hard don't cheat; Hard counters your army composition, builds a safe base behind its castle, plans its economy and strikes early waves before they snowball. *Brutal* openly cheats: +30% income, no fog of war and instant reactions. Every bot fires its strike to save a team building that is about to fall. Bots rejoin automatically when a saved game is resumed.
-- **Factions**: *Ironvow Order* (soldiers, siege, sunfire) and *Thornwild Circle* (swarms, beasts, lightning, treants). Units have every-n-th-blow abilities (critical strikes, stuns, slams, lightning, evasion), and some buildings cast powers (artillery shells, cyclones).
+- **Abilities**: units have every-n-th-blow abilities (critical strikes, stuns, slams, lightning, evasion), some explode, and some buildings cast powers (artillery shells, cyclones, meteor showers) or mend nearby buildings.
 - **Persistence**: accounts, stats, match history, and live match snapshots in MongoDB. A host can **save & exit** and resume the match another day with the same players. Matches that a server crash or restart interrupts also become resumable.
 
 ## Versioning

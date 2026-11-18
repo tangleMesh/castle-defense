@@ -21,7 +21,9 @@ export function stepPowers(sim: Sim) {
   const s = sim.state;
   for (const e of s.entities) {
     if (e.kind !== 'building' || e.hp <= 0 || e.buildLeft) continue;
-    const p = BUILDINGS[e.type].power;
+    const def = BUILDINGS[e.type];
+    if (def.mend) mend(sim, e, def.mend.hps, def.mend.radius);
+    const p = def.power;
     if (!p) continue;
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
@@ -32,6 +34,18 @@ export function stepPowers(sim: Sim) {
   }
   stepShells(sim);
   stepZones(sim);
+}
+
+/** Mending buildings (Spare Part Heap): own-team structures nearby regain HP, never the mender itself. */
+function mend(sim: Sim, e: Entity, hps: number, radius: number) {
+  const c = centre(e);
+  const sparkle = (sim.state.tick + e.id) % TICK_RATE === 0;
+  for (const b of sim.structures()) {
+    if (b === e || b.team !== e.team || b.hp <= 0 || b.buildLeft || b.hp >= b.maxHp) continue;
+    if (distToRect(footprint(b), c.x, c.y) > radius) continue;
+    b.hp = Math.min(b.maxHp, b.hp + hps / TICK_RATE);
+    if (sparkle) sim.emit({ t: 'heal', a: e.id, b: b.id });
+  }
 }
 
 function centre(e: Entity) {
@@ -57,14 +71,14 @@ function cyclone(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || sim.isAir(u)) continue;
+    if (u.team === e.team || u.hp <= 0 || sim.isAir(u) !== !!p.air) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= p.range && d < bestD) { best = u; bestD = d; }
   }
   if (!best) return false;
   const ticks = Math.round((p.duration ?? 6) * TICK_RATE);
-  (sim.state.zones ??= []).push({ owner: e.owner, team: e.team, x: best.x, y: best.y, radius: p.radius, dps: p.dmg, slow: p.slow ?? 0, ticksLeft: ticks });
-  sim.emit({ t: 'zone', x: r2(best.x), y: r2(best.y), r: p.radius, d: ticks });
+  (sim.state.zones ??= []).push({ owner: e.owner, team: e.team, x: best.x, y: best.y, radius: p.radius, dps: p.dmg, slow: p.slow ?? 0, ticksLeft: ticks, ...(p.air ? { air: true } : {}) });
+  sim.emit({ t: 'zone', x: r2(best.x), y: r2(best.y), r: p.radius, d: ticks, ...(p.air ? { air: 1 as const } : {}) });
   return true;
 }
 
@@ -87,7 +101,7 @@ function stepShells(sim: Sim) {
   sim.state.shells = shells.filter((sh) => sh.ticksLeft > 0);
 }
 
-/** Cyclones hurt enemy ground units inside them (their slow is applied with the auras). */
+/** Cyclones hurt enemy ground units inside them, meteor showers flyers (their slow is applied with the auras). */
 function stepZones(sim: Sim) {
   const zones = sim.state.zones;
   if (!zones?.length) return;
@@ -95,7 +109,7 @@ function stepZones(sim: Sim) {
     z.ticksLeft--;
     if (z.ticksLeft % ZONE_PULSE_TICKS !== 0) continue;
     for (const u of sim.hash.query(z.x, z.y, z.radius + 1)) {
-      if (u.team === z.team || u.hp <= 0 || sim.isAir(u)) continue;
+      if (u.team === z.team || u.hp <= 0 || sim.isAir(u) !== !!z.air) continue;
       if (Math.hypot(u.x - z.x, u.y - z.y) <= z.radius) dealDamage(sim, u, (z.dps * ZONE_PULSE_TICKS) / TICK_RATE, 'magic', z.owner);
     }
   }

@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, powerText,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -592,8 +592,7 @@ export class Hud {
     }
     if (d.aura) lines.push(`Aura radius ${d.aura.radius}`);
     if (d.attack) lines.push(`Attack ${d.attack.dmg} ${ATTACK_LABEL[d.attack.attackType]}, range ${d.attack.range}${d.attack.splash ? ', splash' : ''}`);
-    const power = powerText(d);
-    if (power) lines.push(`<span class="tip-ability">✦ ${power}</span>`);
+    for (const a of buildingAbilities(d)) lines.push(`<span class="tip-ability">✦ ${a}</span>`);
     if (d.regen) lines.push(`Living wood: regrows ${d.regen} HP/s`);
     lines.push(`<span class="tip-meta">${d.hp} HP · build ${d.buildTime}s${d.special ? ' · <b>SPECIAL</b>' : ''}</span>`);
     return lines.join('<br>');
@@ -661,7 +660,7 @@ export class Hud {
         extra !== 100 ? h('div', { class: 'gold-text' }, `${extra < 0 ? 'Upgrading' : 'Constructing'}… ${Math.abs(extra)}%`) : null,
         h('div', { class: 'desc' }, d.desc),
         d.spawn ? h('div', null, `Spawns ${d.spawn.count}× ${UNITS[d.spawn.unit].name} every ${d.spawn.interval}s`) : null,
-        powerText(d) ? h('div', { class: 'ability' }, `✦ ${powerText(d)}`) : null,
+        ...buildingAbilities(d).map((t) => h('div', { class: 'ability' }, `✦ ${t}`)),
         d.spawn && extra === 100 ? (this.spawnBar = h('div', { class: 'ispawn', title: 'Time until the next unit' }, h('div'), h('span'))) : null,
       ));
       this.updateSpawnBar();

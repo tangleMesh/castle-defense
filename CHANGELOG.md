@@ -7,6 +7,33 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.27.0
+
+- **Two new factions**, modelled on the next two races of the classic castle-fight map, the elementals and the mechanical race. As before, we took only the structure and numbers; names, text and look are our own.
+  - **Shardbound Conclave** (elementals): ten buildings and 17 units.
+    - Water spirits that shrug off ranged damage.
+    - Wind elementals that fly and shoot only flyers, with gusts that slow.
+    - Fire that breathes every 5th attack and splits into Cinders when it dies.
+    - Chain-lightning elementals with a crackling shield.
+    - Slow siege earth elementals.
+    - A Codex that casts a monsoon, then upgrades into a ground blizzard or a meteor shower that only hits flyers.
+    - An armour obelisk, a guard tower, a Mana Well (+20% income) and the Elemental Nexus champion line.
+  - **Cogspark Syndicate** (mechanical): ten buildings and 16 units, and every building has +2 armour.
+    - Flamegunners with splash.
+    - A tank factory with three upgrade lines (mine layers, assault tanks, heavy tanks, then rocket tanks); tank plating blocks a flat part of every hit.
+    - Rotorcopters and gyrocopters that stun.
+    - Golems and shredders.
+    - Lunatic Goblins that explode.
+    - Shield generators, an Energy Tower whose shots bounce, a Spare Part Heap that mends buildings and the castle, a Scrap Exchange (+15% income) and the Goliath champion line.
+- **New mechanics:**
+  - suicide attackers;
+  - tower shots that bounce between enemies;
+  - meteor showers (storms on flyers only);
+  - buildings that mend other buildings.
+- **Fix:** ground cyclones no longer slow flyers flying over them.
+- **Lobby and bots:** random factions and bot factions now pick from all four. The lobby shows all four faction cards.
+- **Balancer:** verification samples line-up pairings at big team sizes. With four factions, 4v4 alone has about 600 pairings, so the team sizes now stay evenly weighted.
+
 ## 0.26.3+7 · balance
 
 - Rebalanced after free repair, slower repair and stacking castle repair. Stonehide Giant −20% (was −18%); everything else is unchanged.

@@ -4,6 +4,8 @@ import type { Sim } from './sim';
 import type { Entity } from './state';
 import { modsOf } from './auras';
 import { followFlow, moveToward, nearestPointOn } from './movement';
+import { footprint } from './grid';
+import { distToRect } from '../map/map';
 import { summonUnits } from './spawning';
 
 export interface AttackStats {
@@ -35,7 +37,7 @@ export function attackStats(e: Entity): AttackStats | null {
     if (!a) return null;
     return {
       dmg: a.dmg, attackType: a.attackType, range: a.range, cooldownTicks: Math.round(a.cooldown * TICK_RATE),
-      targetsAir: a.targetsAir, airOnly: false, structuresOnly: false, splash: a.splash ?? 0, chain: 0, aggro: a.range,
+      targetsAir: a.targetsAir, airOnly: false, structuresOnly: false, splash: a.splash ?? 0, chain: a.chain ?? 0, aggro: a.range,
     };
   }
   return null;
@@ -174,6 +176,7 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (crit) mult *= ud!.crit!.mult;
   const raw = st.dmg * mult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
+  if (ud?.suicide) { explode(sim, a, st, t, raw, ud.suicide.radius); return; }
   if (st.chain > 1) {
     const hit = chainFrom(sim, a, st, t, raw, st.chain, st.attackType);
     // Venomous storms poison every enemy the lightning touches.
@@ -215,6 +218,25 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
     }
     sim.emit({ t: 'splash', x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100, r: st.splash });
   }
+}
+
+/**
+ * Suicide attackers: one blast of full damage to every enemy ground unit and building within
+ * `radius` of the target, then the attacker is gone (no bounty for anyone, nothing bursts out).
+ */
+function explode(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmg: number, radius: number) {
+  const p = sim.isStructure(t) ? nearestPointOn(t, a.x, a.y) : { x: t.x, y: t.y };
+  for (const b of sim.structures()) {
+    if (b.team === a.team || b.hp <= 0) continue;
+    if (distToRect(footprint(b), p.x, p.y) <= radius) dealDamage(sim, b, dmg, st.attackType, a.owner, false, true);
+  }
+  for (const u of sim.hash.query(p.x, p.y, radius + 0.8)) {
+    if (u.team === a.team || u.hp <= 0 || u.kind !== 'unit' || sim.isAir(u)) continue;
+    if (Math.hypot(u.x - p.x, u.y - p.y) - sim.radius(u) <= radius) dealDamage(sim, u, dmg, st.attackType, a.owner, false, true);
+  }
+  sim.emit({ t: 'splash', x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100, r: radius });
+  a.hp = 0;
+  a.smitten = true;
 }
 
 /** Lifesteal, poison and thorns after a single-target hit. */

@@ -475,6 +475,10 @@ export class AiPlayer {
       } else if (def.aura) {
         const have = count((d) => !!d.aura && !d.attack);
         if (have < Math.floor(spawners / 4)) out.push({ kind: 'build', def, score: top * 1.05 });
+      } else if (def.power || def.mend) {
+        // Casters (storm books) and menders: one per five spawners.
+        const have = count((d) => (!!d.power || !!d.mend) && !d.attack && !d.spawn);
+        if (have < Math.floor(spawners / 5)) out.push({ kind: 'build', def, score: top * 1.0 });
       }
     }
 

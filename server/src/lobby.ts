@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
-  AI_INCOME, AI_LEVEL_NAMES, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
+  AI_INCOME, AI_LEVEL_NAMES, FACTION_IDS, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
   type AiLevel, type ClientMessage, type GameMode, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
 } from '@bc/shared';
 import type { Conn } from './conn';
@@ -153,7 +153,7 @@ export class Lobby {
         if (this.count(room, msg.team) >= MAX_PLAYERS_PER_TEAM) return err('Team is full');
         const used = new Set(room.slots.map((x) => x.name.split(' (')[0]));
         const base = BOT_NAMES.find((n) => !used.has(n)) ?? `Bot ${room.slots.length + 1}`;
-        const faction: FactionId = Math.random() < 0.5 ? 'ironvow' : 'thornwild';
+        const faction: FactionId = FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)];
         room.slots.push({
           userId: makeBotId(msg.level, newId()), name: botName(base, msg.level), team: msg.team, faction,
           ready: true, connected: true, bot: msg.level,

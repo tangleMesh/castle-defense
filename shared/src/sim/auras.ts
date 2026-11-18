@@ -59,7 +59,7 @@ export function computeAuras(sim: Sim) {
   // Cyclones slow every enemy unit inside them.
   for (const z of sim.state.zones ?? []) {
     for (const u of sim.hash.query(z.x, z.y, z.radius + 1)) {
-      if (u.team === z.team || u.hp <= 0 || Math.hypot(u.x - z.x, u.y - z.y) > z.radius) continue;
+      if (u.team === z.team || u.hp <= 0 || sim.isAir(u) !== !!z.air || Math.hypot(u.x - z.x, u.y - z.y) > z.radius) continue;
       const m = modFor(sim, u);
       m.speed = Math.min(m.speed, 1 - z.slow);
     }

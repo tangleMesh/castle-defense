@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -78,6 +78,11 @@ export interface UnitDef {
   rangedResist?: number;
   /** Flat damage taken off every attack after armour (at least a quarter always gets through). */
   block?: number;
+  /**
+   * Suicide attacker: its first attack is an explosion of `dmg` that hits every enemy (ground units
+   * and buildings) within `radius` of the target in full, then the unit is gone (no bounty).
+   */
+  suicide?: { radius: number };
   /** Calls `count` units every `every` seconds; they fade after `ttl` seconds. */
   summon?: { unit: string; count: number; every: number; ttl: number };
   model: UnitModel;
@@ -109,13 +114,16 @@ export interface BuildingDef {
   sapphires?: number;
   spawn?: { unit: string; count: number; interval: number };
   aura?: AuraDef;
-  attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number };
+  /** Tower attack. `chain`: the shot bounces between this many enemies (incl. the first). */
+  attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number; chain?: number };
   /** Extra share of kill bounties for the owner (0.5 = +50%; stacks up to MAX_BOUNTY_BONUS). */
   bountyBonus?: number;
   /** Structure regeneration in HP per second (set by faction traits). */
   regen?: number;
   /** Additional income multiplier (0.15 = +15%). */
   incomeBonus?: number;
+  /** Mends own-team buildings (and the castle) within `radius` tiles by `hps` HP per second (not itself). */
+  mend?: { hps: number; radius: number };
   /** A power the building casts on its own every `cooldown` seconds. */
   power?: PowerDef;
   upgrades?: string[];
@@ -126,7 +134,8 @@ export interface BuildingDef {
  * Building powers. `bombard`: a shell flies at the nearest enemy building (or the castle) within
  * `range` and deals `dmg` siege damage to structures within `radius` (half to ground units).
  * `cyclone`: a storm settles on the nearest enemy ground unit within `range` for `duration` seconds;
- * enemies inside take `dmg` magic damage per second and are slowed by `slow`.
+ * enemies inside take `dmg` magic damage per second and are slowed by `slow`. With `air`, the storm
+ * targets and hurts flyers only (a meteor shower) instead of ground units.
  */
 export interface PowerDef {
   kind: 'bombard' | 'cyclone';
@@ -136,6 +145,7 @@ export interface PowerDef {
   dmg: number;
   duration?: number;
   slow?: number;
+  air?: boolean;
 }
 
 export interface FactionDef {

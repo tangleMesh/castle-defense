@@ -15,7 +15,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.charge) out.push(`Charge: the first blow after marching deals ${u.charge}× damage`);
   if (u.bonusVs) out.push(`${u.bonusVs.mult}× damage against ${VS[u.bonusVs.vs]}`);
   if (u.ignoreArmor) out.push('Armour-piercing: ignores armour');
-  if (u.poison) out.push(`Poison: ${u.poison.dps} dmg/s for ${u.poison.duration}s and ${pct(u.poison.slow)} slow`);
+  if (u.poison) out.push(u.poison.dps ? `Poison: ${u.poison.dps} dmg/s for ${u.poison.duration}s and ${pct(u.poison.slow)} slow` : `Gale: slows its target by ${pct(u.poison.slow)} for ${u.poison.duration}s`);
   if (u.lifesteal) out.push(`Lifesteal: heals for ${pct(u.lifesteal)} of damage dealt`);
   if (u.thorns) out.push(`Thorns: melee attackers take ${pct(u.thorns)} of their damage back`);
   if (u.onDeath) out.push(`On death: releases ${u.onDeath.count} ${units[u.onDeath.unit]?.name ?? u.onDeath.unit}${u.onDeath.count > 1 ? 's' : ''}`);
@@ -32,6 +32,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.evade) out.push(`Evasion: every ${nth(u.evade)} attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
   if (u.block) out.push(`Hardened skin: blocks ${u.block} damage of every attack`);
+  if (u.suicide) out.push(`Suicide blast: its first attack explodes, hitting every enemy unit and building within ${u.suicide.radius} tiles (no bounty)`);
   if (u.summon) out.push(`Summons ${u.summon.count} ${units[u.summon.unit]?.name ?? u.summon.unit}${u.summon.count > 1 ? 's' : ''} every ${u.summon.every}s (they last ${u.summon.ttl}s)`);
   return out;
 }
@@ -42,8 +43,19 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'cyclone' && p.air) return `Meteor shower: every ${p.cooldown}s meteors rain on the nearest enemy flyer within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s to flyers in radius ${p.radius})`;
   if (p.kind === 'bombard') return `Bombard: every ${p.cooldown}s a shell hits the nearest enemy building within ${p.range} tiles (${p.dmg} siege damage in radius ${p.radius}, half to units)`;
   return `Cyclone: every ${p.cooldown}s a storm settles on the nearest enemy within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s and ${pct(p.slow ?? 0)} slow in radius ${p.radius})`;
+}
+
+/** Building abilities besides spawning and auras (tooltips): mending, bouncing tower shots, powers. */
+export function buildingAbilities(b: BuildingDef): string[] {
+  const out: string[] = [];
+  if (b.attack?.chain) out.push(`Bouncing shot: each shot jumps between ${b.attack.chain} enemies`);
+  if (b.mend) out.push(`Mends your team's buildings and castle within ${b.mend.radius} tiles by ${b.mend.hps} HP/s`);
+  const p = powerText(b);
+  if (p) out.push(p);
+  return out;
 }
 
 /**
@@ -57,6 +69,8 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.slam) dmg += (u.slam.dmg * 1.8) / (u.slam.every * perHit);
   if (u.storm) dmg += (u.storm.dmg * Math.min(3, u.storm.jumps) * 0.8) / (u.storm.every * perHit);
   if (u.bash) dmg += Math.min(0.5, u.bash.stun / (u.bash.every * u.cooldown));
+  // One blast and the unit is gone.
+  if (u.suicide) dmg *= 0.3;
   if (u.summon) dmg += 0.15 * u.summon.count * Math.min(1, u.summon.ttl / u.summon.every);
   if (u.evade) hp *= u.evade / (u.evade - 1);
   if (u.rangedResist) hp *= 1 + u.rangedResist * 0.5;

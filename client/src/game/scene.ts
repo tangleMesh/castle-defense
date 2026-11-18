@@ -1119,14 +1119,16 @@ export class GameScene extends Phaser.Scene {
       }
       case 'zone': {
         // Howling Hollow: a whirlwind of leaves and dust spins on the spot for the cyclone's lifetime.
+        // Meteor showers (air) burn among the flyers instead.
         const c = toScreen(ev.x, ev.y);
+        const hot = !!ev.air;
         const e = isoEllipse(ev.r);
         const dur = (ev.d / TICK_RATE) * 1000;
-        const ring = this.img(c.x, c.y, 'ringthin').setDisplaySize(e.w, e.h).setTint(0xa8e0c0).setDepth(-6.9e6).setAlpha(0);
+        const ring = this.img(c.x, c.y, 'ringthin').setDisplaySize(e.w, e.h).setTint(hot ? 0xffa060 : 0xa8e0c0).setDepth(-6.9e6).setAlpha(0);
         this.tweens.add({ targets: ring, alpha: 0.7, duration: 300 });
         this.tweens.add({ targets: ring, alpha: 0, delay: dur - 400, duration: 400, onComplete: () => ring.destroy() });
         const bits = Array.from({ length: 14 }, (_, i) => this.img(c.x, c.y, 'puff')
-          .setTint(i % 3 ? 0xc8d8c0 : 0x6aa050).setDepth(8.2e6).setAlpha(0).setScale(sc(0.12 + (i % 4) * 0.04)));
+          .setTint(hot ? (i % 3 ? 0xffc070 : 0xff5020) : i % 3 ? 0xc8d8c0 : 0x6aa050).setDepth(8.2e6).setAlpha(0).setScale(sc(0.12 + (i % 4) * 0.04)));
         this.tweens.addCounter({
           from: 0, to: 1, duration: dur,
           onUpdate: (tw) => {
@@ -1136,7 +1138,7 @@ export class GameScene extends Phaser.Scene {
               const h = (i / bits.length);
               const ang = ms / 160 + i * 2.4;
               const rad = 0.25 + 0.75 * h;
-              b.setPosition(c.x + Math.cos(ang) * e.w * 0.5 * rad, c.y + Math.sin(ang) * e.h * 0.5 * rad - h * 70)
+              b.setPosition(c.x + Math.cos(ang) * e.w * 0.5 * rad, c.y + Math.sin(ang) * e.h * 0.5 * rad - (hot ? AIR_LIFT + 40 - h * 90 : h * 70))
                 .setAlpha(0.75 * fade);
             });
           },

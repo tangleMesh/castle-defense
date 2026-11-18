@@ -128,6 +128,8 @@ export interface Zone {
   dps: number;
   slow: number;
   ticksLeft: number;
+  /** Hits flyers only (meteor shower); otherwise ground units only. */
+  air?: boolean;
 }
 
 export type SimEvent =
@@ -137,7 +139,7 @@ export type SimEvent =
   /** Building `a` fired a shell that lands at x/y after `f` ticks. */
   | { t: 'shell'; a: number; x: number; y: number; f: number; r: number }
   /** A cyclone of radius `r` settles at x/y for `d` ticks. */
-  | { t: 'zone'; x: number; y: number; r: number; d: number }
+  | { t: 'zone'; x: number; y: number; r: number; d: number; air?: 1 }
   | { t: 'heal'; a: number; b: number }
   | { t: 'die'; id: number; x: number; y: number; k: EntityKind }
   /** Kill bounty paid to player `p` (last hit). */

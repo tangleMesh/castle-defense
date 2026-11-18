@@ -95,7 +95,8 @@ interface FactionMeasure {
  *
  * `subset` (a per-iteration seed) plays only `--pairings` line-up pairings per team size, drawn
  * uniformly at random and fresh each iteration, so on average a step measures the same thing as the
- * full grid (always including pure vs pure biased steps by 10–20 points). The full grid verifies.
+ * full grid (always including pure vs pure biased steps by 10–20 points). The full grid verifies
+ * (sampled the same way when it has more pairings than the verification budget).
  */
 async function measureFactions(label: string, gamesPerSize: number, opts: { mirrors?: boolean; subset?: number } = {}): Promise<FactionMeasure> {
   const base = freshSeeds();
@@ -106,9 +107,13 @@ async function measureFactions(label: string, gamesPerSize: number, opts: { mirr
   sizes.forEach((size, si) => {
     const sizeBase = base + si * 100_003;
     let keys = [...new Set(factionMatrix({ sizes: [size], level: 'hard', seeds: 1 }).filter((j) => j.key[0] !== j.key[1]).map(canon))];
-    if (opts.subset !== undefined) {
+    // Steps play a sample of pairings; verification plays the full grid while it fits the budget
+    // (with four factions, 4v4 alone has ~600 pairings), else a fresh random sample of it.
+    const limit = opts.subset !== undefined ? pairingsPerSize : Math.max(pairingsPerSize, Math.ceil(gamesPerSize / 2));
+    if (keys.length > limit) {
+      if (opts.subset === undefined) r = (base + si * 7919) >>> 0;
       for (let i = keys.length - 1; i > 0; i--) { const t = Math.floor(rnd() * (i + 1)); [keys[i], keys[t]] = [keys[t], keys[i]]; }
-      keys = keys.slice(0, pairingsPerSize);
+      keys = keys.slice(0, limit);
     }
     const n = Math.max(1, Math.round(gamesPerSize / (2 * keys.length)));
     jobs.push(...factionMatrix({ sizes: [size], level: 'hard', seeds: n, seedBase: sizeBase }).filter((j) => j.key[0] !== j.key[1] && keys.includes(canon(j))));

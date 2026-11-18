@@ -1,6 +1,8 @@
 import type { BuildingDef, FactionDef, FactionId, UnitDef } from './types';
 import { IRONVOW } from './factions/ironvow';
 import { THORNWILD } from './factions/thornwild';
+import { SHARDBOUND } from './factions/shardbound';
+import { COGSPARK } from './factions/cogspark';
 import { TUNING } from './tuning';
 import type { Tuning } from './types';
 
@@ -9,7 +11,7 @@ export * from './combat';
 export * from './items';
 export * from './abilities';
 
-export const FACTIONS: Record<FactionId, FactionDef> = { ironvow: IRONVOW, thornwild: THORNWILD };
+export const FACTIONS: Record<FactionId, FactionDef> = { ironvow: IRONVOW, thornwild: THORNWILD, shardbound: SHARDBOUND, cogspark: COGSPARK };
 export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
 
 export const BUILDINGS: Record<string, BuildingDef> = {};

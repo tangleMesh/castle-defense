@@ -197,3 +197,70 @@ describe('building powers', () => {
     expect(sim.mods.get(foe.id)?.speed).toBeCloseTo(1 - p.slow!);
   });
 });
+
+describe('new-faction mechanics', () => {
+  const four: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'cogspark' },
+    { userId: 'b', name: 'B', team: 1, faction: 'shardbound' },
+  ];
+  const sim4 = () => Sim.create({ countdownTicks: 0, players: four, bestOf: 1, seed: 9 });
+
+  it('Lunatic Goblins explode on their first attack: area damage to units and buildings, no bounty', () => {
+    const sim = sim4();
+    const lun = UNITS.cs_lunatic;
+    const goblin = unit(sim, 0, 'cs_lunatic', 80, 20);
+    const t1 = unit(sim, 1, 'sb_rill', 80.6, 20), t2 = unit(sim, 1, 'sb_rill', 81.2, 20.4);
+    const far = unit(sim, 1, 'sb_rill', 85, 20);
+    const hut = building(sim, 1, 'sb_obelisk', 81, 21);
+    const gold = sim.state.players[1].gold;
+    hits(sim, goblin, t1, 1);
+    expect(goblin.hp).toBe(0);
+    for (const t of [t1, t2]) expect(t.hp).toBeLessThan(t.maxHp);
+    expect(far.hp).toBe(far.maxHp);
+    expect(hut.hp).toBeLessThan(hut.maxHp);
+    expect(t1.maxHp - t1.hp).toBeCloseTo(computeDamage(lun.dmg, lun.attackType, 'medium', UNITS.sb_rill.armor), 0);
+    expect(sim.state.players[1].gold).toBe(gold);
+  });
+
+  it('the Energy Tower\'s shot bounces between three enemies', () => {
+    const sim = sim4();
+    building(sim, 0, 'cs_energy_tower', 30, 18);
+    const foes = [0, 1, 2, 3].map((i) => unit(sim, 1, 'sb_rill', 34 + i * 1.2, 19));
+    for (const f of foes) f.hp = f.maxHp = 1e5;
+    for (let i = 0; i < 2 * TICK_RATE; i++) { foes.forEach((f, k) => { f.x = 34 + k * 1.2; f.y = 19; }); sim.step(); }
+    expect(foes.filter((f) => f.hp < f.maxHp)).toHaveLength(3);
+  });
+
+  it('the Codex of Meteors burns flyers only, ground storms leave flyers alone', () => {
+    const sim = sim4();
+    building(sim, 1, 'sb_codex_meteors', 70, 18);
+    const p = BUILDINGS.sb_codex_meteors.power!;
+    const flyer = unit(sim, 0, 'cs_rotorcopter', 64, 19), ground = unit(sim, 0, 'cs_light_tank', 64, 19.5);
+    for (const u of [flyer, ground]) u.hp = u.maxHp = 1e5;
+    for (let i = 0; i < (p.cooldown + 2) * TICK_RATE; i++) { flyer.x = ground.x = 64; flyer.y = 19; ground.y = 19.5; sim.step(); }
+    expect(flyer.hp).toBeLessThan(flyer.maxHp);
+    expect(ground.hp).toBe(ground.maxHp);
+
+    const sim2 = sim4();
+    building(sim2, 1, 'sb_codex_storms', 70, 18);
+    const f2 = unit(sim2, 0, 'cs_rotorcopter', 64, 19), g2 = unit(sim2, 0, 'cs_light_tank', 64, 19.5);
+    for (const u of [f2, g2]) u.hp = u.maxHp = 1e5;
+    for (let i = 0; i < (BUILDINGS.sb_codex_storms.power!.cooldown + 2) * TICK_RATE; i++) { f2.x = g2.x = 64; f2.y = 19; g2.y = 19.5; sim2.step(); }
+    expect(g2.hp).toBeLessThan(g2.maxHp);
+    expect(f2.hp).toBe(f2.maxHp);
+    computeAuras(sim2);
+    expect(sim2.mods.get(f2.id)?.speed ?? 1).toBe(1);
+  });
+
+  it('the Spare Part Heap mends nearby own buildings and the castle, not itself', () => {
+    const sim = sim4();
+    const m = BUILDINGS.cs_scrap_heap.mend!;
+    const heap = building(sim, 0, 'cs_scrap_heap', 20, 18);
+    const near = building(sim, 0, 'cs_gun_smith', 23, 18), far = building(sim, 0, 'cs_gun_smith', 20, 34);
+    for (const b of [heap, near, far]) b.hp = 100;
+    for (let i = 0; i < 2 * TICK_RATE; i++) sim.step();
+    expect(near.hp).toBeCloseTo(100 + 2 * m.hps, 0);
+    expect(far.hp).toBe(100);
+    expect(heap.hp).toBe(100);
+  });
+});
