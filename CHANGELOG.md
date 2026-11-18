@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.26.0+6 · balance
+
+- Rebalanced after repair and the tower buff. Every check passes.
+- Faction power: Ironvow 0.901 (its first tier ×0.97), Thornwild 1.110 (its first tier ×1.03). Militia +12.6% (was +4%).
+- Hard bots (verification): Ironvow wins 59% in 1v1, 48% in 2v2, 50% in 3v3, 51% in 4v4, and 52% overall.
+- Bot ladder: Brutal beats Hard 81%, Hard beats Normal 86%, Normal beats Easy 86%. Bot income: Normal 0.94, Brutal 1.18.
+- No bot level has a blind spot against a single strategy. The rush weakness of 0.25.0 is gone (Hard now wins 56% against rushes).
+
 ## 0.26.0
 
 - **Builder repair.** Select a damaged building of yours and press Repair (R), or right-click it. The builder walks over and repairs it, one building at a time.
