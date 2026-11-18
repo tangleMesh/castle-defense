@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BASE_INCOME, BOUNTY_MULT, MAX_INCOME_BONUS, BUILDINGS, CASTLE_HP, FACTIONS, INCOME_INTERVAL_TICKS, INCOME_PCT, MAP, RESCUE_RANGE, ROCK_GRID,
+  BASE_INCOME, BOUNTY_MULT, MAX_INCOME_BONUS, BUILDINGS, CASTLE_HP, FACTIONS, INCOME_INTERVAL_TICKS, INCOME_PCT, MAP, ROCK_GRID,
   ROUND_COUNTDOWN_TICKS, ROUND_END_TICKS, SAPPHIRE_GOLD, START_GOLD, START_SAPPHIRES, Sim, UNITS, computeDamage, computeFlowField, buildBlockedGrid, isFullyConnected,
   incomeFor, makeSnapshot, rectCenter, type PlayerSetup, type SimEvent, type Team,
 } from '../src/index';
@@ -268,9 +268,10 @@ describe('rescue strike', () => {
     return { sim, c, enemy, far, friend };
   }
 
-  it('is rejected outside range of the own castle', () => {
+  it('is rejected outside the own build zone', () => {
     const { sim, c } = setup();
-    sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + RESCUE_RANGE + 2, y: c.y } }]);
+    const z = MAP.zones[0];
+    sim.step([{ player: 0, cmd: { c: 'rescue', x: z.x + z.w + 1, y: c.y } }]);
     expect(sim.state.players[0].rescueUsed).toBe(false);
     expect(sim.state.events.some((e) => e.t === 'err')).toBe(true);
   });

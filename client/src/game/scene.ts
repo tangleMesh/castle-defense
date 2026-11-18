@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, FX_POISON, FX_STUN, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, RESCUE_RANGE, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
+  BUILDINGS, FX_POISON, FX_STUN, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, inRescueArea, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -821,15 +821,14 @@ export class GameScene extends Phaser.Scene {
     }
     // rescue strike targeting
     if (s.mode.kind === 'rescue') {
-      const c = rectCenter(MAP.castles[s.team]);
-      const cp = toScreen(c.x, c.y);
-      const range = isoEllipse(RESCUE_RANGE);
+      // The strike reaches the whole own build zone.
+      const z = MAP.zones[s.team];
       g.lineStyle(2, 0xffd040, 0.6);
-      g.strokeEllipse(cp.x, cp.y, range.w, range.h);
+      g.strokePoints(this.diamond(g, z.x, z.y, z.w, z.h), true);
       g.fillStyle(0xffd040, 0.05);
-      g.fillEllipse(cp.x, cp.y, range.w, range.h);
+      g.fillPoints(this.diamond(g, z.x, z.y, z.w, z.h), true);
       const t = this.hoverTile;
-      const inRange = Math.hypot(t.x - c.x, t.y - c.y) <= RESCUE_RANGE;
+      const inRange = inRescueArea(s.team, t.x, t.y);
       const p = toScreen(t.x, t.y);
       const e = isoEllipse(RESCUE_RADIUS);
       g.lineStyle(3, inRange ? 0xffe060 : 0xff3030, 0.9);

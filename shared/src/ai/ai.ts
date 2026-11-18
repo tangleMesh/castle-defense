@@ -1,6 +1,6 @@
-import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, RESCUE_RANGE, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
+import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
-import { MAP, rectCenter } from '../map/map';
+import { MAP, clampToRescueArea, inRescueArea, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
 import { KIND_CODES } from '../sim/snapshot';
@@ -216,10 +216,10 @@ export class AiPlayer {
     const c = rectCenter(MAP.castles[me.team]);
     const castle = sim.castle(me.team);
     // Every difficulty: never let a building of our team fall if a strike can still save it.
-    const save = this.saveBuilding(sim, c);
+    const save = this.saveBuilding(sim);
     if (save) return save;
     const threats = s.entities.filter((e) => e.kind === 'unit' && e.team !== me.team && e.hp > 0
-      && Math.hypot(e.x - c.x, e.y - c.y) < RESCUE_RANGE + 1);
+      && (() => { const q = clampToRescueArea(me.team, e.x, e.y); return Math.hypot(e.x - q.x, e.y - q.y) < 1; })());
     if (!threats.length) { this.rescueSeenAt = -1; return null; }
 
     // Weight by unit strength; desperate castles fire earlier.
@@ -230,7 +230,7 @@ export class AiPlayer {
       const d = Math.hypot(c.x - t.x, c.y - t.y) || 1;
       const lead = this.profile.rescueAim === 0 ? Math.min(1.5, d * 0.25) : 0;
       const x = t.x + ((c.x - t.x) / d) * lead, y = t.y + ((c.y - t.y) / d) * lead;
-      if (Math.hypot(x - c.x, y - c.y) > RESCUE_RANGE) continue;
+      if (!inRescueArea(me.team, x, y)) continue;
       let w = 0;
       for (const o of threats) if (Math.hypot(o.x - x, o.y - y) <= RESCUE_RADIUS - 0.3) w += weight(o);
       if (w > best.w) best = { x, y, w };
@@ -244,8 +244,7 @@ export class AiPlayer {
 
     const a = this.rnd() * Math.PI * 2, r = this.rnd() * this.profile.rescueAim;
     let x = best.x + Math.cos(a) * r, y = best.y + Math.sin(a) * r;
-    const d = Math.hypot(x - c.x, y - c.y);
-    if (d > RESCUE_RANGE - 0.1) { x = c.x + ((x - c.x) / d) * (RESCUE_RANGE - 0.1); y = c.y + ((y - c.y) / d) * (RESCUE_RANGE - 0.1); }
+    ({ x, y } = clampToRescueArea(me.team, x, y));
     return { c: 'rescue', x, y };
   }
 
@@ -253,7 +252,7 @@ export class AiPlayer {
    * Strike to save a team building (or the castle) that's about to be destroyed: it is badly
    * damaged and enemy units are attacking it. Skipped if a teammate's strike is already on its way.
    */
-  private saveBuilding(sim: Sim, c: { x: number; y: number }): Command | null {
+  private saveBuilding(sim: Sim): Command | null {
     const s = sim.state;
     const me = s.players[this.player];
     if (s.strikes.some((st) => s.players[st.player]?.team === me.team)) return null;
@@ -267,11 +266,10 @@ export class AiPlayer {
       const attackers = s.entities.filter((e) => e.kind === 'unit' && e.team !== me.team && e.hp > 0
         && sim.edgeDist(b, e) <= (UNITS[e.type]?.range ?? 1) + 1.5);
       if (!attackers.length) continue;
-      // Aim at the attackers' centre, pulled into strike range of our castle.
+      // Aim at the attackers' centre, pulled into the rescue area (our build zone).
       let x = attackers.reduce((a, e) => a + e.x, 0) / attackers.length;
       let y = attackers.reduce((a, e) => a + e.y, 0) / attackers.length;
-      const d = Math.hypot(x - c.x, y - c.y);
-      if (d > RESCUE_RANGE - 0.1) { x = c.x + ((x - c.x) / d) * (RESCUE_RANGE - 0.1); y = c.y + ((y - c.y) / d) * (RESCUE_RANGE - 0.1); }
+      ({ x, y } = clampToRescueArea(me.team, x, y));
       const hit = attackers.filter((e) => Math.hypot(e.x - x, e.y - y) <= RESCUE_RADIUS - 0.3).length;
       if (hit * 2 < attackers.length) continue; // out of reach: the strike can't save this one
       const urgency = (1 - frac) * (b.kind === 'castle' ? 2 : 1) + hit * 0.05;

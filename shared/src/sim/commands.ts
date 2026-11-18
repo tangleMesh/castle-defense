@@ -1,6 +1,6 @@
-import { RESCUE_DELAY_TICKS, RESCUE_RANGE, SAPPHIRE_GOLD, SELL_REFUND, START_SAPPHIRES, TICK_RATE } from '../constants';
+import { RESCUE_DELAY_TICKS, SAPPHIRE_GOLD, SELL_REFUND, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, ITEM_BY_ID, MAX_ITEMS, itemsOf } from '../data';
-import { MAP, rectCenter } from '../map/map';
+import { inRescueArea } from '../map/map';
 import type { Sim } from './sim';
 import type { Entity, PlayerCommand, PlayerState } from './state';
 import { placementError } from './placement';
@@ -94,8 +94,7 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
     case 'rescue': {
       if (!finite(cmd.x, cmd.y)) return;
       if (p.rescueUsed) return fail('Rescue strike already used this round');
-      const c = rectCenter(MAP.castles[p.team]);
-      if (Math.hypot(cmd.x - c.x, cmd.y - c.y) > RESCUE_RANGE) return fail('Rescue strike must target near your castle');
+      if (!inRescueArea(p.team, cmd.x, cmd.y)) return fail('Rescue strike must target your own build zone');
       p.rescueUsed = true;
       p.strikes++;
       s.strikes.push({ player, x: cmd.x, y: cmd.y, ticksLeft: RESCUE_DELAY_TICKS });

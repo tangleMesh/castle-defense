@@ -41,8 +41,7 @@ export const BUILDER_SPEED = 7;
 /** Builder must be this close to a footprint centre to start construction. */
 export const BUILDER_REACH = 2.2;
 
-export const RESCUE_RANGE = 14;
-export const RESCUE_RADIUS = 6;
+export const RESCUE_RADIUS = 7;
 export const RESCUE_DELAY_TICKS = 1 * TICK_RATE;
 
 export const DEFAULT_AGGRO = 6;

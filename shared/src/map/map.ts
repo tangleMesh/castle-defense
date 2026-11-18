@@ -60,6 +60,18 @@ export function inRect(r: Rect, x: number, y: number): boolean {
   return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
 }
 
+/** Rescue strikes may target any point of the team's own build zone (where its builder may build). */
+export function inRescueArea(team: number, x: number, y: number): boolean {
+  const z = MAP.zones[team];
+  return x >= z.x && y >= z.y && x <= z.x + z.w && y <= z.y + z.h;
+}
+
+/** Nearest point of the rescue area (a hair inside, so rounding never lands it outside). */
+export function clampToRescueArea(team: number, x: number, y: number): { x: number; y: number } {
+  const z = MAP.zones[team];
+  return { x: Math.min(z.x + z.w - 0.01, Math.max(z.x + 0.01, x)), y: Math.min(z.y + z.h - 0.01, Math.max(z.y + 0.01, y)) };
+}
+
 export function rectCenter(r: Rect): { x: number; y: number } {
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }

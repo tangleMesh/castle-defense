@@ -349,7 +349,7 @@ export class Hud {
           `+${me.income}`,
           h('span', { class: 'income-track' }, h('span', { class: 'income-fill', style: `width:${pct}%` })),
           `${secs}s`),
-        h('span', { class: `rescue-pill ${me.rescueUsed ? 'used' : ''}`, title: 'Rescue strike (T): once per round, near your castle' }, me.rescueUsed ? 'Strike used' : 'Strike ready'),
+        h('span', { class: `rescue-pill ${me.rescueUsed ? 'used' : ''}`, title: 'Rescue strike (T): once per round, anywhere in your build zone' }, me.rescueUsed ? 'Strike used' : 'Strike ready'),
       ),
       h('div', { class: 'center' },
         castle(0),

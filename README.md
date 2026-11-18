@@ -6,7 +6,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
 - **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (Sun Citadel, Elder Heartwood: champions, upgradable twice) and elite upgrades of spawn buildings (Paladin Chapter, Sanctum of Dawn, Wild Hunt Grove, Tempest Circle) cost a sapphire on top of their gold.
 - **Distinct factions**: Ironvow fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry; Thornwild swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy. Both are modelled on the classic castle-fight races (human and nature), see [docs/factions.md](docs/factions.md).
-- **Rescue strike**: once per round, call down sunfire near your own castle. It kills every enemy unit in a large circle (6 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
+- **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
 - **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
   - *Horn of Valor* (660): +20% damage for every unit of your team.
   - *Aegis Charm* (600): +3 armor for every unit of your team.

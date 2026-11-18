@@ -1,5 +1,5 @@
 import {
-  BUILDINGS, FACTIONS, MAP, RESCUE_RANGE, ROCK_GRID, basicPlacementError, isFullyConnected, rectCenter,
+  BUILDINGS, FACTIONS, MAP, ROCK_GRID, inRescueArea, basicPlacementError, isFullyConnected, rectCenter,
   type ClientMessage, type FactionId, type RoomInfo, type ServerMessage, type Snapshot, type Team,
 } from '@bc/shared';
 
@@ -140,7 +140,7 @@ export class Bot {
     // Rescue strike when enemies crowd the castle.
     if (!me.rescueUsed && this.rescueRound !== s.round) {
       const c = rectCenter(MAP.castles[this.team]);
-      const near = s.ents.filter((e) => e[1] === 0 && e[4] !== this.team && Math.hypot(e[5] - c.x, e[6] - c.y) < RESCUE_RANGE - 2);
+      const near = s.ents.filter((e) => e[1] === 0 && e[4] !== this.team && inRescueArea(this.team, e[5], e[6]) && Math.hypot(e[5] - c.x, e[6] - c.y) < 12);
       if (near.length >= 6) {
         const x = near.reduce((a, e) => a + e[5], 0) / near.length, y = near.reduce((a, e) => a + e[6], 0) / near.length;
         this.rescueRound = s.round;
