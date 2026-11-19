@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -517,13 +517,16 @@ export class Hud {
     const out: CardButton[] = ITEMS.map((it, slot) => {
       const owned = bag.includes(it.id);
       const full = bag.length >= MAX_ITEMS;
+      // Team-wide items don't stack: one copy per team is enough.
+      const mate = owned ? undefined : teammateCarries(s.latest.players, s.you, it);
       return {
         slot, icon: itemIcon(it.id), name: it.name, cost: it.cost, afford: me.gold >= it.cost,
-        tip: `<span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${owned ? '<b>Your builder carries this.</b>' : full ? `Bag full (${MAX_ITEMS} items).` : `Carried by your builder until the round ends · ${bag.length}/${MAX_ITEMS} slots used`}</span>`,
-        disabled: owned || full || me.gold < it.cost,
-        active: owned,
+        tip: `<span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${owned ? '<b>Your builder carries this.</b>' : mate ? `<b>${mate} already carries this.</b> It doesn't stack within a team.` : full ? `Bag full (${MAX_ITEMS} items).` : `Carried by your builder until the round ends · ${bag.length}/${MAX_ITEMS} slots used`}</span>`,
+        disabled: owned || !!mate || full || me.gold < it.cost,
+        active: owned || !!mate,
         run: () => {
           if (owned) return this.error(`You already carry ${it.name}`);
+          if (mate) return this.error(`${mate} already carries ${it.name}: it doesn't stack within a team`);
           if (full) return this.error(`Your builder can carry only ${MAX_ITEMS} items`);
           if (me.gold < it.cost) return this.error('Not enough gold');
           s.send({ c: 'buy', item: it.id });

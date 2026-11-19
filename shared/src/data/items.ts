@@ -94,3 +94,20 @@ export function teamItemBonus(players: ReadonlyArray<{ team: number; items?: str
   for (const p of players) if (p.team === team) best = Math.max(best, itemEffect(p, key) ?? 0);
   return best;
 }
+
+/**
+ * Items whose whole effect is team-wide (auras, faster spawning, structure armour): a second copy
+ * on the same team adds nothing. Items with an effect on their own builder (crossbow, hammer,
+ * boots' builder speed) stay worth buying for every teammate.
+ */
+export function isTeamWideOnly(item: ItemDef): boolean {
+  return !!(item.teamAura || item.spawnSpeed || item.structureArmor) && !item.builderAttack && !item.repair && !item.builderSpeed;
+}
+
+/** A teammate (not `self`) already carries this team-wide-only item, so buying it would be wasted. */
+export function teammateCarries(players: ReadonlyArray<{ team: number; items?: string[] }>, self: number, item: ItemDef): string | undefined {
+  if (!isTeamWideOnly(item)) return undefined;
+  const me = players[self];
+  const mate = players.find((p, i) => i !== self && p.team === me.team && p.items?.includes(item.id));
+  return mate ? ((mate as { name?: string }).name ?? 'A teammate') : undefined;
+}

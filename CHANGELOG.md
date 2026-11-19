@@ -7,6 +7,11 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.37.2
+
+- **Castle shop: team-wide items no longer stack.** An item a teammate already carries (Horn of Valor, Aegis Charm, Verdant Chalice, War Drum, Bulwark Seal) is greyed out, with a tooltip naming the carrier. The server refuses the purchase too, and bots skip it.
+- **Items with a personal effect can still be bought by every teammate:** Warden's Crossbow, Mason's Hammer, and Pathfinder Boots, which also speed up the buyer's own builder.
+
 ## 0.37.1
 
 - **Tidier numbers in the UI:**

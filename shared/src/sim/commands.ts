@@ -1,5 +1,5 @@
 import { RESCUE_DELAY_TICKS, SAPPHIRE_GOLD, SELL_REFUND, START_SAPPHIRES, TICK_RATE } from '../constants';
-import { BUILDINGS, ITEM_BY_ID, MAX_ITEMS, itemsOf } from '../data';
+import { BUILDINGS, ITEM_BY_ID, MAX_ITEMS, itemsOf, teammateCarries } from '../data';
 import { inRescueArea } from '../map/map';
 import type { Sim } from './sim';
 import type { Entity, PlayerCommand, PlayerState } from './state';
@@ -127,6 +127,8 @@ export function applyCommand(sim: Sim, { player, cmd }: PlayerCommand) {
       if (!item) return fail('Unknown item');
       const bag = itemsOf(p);
       if (bag.includes(item.id)) return fail(`You already carry ${item.name}`);
+      const mate = teammateCarries(s.players, player, item);
+      if (mate) return fail(`${mate} already carries ${item.name}: it doesn't stack within a team`);
       if (bag.length >= MAX_ITEMS) return fail(`Your builder can carry only ${MAX_ITEMS} items`);
       if (p.gold < item.cost) return fail('Not enough gold');
       p.gold -= item.cost;

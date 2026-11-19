@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
-import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
+import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, teammateCarries, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
 import { MAP, clampToRescueArea, inRescueArea, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
@@ -361,7 +361,8 @@ export class AiPlayer {
     const bag = itemsOf(me);
     if (bag.length >= MAX_ITEMS) return null;
     if (s.tick - s.roundStartTick < P.itemsAfterMin * 60 * TICK_RATE || buildings < 5) return null;
-    const id = P.items.find((i) => !bag.includes(i));
+    // Team-wide items a teammate already carries add nothing.
+    const id = P.items.find((i) => !bag.includes(i) && !teammateCarries(s.players, this.player, ITEM_BY_ID[i]));
     return id ? ITEM_BY_ID[id] : null;
   }
 

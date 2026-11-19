@@ -117,3 +117,24 @@ describe('builder items', () => {
     expect(me.items).toEqual([]);
   });
 });
+
+describe('team-wide items', () => {
+  it("don't stack: a teammate can't buy a team-wide item someone on the team carries, but personal ones are fine", async () => {
+    const { Sim, ITEM_BY_ID, isTeamWideOnly, teammateCarries } = await import('../src/index');
+    const sim = Sim.create({ countdownTicks: 0, bestOf: 1, seed: 1, players: [
+      { userId: 'a', name: 'Ann', team: 0, faction: 'ironvow' },
+      { userId: 'b', name: 'Bob', team: 0, faction: 'thornwild' },
+      { userId: 'c', name: 'Cid', team: 1, faction: 'ironvow' },
+    ] });
+    for (const p of sim.state.players) p.gold = 5000;
+    expect(isTeamWideOnly(ITEM_BY_ID.war_horn)).toBe(true);
+    expect(isTeamWideOnly(ITEM_BY_ID.crossbow)).toBe(false);
+    expect(isTeamWideOnly(ITEM_BY_ID.boots)).toBe(false);
+    sim.step([{ player: 0, cmd: { c: 'buy', item: 'war_horn' } }, { player: 0, cmd: { c: 'buy', item: 'crossbow' } }]);
+    const ev = sim.step([{ player: 1, cmd: { c: 'buy', item: 'war_horn' } }, { player: 1, cmd: { c: 'buy', item: 'crossbow' } }, { player: 2, cmd: { c: 'buy', item: 'war_horn' } }]);
+    expect(sim.state.players[1].items).toEqual(['crossbow']);
+    expect(sim.state.players[2].items).toEqual(['war_horn']);
+    expect(teammateCarries(sim.state.players, 1, ITEM_BY_ID.war_horn)).toBe('Ann');
+    void ev;
+  });
+});
