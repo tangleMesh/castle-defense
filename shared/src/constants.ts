@@ -1,8 +1,13 @@
-/** Game modes: 'standard' (pick your faction) or 'random' (a random faction for every player each round). */
-export type GameMode = 'standard' | 'random';
+/**
+ * Game modes: 'standard' (pick your faction), 'random' (a random faction for every player each
+ * round) or 'mirror' (each round both teams get the same random factions). A faction appears at
+ * most once per team in every mode.
+ */
+export type GameMode = 'standard' | 'random' | 'mirror';
 export const GAME_MODES: Record<GameMode, { name: string; desc: string }> = {
-  standard: { name: 'Standard', desc: 'Every player picks a faction in the lobby.' },
+  standard: { name: 'Standard', desc: 'Every player picks a faction in the lobby (each faction once per team).' },
   random: { name: 'Random factions', desc: 'Every player gets a random faction at the start of each round.' },
+  mirror: { name: 'Mirror', desc: 'Each round both teams get the same random factions: a fair fight of equal builders.' },
 };
 
 /** Simulation ticks per second. */

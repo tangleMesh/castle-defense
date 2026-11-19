@@ -7,7 +7,9 @@ describe('simulation lab', () => {
   it('enumerates team line-ups and matrices from the faction list', () => {
     const n = FACTION_IDS.length;
     expect(compositions(1)).toHaveLength(n);
-    expect(compositions(2)).toHaveLength((n * (n + 1)) / 2);
+    // Each faction at most once per team.
+    expect(compositions(2)).toHaveLength((n * (n - 1)) / 2);
+    expect(compositions(2).every(([a, b]) => a !== b)).toBe(true);
     const jobs = factionMatrix({ sizes: [1], level: 'easy', seeds: 2 });
     // n(n+1)/2 pairings × 2 seeds × 2 sides
     expect(jobs).toHaveLength(((n * (n + 1)) / 2) * 2 * 2);

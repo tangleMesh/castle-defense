@@ -108,7 +108,7 @@ export class Lobby {
         } else {
           const team = this.count(r, 0) <= this.count(r, 1) ? 0 : 1;
           if (this.count(r, team) >= MAX_PLAYERS_PER_TEAM) return err('Room is full');
-          this.addSlot(r, conn, team, 'ironvow');
+          this.addSlot(r, conn, team, this.freeFaction(r, team, 'ironvow'));
         }
         return this.changed(r);
       }
@@ -123,12 +123,16 @@ export class Lobby {
         const slot = room.slots.find((s) => s.userId === conn.userId)!;
         if (slot.team !== msg.team && this.count(room, msg.team) >= MAX_PLAYERS_PER_TEAM) return err('Team is full');
         slot.team = msg.team;
+        // Each faction once per team: a taken faction switches to a free one.
+        slot.faction = this.freeFaction(room, msg.team, slot.faction, slot.userId);
         slot.ready = false;
         return this.changed(room);
       }
       case 'lobby.setFaction': {
         if (!room || room.status !== 'lobby' || room.roster) return;
         const slot = room.slots.find((s) => s.userId === conn.userId)!;
+        const mate = this.takenBy(room, slot.team, msg.faction, slot.userId);
+        if (mate) return err(`${mate.name} already plays that faction (each faction once per team)`);
         slot.faction = msg.faction;
         slot.ready = false;
         return this.changed(room);
@@ -153,7 +157,8 @@ export class Lobby {
         if (this.count(room, msg.team) >= MAX_PLAYERS_PER_TEAM) return err('Team is full');
         const used = new Set(room.slots.map((x) => x.name.split(' (')[0]));
         const base = BOT_NAMES.find((n) => !used.has(n)) ?? `Bot ${room.slots.length + 1}`;
-        const faction: FactionId = FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)];
+        const free = FACTION_IDS.filter((f) => !this.takenBy(room, msg.team, f));
+        const faction: FactionId = free[Math.floor(Math.random() * free.length)] ?? FACTION_IDS[0];
         room.slots.push({
           userId: makeBotId(msg.level, newId()), name: botName(base, msg.level), team: msg.team, faction,
           ready: true, connected: true, bot: msg.level,
@@ -168,8 +173,13 @@ export class Lobby {
         if (msg.team !== undefined && msg.team !== slot.team) {
           if (this.count(room, msg.team) >= MAX_PLAYERS_PER_TEAM) return err('Team is full');
           slot.team = msg.team;
+          slot.faction = this.freeFaction(room, msg.team, slot.faction, slot.userId);
         }
-        if (msg.faction) slot.faction = msg.faction;
+        if (msg.faction) {
+          const mate = this.takenBy(room, slot.team, msg.faction, slot.userId);
+          if (mate) return err(`${mate.name} already plays that faction (each faction once per team)`);
+          slot.faction = msg.faction;
+        }
         if (msg.level && msg.level !== slot.bot) {
           slot.bot = msg.level;
           slot.userId = makeBotId(msg.level, slot.userId.split(':')[2]);
@@ -230,6 +240,17 @@ export class Lobby {
     this.membership.set(conn.userId, r.id);
   }
 
+  /** The teammate (other than `userId`) playing `faction` on `team`, if any: each faction once per team. */
+  private takenBy(r: Room, team: 0 | 1, faction: FactionId, userId?: string) {
+    return r.slots.find((s) => s.team === team && s.faction === faction && s.userId !== userId);
+  }
+
+  /** `wanted` if nobody else on `team` plays it, else the first free faction. */
+  private freeFaction(r: Room, team: 0 | 1, wanted: FactionId, userId?: string): FactionId {
+    if (!this.takenBy(r, team, wanted, userId)) return wanted;
+    return FACTION_IDS.find((f) => !this.takenBy(r, team, f, userId)) ?? wanted;
+  }
+
   private count(r: Room, team: 0 | 1) {
     return r.slots.filter((s) => s.team === team).length;
   }
@@ -259,6 +280,10 @@ export class Lobby {
       if (missing.length) return `Waiting for original players: ${missing.map((m) => m.name).join(', ')}`;
     } else {
       if (!this.count(r, 0) || !this.count(r, 1)) return 'Each team needs at least one player';
+      if (r.mode === 'standard') for (const s of r.slots) {
+        const mate = this.takenBy(r, s.team, s.faction, s.userId);
+        if (mate) return `${s.name} and ${mate.name} play the same faction: each faction once per team`;
+      }
     }
     const notReady = r.slots.filter((s) => !s.ready);
     if (notReady.length) return `Not ready: ${notReady.map((s) => s.name).join(', ')}`;

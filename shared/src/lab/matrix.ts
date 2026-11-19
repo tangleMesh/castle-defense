@@ -6,12 +6,13 @@ import type { AiLevel, Profile } from '../ai/ai';
 import { FACTION_IDS, type FactionId } from '../data';
 import type { LabMatch, LabPlayer, LabResult } from './match';
 
-/** All team line-ups of `size` players (combinations with repetition), e.g. [iv,iv], [iv,tw], [tw,tw]. */
+/** All team line-ups of `size` players, each faction at most once (combinations), e.g. [iv,tw], [iv,sb], [tw,sb]. */
 export function compositions(size: number, factions: readonly FactionId[] = FACTION_IDS): FactionId[][] {
   const out: FactionId[][] = [];
   const rec = (start: number, acc: FactionId[]) => {
     if (acc.length === size) { out.push(acc); return; }
-    for (let i = start; i < factions.length; i++) rec(i, [...acc, factions[i]]);
+    // Each faction at most once per team (the lobby's rule), so i + 1.
+    for (let i = start; i < factions.length; i++) rec(i + 1, [...acc, factions[i]]);
   };
   rec(0, []);
   return out;

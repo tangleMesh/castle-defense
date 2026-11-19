@@ -7,6 +7,17 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.38.0
+
+- **New game mode: Mirror.** Each round both teams get the same random factions, never one faction twice in a team.
+- **Each faction at most once per team, in every mode:**
+  - **Lobby:** factions a teammate plays are greyed out, with the teammate named in the tooltip.
+  - **Server:** refuses a taken faction.
+  - **Free faction picked automatically:** when you join a room or switch teams, and for new bots.
+  - **Bots:** their faction menu marks taken factions.
+  - **Random mode:** draws without repeats per team.
+- **The balancing lab's team line-ups follow the same rule,** so no "Ironvow + Ironvow" teams.
+
 ## 0.37.2
 
 - **Castle shop: team-wide items no longer stack.** An item a teammate already carries (Horn of Valor, Aegis Charm, Verdant Chalice, War Drum, Bulwark Seal) is greyed out, with a tooltip naming the carrier. The server refuses the purchase too, and bots skip it.

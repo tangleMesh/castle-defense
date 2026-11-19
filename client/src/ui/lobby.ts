@@ -136,18 +136,21 @@ export class LobbyView {
     const me = r.slots.find((s) => s.userId === this.user.id);
     const isHost = r.hostId === this.user.id;
     const locked = !!r.roster;
-    const random = r.mode === 'random';
+    // Random and mirror modes draw factions each round: nothing to pick in the lobby.
+    const random = r.mode !== 'standard';
+    /** Teammate (other than `userId`) already playing `faction` on team `t`: each faction once per team. */
+    const takenBy = (t: 0 | 1, faction: FactionId, userId: string) => r.slots.find((x) => x.team === t && x.faction === faction && x.userId !== userId);
     const team = (t: 0 | 1) => {
       const slots = r.slots.filter((s) => s.team === t);
       const expected = r.roster?.filter((p) => p.team === t) ?? [];
       const missing = expected.filter((p) => !slots.some((s) => s.userId === p.userId));
       return h('div', { class: 'team', style: `--team:${TEAM_CSS[t]}` },
         h('h3', null, `${TEAM_NAMES[t]} `, h('span', { class: 'dim' }, `${slots.length}/${MAX_PLAYERS_PER_TEAM}`)),
-        slots.map((s) => s.bot && isHost && !locked ? this.renderBotSlot(s, t, random) : h('div', { class: `slot ${s.ready ? 'ready' : ''}` },
+        slots.map((s) => s.bot && isHost && !locked ? this.renderBotSlot(s, t, random, r) : h('div', { class: `slot ${s.ready ? 'ready' : ''}` },
           h('span', { class: 'fac-dot', style: `background:${random ? 'var(--gold-2)' : css(FACTIONS[s.faction].color)}` }),
           h('b', null, s.name), s.userId === r.hostId ? h('span', { class: 'tag' }, 'host') : null,
           s.bot ? h('span', { class: 'tag bot' }, 'AI') : null,
-          h('span', { class: 'dim' }, random ? 'Random faction' : FACTIONS[s.faction].name),
+          h('span', { class: 'dim' }, random ? (r.mode === 'mirror' ? 'Mirrored faction' : 'Random faction') : FACTIONS[s.faction].name),
           h('span', { class: 'rdy' }, s.ready ? 'Ready' : '…'),
         )),
         missing.map((p) => h('div', { class: 'slot missing' }, h('b', null, p.name), h('span', { class: 'dim' }, 'not joined yet'))),
@@ -189,8 +192,10 @@ export class LobbyView {
         // A compact picker: each faction's builder and name; the chosen one's details below.
         h('div', { class: 'factions' }, FACTION_IDS.map((id: FactionId) => {
           const f = FACTIONS[id];
+          const mate = takenBy(me.team, id, me.userId);
           return h('button', {
-            class: `faction ${me.faction === id ? 'selected' : ''}`, style: `--fc:${css(f.color)}`, title: f.desc,
+            class: `faction ${me.faction === id ? 'selected' : ''} ${mate ? 'taken' : ''}`, style: `--fc:${css(f.color)}`,
+            title: mate ? `${mate.name} already plays the ${f.name} (each faction once per team)` : f.desc, disabled: !!mate,
             onclick: () => this.socket.send({ type: 'lobby.setFaction', faction: id }),
           }, h('img', { src: builderPortrait(id), alt: '' }), h('b', null, f.name.split(' ')[0]));
         })),
@@ -211,7 +216,7 @@ export class LobbyView {
     );
   }
 
-  private renderBotSlot(s: RoomInfo['slots'][number], t: 0 | 1, random: boolean) {
+  private renderBotSlot(s: RoomInfo['slots'][number], t: 0 | 1, random: boolean, r: RoomInfo) {
     const update = (patch: { team?: 0 | 1; faction?: FactionId; level?: AiLevel }) =>
       this.socket.send({ type: 'lobby.updateBot', userId: s.userId, ...patch });
     return h('div', { class: 'slot ready bot-slot' },
@@ -219,8 +224,11 @@ export class LobbyView {
       h('b', null, s.name.split(' (')[0]), h('span', { class: 'tag bot' }, 'AI'),
       h('select', { title: 'Difficulty', onchange: (e: Event) => update({ level: (e.target as HTMLSelectElement).value as AiLevel }) },
         AI_LEVELS.map((l) => h('option', { value: l, selected: s.bot === l }, AI_LEVEL_NAMES[l]))),
-      random ? h('span', { class: 'dim' }, 'Random faction') : h('select', { title: 'Faction', onchange: (e: Event) => update({ faction: (e.target as HTMLSelectElement).value as FactionId }) },
-        FACTION_IDS.map((id) => h('option', { value: id, selected: s.faction === id }, FACTIONS[id].name))),
+      random ? h('span', { class: 'dim' }, r.mode === 'mirror' ? 'Mirrored faction' : 'Random faction') : h('select', { title: 'Faction', onchange: (e: Event) => update({ faction: (e.target as HTMLSelectElement).value as FactionId }) },
+        FACTION_IDS.map((id) => {
+          const mate = r.slots.find((x) => x.team === t && x.faction === id && x.userId !== s.userId);
+          return h('option', { value: id, selected: s.faction === id, disabled: !!mate }, mate ? `${FACTIONS[id].name} (${mate.name.split(' (')[0]})` : FACTIONS[id].name);
+        })),
       h('span', { class: 'rdy' },
         h('button', { class: 'btn tiny ghost', title: `Move to ${TEAM_NAMES[t === 0 ? 1 : 0]}`, onclick: () => update({ team: t === 0 ? 1 : 0 }) }, '⇄'),
         h('button', { class: 'btn tiny ghost', title: 'Remove', onclick: () => this.socket.send({ type: 'lobby.removeBot', userId: s.userId }) }, '✕'),

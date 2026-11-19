@@ -11,8 +11,7 @@ export function startRound(sim: Sim) {
   s.round++;
   s.firstBuilds = [];
   delete s.firstBuildTie;
-  // Random factions mode: everyone draws a faction for this round (seeded, so deterministic).
-  if (s.mode === 'random') for (const p of s.players) p.faction = FACTION_IDS[Math.floor(nextRandom(s) * FACTION_IDS.length)];
+  drawFactions(sim);
   s.entities = [];
   s.strikes = [];
   s.shells = [];
@@ -49,6 +48,28 @@ export function startRound(sim: Sim) {
     p.rescueUsed = false;
     p.items = [];
     p.sapphires = START_SAPPHIRES;
+  }
+}
+
+/**
+ * Random modes draw this round's factions (seeded, so deterministic), never one faction twice in a
+ * team. Random: each team draws on its own. Mirror: one draw, and the n-th player of each team
+ * gets the n-th faction, so both teams field the same builders.
+ */
+function drawFactions(sim: Sim) {
+  const s = sim.state;
+  if (s.mode !== 'random' && s.mode !== 'mirror') return;
+  const draw = (n: number) => {
+    const pool = [...FACTION_IDS], out: typeof pool = [];
+    for (let k = 0; k < n && pool.length; k++) out.push(pool.splice(Math.floor(nextRandom(s) * pool.length), 1)[0]);
+    return out;
+  };
+  const teams = ([0, 1] as Team[]).map((t) => s.players.filter((p) => p.team === t));
+  if (s.mode === 'mirror') {
+    const set = draw(Math.max(teams[0].length, teams[1].length));
+    for (const members of teams) members.forEach((p, k) => { p.faction = set[k]; });
+  } else {
+    for (const members of teams) { const set = draw(members.length); members.forEach((p, k) => { p.faction = set[k]; }); }
   }
 }
 

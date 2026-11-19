@@ -28,3 +28,22 @@ describe('game modes', () => {
     expect(new Set(a.map((r) => r.join())).size).toBeGreaterThan(1);
   });
 });
+
+describe('faction draws', () => {
+  it('random mode never gives a faction twice to one team; mirror mode gives both teams the same set', async () => {
+    const { Sim } = await import('../src/index');
+    for (const mode of ['random', 'mirror'] as const) for (let seed = 1; seed <= 20; seed++) {
+      const sim = Sim.create({ countdownTicks: 0, bestOf: 1, seed, mode, players: [
+        { userId: 'a', name: 'a', team: 0, faction: 'ironvow' }, { userId: 'b', name: 'b', team: 0, faction: 'ironvow' },
+        { userId: 'c', name: 'c', team: 0, faction: 'ironvow' }, { userId: 'd', name: 'd', team: 0, faction: 'ironvow' },
+        { userId: 'e', name: 'e', team: 1, faction: 'ironvow' }, { userId: 'f', name: 'f', team: 1, faction: 'ironvow' },
+        { userId: 'g', name: 'g', team: 1, faction: 'ironvow' }, { userId: 'h', name: 'h', team: 1, faction: 'ironvow' },
+      ] });
+      const t0 = sim.state.players.filter((p) => p.team === 0).map((p) => p.faction);
+      const t1 = sim.state.players.filter((p) => p.team === 1).map((p) => p.faction);
+      expect(new Set(t0).size, `${mode} #${seed}`).toBe(4);
+      expect(new Set(t1).size, `${mode} #${seed}`).toBe(4);
+      if (mode === 'mirror') expect([...t1].sort()).toEqual([...t0].sort());
+    }
+  });
+});
