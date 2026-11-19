@@ -28,7 +28,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -94,6 +94,38 @@ function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
   }
   if (any) sim.emit({ t: 'stasis', x: r2(c.x), y: r2(c.y), r: p.range });
   return any;
+}
+
+/** Hex: the toughest enemy unit in range (ties: nearest, then oldest) becomes a harmless critter for a while. */
+function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  let best: Entity | undefined, bestHp = -1, bestD = Infinity;
+  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || (u.stun ?? 0) > 0) continue;
+    const d = Math.hypot(u.x - c.x, u.y - c.y);
+    if (d > p.range) continue;
+    if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
+  }
+  if (!best) return false;
+  const ticks = Math.round((p.duration ?? 5) * TICK_RATE);
+  best.stun = ticks;
+  sim.emit({ t: 'hex', id: best.id, d: ticks });
+  return true;
+}
+
+/** Light beam: the nearest enemy unit in range takes magic damage at once. */
+function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  let best: Entity | undefined, bestD = Infinity;
+  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit') continue;
+    const d = Math.hypot(u.x - c.x, u.y - c.y);
+    if (d <= p.range && d < bestD) { best = u; bestD = d; }
+  }
+  if (!best) return false;
+  sim.emit({ t: 'beam', a: e.id, b: best.id });
+  dealDamage(sim, best, p.dmg, 'magic', e.owner);
+  return true;
 }
 
 /** Shells land: full siege damage to structures in the blast, half to ground units. */

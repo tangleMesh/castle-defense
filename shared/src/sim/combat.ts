@@ -193,7 +193,8 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
   // Multi-shot: the same volley strikes further enemies in range, nearest first.
-  if (ud?.multishot && ud.multishot > 1) {
+  const ms = ud ? ud.multishot : a.kind === 'building' ? BUILDINGS[a.type].attack?.multishot : undefined;
+  if (ms && ms > 1) {
     const extra: Array<[Entity, number]> = [];
     for (const o of sim.hash.query(a.x, a.y, st.range + 2)) {
       if (o === t || !canTarget(sim, a, st, o)) continue;
@@ -201,10 +202,10 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
       if (d <= st.range) extra.push([o, d]);
     }
     extra.sort((p, q) => p[1] - q[1] || p[0].id - q[0].id);
-    for (const [o] of extra.slice(0, ud.multishot - 1)) {
+    for (const [o] of extra.slice(0, ms - 1)) {
       sim.emit({ t: 'atk', a: a.id, b: o.id, r: ranged });
       const or = ranged && UNITS[o.type]?.rangedResist ? 1 - UNITS[o.type].rangedResist! : 1;
-      dealDamage(sim, o, raw * or, st.attackType, a.owner, !!ud.ignoreArmor, true);
+      dealDamage(sim, o, raw * or, st.attackType, a.owner, !!ud?.ignoreArmor, true);
     }
   }
   if (charged || crit) sim.emit({ t: 'splash', x: Math.round(t.x * 100) / 100, y: Math.round(t.y * 100) / 100, r: 0.6 });

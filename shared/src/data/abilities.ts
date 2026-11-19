@@ -47,6 +47,8 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'hex') return `Hex: every ${p.cooldown}s the toughest enemy unit within ${p.range} tiles is turned into a harmless critter for ${p.duration}s`;
+  if (p.kind === 'beam') return `Light beam: every ${p.cooldown}s a ray hits the nearest enemy unit within ${p.range} tiles for ${p.dmg} magic damage`;
   if (p.kind === 'stasis') return `Stasis: every ${p.cooldown}s all enemy units within ${p.range} tiles are frozen for ${p.duration}s`;
   if (p.kind === 'cyclone' && p.air) return `Meteor shower: every ${p.cooldown}s meteors rain on the nearest enemy flyer within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s to flyers in radius ${p.radius})`;
   if (p.kind === 'bombard') return `Bombard: every ${p.cooldown}s a shell hits the nearest enemy building within ${p.range} tiles (${p.dmg} siege damage in radius ${p.radius}, half to units)`;
@@ -57,6 +59,8 @@ export function powerText(b: BuildingDef): string | undefined {
 export function buildingAbilities(b: BuildingDef): string[] {
   const out: string[] = [];
   if (b.attack?.bonusVs) out.push(`${b.attack.bonusVs.mult}× damage against ${VS[b.attack.bonusVs.vs]}`);
+  if (b.attack?.multishot) out.push(`Multi-shot: each volley strikes ${b.attack.multishot} enemies`);
+  if (b.revive) out.push(`Grace: every ${nth(b.revive.every)} own unit that falls within ${b.revive.radius} tiles rises again`);
   if (b.attack?.chain) out.push(`Bouncing shot: each shot jumps between ${b.attack.chain} enemies`);
   if (b.mend) out.push(`Mends your team's buildings and castle within ${b.mend.radius} tiles by ${b.mend.hps} HP/s`);
   const p = powerText(b);

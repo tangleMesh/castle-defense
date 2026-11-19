@@ -377,3 +377,60 @@ describe('Bloodtusk mechanics', () => {
     expect(far.stun ?? 0).toBe(0);
   });
 });
+
+describe('Sunspire mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'sunspire' },
+    { userId: 'b', name: 'B', team: 1, faction: 'ironvow' },
+  ];
+  const simS = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 8 });
+  const runPower = (sim: Sim, id: string, foes: Entity[], at: Array<[number, number]>) => {
+    const events: SimEvent[] = [];
+    for (let i = 0; i < (BUILDINGS[id].power!.cooldown + 1) * TICK_RATE; i++) { foes.forEach((f, k) => { f.x = at[k][0]; f.y = at[k][1]; }); events.push(...sim.step()); }
+    return events;
+  };
+
+  it('the Arcane Tower strikes five enemies per volley', () => {
+    const sim = simS();
+    building(sim, 0, 'su_arcane_tower', 30, 18);
+    const at: Array<[number, number]> = [0, 1, 2, 3, 4, 5].map((i) => [33 + (i % 3) * 0.8, 18.5 + Math.floor(i / 3) * 0.9]);
+    const foes = at.map(([x, y]) => unit(sim, 1, 'iv_militia', x, y));
+    for (const f of foes) f.hp = f.maxHp = 1e5;
+    for (let i = 0; i < 3; i++) { foes.forEach((f, k) => { f.x = at[k][0]; f.y = at[k][1]; }); sim.step(); }
+    expect(foes.filter((f) => f.hp < f.maxHp)).toHaveLength(5);
+  });
+
+  it('the City of Magic hexes the toughest enemy in range', () => {
+    const sim = simS();
+    building(sim, 0, 'su_city_of_magic', 30, 18);
+    const small = unit(sim, 1, 'iv_militia', 36, 19), big = unit(sim, 1, 'iv_knight', 38, 19);
+    const ev = runPower(sim, 'su_city_of_magic', [small, big], [[36, 19], [38, 19]]);
+    expect(ev.find((e) => e.t === 'hex')).toMatchObject({ id: big.id });
+    expect(big.stun).toBeGreaterThan(0);
+    expect(small.stun ?? 0).toBe(0);
+  });
+
+  it('the Obelisk of Light beams the nearest enemy for magic damage', () => {
+    const sim = simS();
+    building(sim, 0, 'su_light_obelisk', 30, 18);
+    const near = unit(sim, 1, 'iv_knight', 34, 19), far = unit(sim, 1, 'iv_knight', 39, 19);
+    for (const u of [near, far]) u.hp = u.maxHp = 1e5;
+    runPower(sim, 'su_light_obelisk', [near, far], [[34, 19], [39, 19]]);
+    expect(near.hp).toBeLessThan(near.maxHp);
+    expect(far.hp).toBe(far.maxHp);
+  });
+
+  it('the Golden Shrine raises every 5th fallen ally nearby', () => {
+    const sim = simS();
+    building(sim, 0, 'su_golden_shrine', 20, 18);
+    const count = () => sim.state.entities.filter((e) => e.type === 'su_archer').length;
+    const raised: number[] = [];
+    for (let i = 0; i < 10; i++) {
+      const a = unit(sim, 0, 'su_archer', 24, 19);
+      a.hp = 0;
+      sim.removeDead();
+      raised.push(count());
+    }
+    expect(raised).toEqual([0, 0, 0, 0, 1, 1, 1, 1, 1, 2]);
+  });
+});

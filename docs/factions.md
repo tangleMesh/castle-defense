@@ -7,6 +7,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Cogspark follows the "mechanical" race.
 - Duskmoon follows the "night elf" race.
 - Bloodtusk follows the "orc" race.
+- Sunspire follows the "elf" race (the high elves of the Elven Union).
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -119,6 +120,21 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Spear Tower | anti-air tower | triple damage against flyers |
 | Stasis Totem → Great Stasis Totem | stasis totem | the special: freezes every enemy unit nearby every 35 / 28 s |
 
+## Sunspire ("elf")
+
+| Sunspire | Inspired by | Notes |
+|---|---|---|
+| Archery Range → Archery Tower | archery range → archery tower | archers with headshots (crit every 10th / 5th arrow) and evasion |
+| Hall of Honor → Hall of the Eldest | hall of honor → hall of the eldest | very fast blademasters with crits, evasion and some magic resistance |
+| School of Wizardry → Tower of Supreme Magic | school of wizardry → tower of supreme magic | sorceresses / wizards: heal allies, chain lightning every 4th / 3rd spell |
+| Blood Mage Academy | blood-elf war academy | bouncing fire bolts (3 targets) |
+| Ballista Works | high-elf siege factory | long-range bolts with splash |
+| Dragonhawk Portal | dragonhawk portal | armoured flyers with a solar flare every 4th strike |
+| Arcane Tower | arcane tower | magic tower, five targets per volley |
+| City of Magic | city of magic | hexes the toughest enemy (stunned for 5 s) every 10 s |
+| Obelisk of Light | obelisk of light | light beam, 90 magic damage every 4 s |
+| Golden Shrine of Grace → Radiant Shrine | golden shrine of justice | the special: every 5th / 3rd fallen ally nearby rises again |
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -137,6 +153,9 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | `berserk: { below, haste }` | attacks `haste` faster below that share of its health |
 | `magicResist` | share of magic damage ignored |
 | building `attack.bonusVs` | tower damage multiplier against a target class |
+| building `attack.multishot` | tower volleys strike several enemies |
+| power `hex` / `beam` | stuns the toughest enemy in range / a ray of magic damage on the nearest |
+| building `revive: { every, radius }` | every n-th own unit that falls nearby rises again |
 | power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |

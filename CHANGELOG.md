@@ -7,6 +7,18 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.30.0
+
+- **New faction: Sunspire Concord**, after the castle-fight map's elf race (the high elves of the Elven Union).
+  - **Units:** archers with headshots, then master archers; lightning-fast blademasters with crits and evasion; sorceresses who heal allies and call chain lightning, then wizards; blood mages whose fire bolts bounce; a ballista; dragonhawk riders that call solar flares.
+  - **Buildings:** the Arcane Tower (five targets per volley), the City of Magic (hexes the toughest enemy), the Obelisk of Light (a sunbeam every 4 s), and the Golden Shrine special, which raises every 5th fallen ally nearby.
+  - **Look:** golden-haired elves in crimson and gold, a gilded ballista and fiery dragonhawks. Buildings are white marble with golden domes and spires, a flaming ring portal, an orb-crowned tower, a little city skyline, a sun obelisk and a colonnaded shrine with a winged statue.
+- **New mechanics:**
+  - tower multi-shot;
+  - the hex and light-beam powers;
+  - reviving shrines.
+  Each comes with its own effect: a pink puff, a golden ray, a column of light.
+
 ## 0.29.1
 
 - **Duskmoon tuning after building duels** (the hand-converted values had some outliers):

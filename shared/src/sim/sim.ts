@@ -121,6 +121,7 @@ export class Sim {
     const alive: Entity[] = [];
     const released: Entity[] = [];
     const blasts: Entity[] = [];
+    const fallen: Entity[] = [];
     for (const e of this.state.entities) {
       if (e.hp > 0 || e.kind === 'builder' || e.kind === 'castle') { alive.push(e); continue; }
       this.byId.delete(e.id);
@@ -129,6 +130,7 @@ export class Sim {
         const p = this.state.players[e.owner]; if (p && e.ttl !== 0) p.lost = (p.lost ?? 0) + 1;
         if (UNITS[e.type].onDeath && !e.smitten) released.push(e);
         if (UNITS[e.type].deathBlast && !e.smitten) blasts.push(e);
+        if (!e.smitten && e.ttl === undefined) fallen.push(e);
       }
       this.emit({ t: 'die', id: e.id, x: round2(e.x), y: round2(e.y), k: e.kind });
       if (e.kind === 'building') gridChanged = true;
@@ -144,6 +146,24 @@ export class Sim {
         if (d <= b.radius && !(o.kind === 'unit' && this.isAir(o))) dealDamage(this, o, b.dmg, 'magic', e.owner);
       }
       this.emit({ t: 'splash', x: round2(e.x), y: round2(e.y), r: b.radius });
+    }
+    // Reviving shrines (Golden Shrine): every n-th own unit that falls nearby rises again.
+    if (fallen.length) {
+      const shrines = this.state.entities.filter((b) => b.kind === 'building' && b.hp > 0 && !b.buildLeft && BUILDINGS[b.type].revive);
+      for (const e of fallen) {
+        let best: Entity | undefined, bestD = Infinity;
+        for (const b of shrines) {
+          if (b.team !== e.team) continue;
+          const d = distToRect(footprint(b), e.x, e.y);
+          if (d <= BUILDINGS[b.type].revive!.radius && d < bestD) { best = b; bestD = d; }
+        }
+        if (!best) continue;
+        best.revives = (best.revives ?? 0) + 1;
+        if (best.revives % BUILDINGS[best.type].revive!.every !== 0) continue;
+        const u = UNITS[e.type];
+        const r = this.add({ kind: 'unit', type: e.type, owner: e.owner, team: e.team, x: e.x, y: e.y, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0 });
+        this.emit({ t: 'revive', id: r.id });
+      }
     }
     // Units that burst into smaller ones when they fall (Vinelings → Sproutlings, treants → saplings).
     for (const e of released) {

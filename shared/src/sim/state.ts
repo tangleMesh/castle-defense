@@ -63,6 +63,8 @@ export interface Entity {
   stun?: number;
   /** Summoned unit: fades after this many more ticks. */
   ttl?: number;
+  /** Fallen allies counted by a reviving shrine. */
+  revives?: number;
   /** Ticks until the next summon (units) or power (buildings). */
   abilityCd?: number;
 
@@ -141,6 +143,9 @@ export type SimEvent =
   /** A cyclone of radius `r` settles at x/y for `d` ticks. */
   | { t: 'zone'; x: number; y: number; r: number; d: number; air?: 1 }
   | { t: 'stasis'; x: number; y: number; r: number }
+  | { t: 'hex'; id: number; d: number }
+  | { t: 'beam'; a: number; b: number }
+  | { t: 'revive'; id: number }
   | { t: 'heal'; a: number; b: number }
   | { t: 'die'; id: number; x: number; y: number; k: EntityKind }
   /** Kill bounty paid to player `p` (last hit). */

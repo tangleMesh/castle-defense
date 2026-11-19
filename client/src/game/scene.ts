@@ -1154,6 +1154,37 @@ export class GameScene extends Phaser.Scene {
         });
         return;
       }
+      case 'hex': {
+        // City of Magic: a pink puff, the victim is frozen (stun tint) while it lasts.
+        const v = this.views.get(ev.id);
+        if (!v) return;
+        const p = toScreen(v.x, v.y);
+        this.puff(p.x, p.y - 12, 0xff90e0, 10, 26);
+        this.spark(p.x, p.y - 14, 0xffd0f8, 8, 0.5);
+        return;
+      }
+      case 'beam': {
+        // Obelisk of Light: a straight golden ray from the obelisk's crystal to the target.
+        const a = this.views.get(ev.a), b = this.views.get(ev.b);
+        if (!a || !b) return;
+        const pa = toScreen(a.x, a.y), pb = toScreen(b.x, b.y);
+        const g = this.add.graphics().setDepth(8e6).setBlendMode(Phaser.BlendModes.ADD);
+        for (const [w, c, al] of [[7, 0xffd060, 0.35], [2.5, 0xfffbe0, 1]] as const) { g.lineStyle(w, c, al); g.lineBetween(pa.x, pa.y - 60, pb.x, pb.y - 12); }
+        this.tweens.add({ targets: g, alpha: 0, duration: 380, onComplete: () => g.destroy() });
+        this.spark(pb.x, pb.y - 12, 0xffe890, 6, 0.5);
+        return;
+      }
+      case 'revive': {
+        // Golden Shrine: the fallen rise in a column of light.
+        const v = this.views.get(ev.id);
+        const p = v ? toScreen(v.x, v.y) : null;
+        if (!p) return;
+        const g = this.add.graphics().setDepth(8e6).setBlendMode(Phaser.BlendModes.ADD);
+        g.fillStyle(0xffe890, 0.5); g.fillRect(p.x - 6, p.y - 60, 12, 60);
+        this.tweens.add({ targets: g, alpha: 0, duration: 700, onComplete: () => g.destroy() });
+        this.spark(p.x, p.y - 20, 0xfff0b0, 10, 0.6);
+        return;
+      }
       case 'heal': {
         const healer = this.views.get(ev.a);
         if (healer && healer.kind === KIND_UNIT) healer.atk = 300;
