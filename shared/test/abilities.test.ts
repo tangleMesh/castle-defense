@@ -551,3 +551,43 @@ describe('Doomforge mechanics', () => {
     void p;
   });
 });
+
+describe('Tidecall mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'tidecall' },
+    { userId: 'b', name: 'B', team: 1, faction: 'ironvow' },
+  ];
+  const simT = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 16 });
+
+  it('the Oracle of Sirens charms the nearest weak enemy: it changes sides for good', () => {
+    const sim = simT();
+    building(sim, 0, 'tc_oracle', 30, 18);
+    const knight = unit(sim, 1, 'iv_paladin', 33, 19), mil = unit(sim, 1, 'iv_militia', 36, 19);
+    let charmed = false;
+    for (let i = 0; i < (BUILDINGS.tc_oracle.power!.cooldown + 1) * TICK_RATE && !charmed; i++) {
+      knight.x = 33; knight.y = 19; mil.x = 36; mil.y = 19;
+      charmed = sim.step().some((e) => e.t === 'charm');
+    }
+    expect(charmed).toBe(true);
+    expect(mil.team).toBe(0);
+    expect(mil.owner).toBe(0);
+    expect(knight.team).toBe(1);
+  });
+
+  it('the Tidal Guardian’s tsunami hits every ground enemy along its path', () => {
+    const sim = simT();
+    building(sim, 0, 'tc_tidal_guardian', 30, 18);
+    const p = BUILDINGS.tc_tidal_guardian.power!;
+    const line = [34, 38, 44].map((x) => unit(sim, 1, 'iv_militia', x, 19));
+    const off = unit(sim, 1, 'iv_militia', 38, 26);
+    for (const u of [...line, off]) u.hp = u.maxHp = 1e5;
+    let waved = false;
+    for (let i = 0; i < (p.cooldown + 1) * TICK_RATE && !waved; i++) {
+      line.forEach((u, k) => { u.x = [34, 38, 44][k]; u.y = 19; }); off.x = 38; off.y = 26;
+      waved = sim.step().some((e) => e.t === 'wave');
+    }
+    expect(waved).toBe(true);
+    expect(line.every((u) => u.hp < u.maxHp)).toBe(true);
+    expect(off.hp).toBe(off.maxHp);
+  });
+});

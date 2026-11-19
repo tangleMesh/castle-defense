@@ -5,3 +5,4 @@ import './sunspire';
 import './frostmark';
 import './gravewake';
 import './doomforge';
+import './tidecall';

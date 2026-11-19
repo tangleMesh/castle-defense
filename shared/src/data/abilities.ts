@@ -47,6 +47,8 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'charm') return `Control: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles with at most ${p.dmg} HP joins your side`;
+  if (p.kind === 'wave') return `Tsunami: every ${p.cooldown}s a wave rolls ${p.range} tiles towards the enemy, ${p.dmg} damage to every ground unit in its path`;
   if (p.kind === 'chaos') return `Present of chaos: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles suffers the next fate: ${p.dmg} damage, a ${p.duration}s stun, death (up to ${Math.round(p.dmg * 1.5)} HP), or nothing`;
   if (p.kind === 'erase') return `Erase: every ${p.cooldown}s every enemy unit of the most numerous type within ${p.range} tiles dies (types with more than ${p.dmg} HP are immune)`;
   if (p.kind === 'slay') return `Sudden death: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles with at most ${p.dmg} HP dies at once`;

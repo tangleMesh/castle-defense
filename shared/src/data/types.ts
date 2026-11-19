@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake' | 'doomforge';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake' | 'doomforge' | 'tidecall';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -21,7 +21,9 @@ export interface UnitModel {
     // Gravewake undead
     | 'zombie' | 'necromancer' | 'lich' | 'skeleton' | 'vampire' | 'bat' | 'banshee' | 'fleshgolem' | 'bonewyrm'
     // Doomforge demons
-    | 'demon' | 'satyr' | 'quilldemon' | 'twin' | 'succubus' | 'fiend' | 'reddragon' | 'infernal';
+    | 'demon' | 'satyr' | 'quilldemon' | 'twin' | 'succubus' | 'fiend' | 'reddragon' | 'infernal'
+    // Tidecall naga
+    | 'murloc' | 'spitter' | 'hydra' | 'naga' | 'lobster' | 'dragonturtle' | 'wingedserpent';
   body: number;
   accent: number;
   scale: number;
@@ -46,7 +48,9 @@ export interface BuildingModel {
     // Gravewake
     | 'haycart' | 'plaguebarn' | 'bonetemple' | 'crypt' | 'graveyard' | 'hauntedmine' | 'slaughterhouse' | 'dragongrave' | 'skullpile' | 'soulturret' | 'deathpit' | 'necropolis'
     // Doomforge
-    | 'chaoscitadel' | 'demoncage' | 'greedaltar' | 'bloodfountain' | 'dragonnest' | 'demongate' | 'magicruin' | 'volcano' | 'destructionshrine' | 'eraser';
+    | 'chaoscitadel' | 'demoncage' | 'greedaltar' | 'bloodfountain' | 'dragonnest' | 'demongate' | 'magicruin' | 'volcano' | 'destructionshrine' | 'eraser'
+    // Tidecall
+    | 'murloccamp' | 'swampwell' | 'spawningpool' | 'nagaspring' | 'reptilepool' | 'snaketemple' | 'coralstatue' | 'pyramid' | 'oracle' | 'tidalguardian';
   wall: number;
   roof: number;
   height: number;
@@ -188,9 +192,12 @@ export interface BuildingDef {
  * unit suffers one of four fates in turn: `dmg` magic damage, a `duration` stun with a third of the
  * damage, death (if its max HP is at most 1.5 × dmg, else the damage), or nothing. `erase`: every enemy
  * unit of the most numerous type in range dies (types with more than `dmg` max HP are immune).
+ * `charm`: the nearest enemy unit in range with at most `dmg` max HP changes sides for good.
+ * `wave`: a wave rolls from the building towards the nearest enemy unit, `range` tiles long and
+ * `radius` wide, dealing `dmg` to every enemy ground unit in its path.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave';
   cooldown: number;
   range: number;
   radius: number;

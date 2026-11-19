@@ -11,6 +11,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Frostmark follows the "northern" race.
 - Gravewake follows the "undead" race.
 - Doomforge follows the "chaos" race.
+- Tidecall follows the "naga" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -185,6 +186,23 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 
 Like the map's race: chaos damage (full against every armour type), no tower and no siege unit.
 
+## Tidecall ("naga")
+
+| Tidecall | Inspired by | Notes |
+|---|---|---|
+| Murloc Camp → Murloc Village → Murloc Fortress | murloc camp → village → fortress | murlocs in pairs: warriors → champions (cleave, evade, bash) → assassins |
+| Swamp Well → Lernaean Fountain | swamp well → lernaean fountain | swamp spitters (35% slow) → the ancient hydra (elite: splash, poison, magic resistance, splits into two heads) |
+| Spawning Grounds → Royal Spawning Grounds | spawning grounds → royal | naga guardians and royal guards with cleaving tridents |
+| Naga Spring | naga spring | sirens: chaos bolts, they summon lobsters |
+| Reptile Pool | reptile pool | dragon turtles: long-range siege, bash, thorny shell |
+| Temple of Snakes | temple of snakes | winged serpents: flying, bouncing magic |
+| Coral Statue | coral statue | +6 HP/s regeneration aura and mends buildings |
+| Ancient Pyramid | ancient pyramide | earthquake: a 50% slow on the nearest enemies |
+| Oracle of Sirens | oracle of sirens | charms the nearest enemy unit (up to 800 HP): it fights for you |
+| Tidal Guardian → Tidal Titan | tidal guardian | the special: a tsunami that hits every ground enemy in its path |
+
+Trait: every unit regenerates 3 HP/s. Like the map's race: no tower.
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -212,6 +230,7 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | aura `regen` with a negative value on `enemy` | decay: enemies lose HP every second (no bounty) |
 | power `slay` | kills the nearest enemy unit with at most `dmg` max HP |
 | power `chaos` / `erase` | cycling fates on the nearest enemy / kills the most numerous enemy kind |
+| power `charm` / `wave` | the nearest weak enemy changes sides / a tsunami along a line |
 | power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |

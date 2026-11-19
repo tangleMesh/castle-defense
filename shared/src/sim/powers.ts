@@ -28,7 +28,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -186,6 +186,41 @@ function erase(sim: Sim, e: Entity, p: PowerDef): boolean {
   for (const [type, list] of count) if (list.length > best.length || (list.length === best.length && type < bestType)) { best = list; bestType = type; }
   if (!best.length) return false;
   for (const u of best) { sim.emit({ t: 'slay', a: e.id, b: u.id }); u.hp = 0; rewardKill(sim, u, e.owner); }
+  return true;
+}
+
+/** Control: the nearest enemy unit that isn't too strong changes sides (owner and team) for good. */
+function charm(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  let best: Entity | undefined, bestD = Infinity;
+  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg || u.ttl !== undefined) continue;
+    const d = Math.hypot(u.x - c.x, u.y - c.y);
+    if (d <= p.range && d < bestD) { best = u; bestD = d; }
+  }
+  if (!best) return false;
+  best.owner = e.owner; best.team = e.team;
+  delete best.targetId; delete best.poison; delete best.stun;
+  sim.emit({ t: 'charm', id: best.id });
+  return true;
+}
+
+/** Tsunami: a wave rolls from the building towards the nearest enemy unit and hits every ground enemy in its path. */
+function wave(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  const t = nearestEnemyUnit(sim, e, p.range);
+  if (!t) return false;
+  const dx = t.x - c.x, dy = t.y - c.y, len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const ex = c.x + ux * p.range, ey = c.y + uy * p.range;
+  for (const u of sim.state.entities) {
+    if (u.kind !== 'unit' || u.team === e.team || u.hp <= 0 || sim.isAir(u)) continue;
+    const along = (u.x - c.x) * ux + (u.y - c.y) * uy;
+    if (along < 0 || along > p.range) continue;
+    const off = Math.abs((u.x - c.x) * uy - (u.y - c.y) * ux);
+    if (off <= p.radius + sim.radius(u)) dealDamage(sim, u, p.dmg, 'magic', e.owner);
+  }
+  sim.emit({ t: 'wave', x: r2(c.x), y: r2(c.y), x2: r2(ex), y2: r2(ey), r: p.radius });
   return true;
 }
 

@@ -590,7 +590,8 @@ export class GameScene extends Phaser.Scene {
       // Spawn countdown, interpolated between snapshots (unless a unit spawned in between).
       v.spawn = nb && nb[10] <= row[10] ? row[10] + (nb[10] - row[10]) * alpha : src[10];
       // A building changing type means an upgrade completed / started.
-      if (v.type !== row[2]) { this.destroyView(v); v = this.makeView(row); }
+      // A building changing type means an upgrade completed / started; a unit changing team was charmed.
+      if (v.type !== row[2] || v.team !== row[4]) { this.destroyView(v); v = this.makeView(row); }
       if (v.kind === KIND_CASTLE) {
         // Ids restart each round: a rebuilt castle must not keep the old ruin.
         if (v.ruined && src[7] > 0) { this.destroyView(v); v = this.makeView(row); }
@@ -1188,6 +1189,27 @@ export class GameScene extends Phaser.Scene {
         }
         this.puff(pb.x, pb.y - 12, 0x6a3a8a, 12, 24);
         this.spark(pb.x, pb.y - 14, 0xd0a0ff, 8, 0.6);
+        return;
+      }
+      case 'charm': {
+        // Oracle of Sirens: a pink swirl, the unit now fights for the other side.
+        const v = this.views.get(ev.id);
+        if (!v) return;
+        const p = toScreen(v.x, v.y);
+        this.puff(p.x, p.y - 12, 0xff9ad0, 10, 20);
+        const g = this.add.graphics().setDepth(8e6).setBlendMode(Phaser.BlendModes.ADD);
+        g.lineStyle(2, 0xff9ad0, 0.9); g.strokeEllipse(p.x, p.y - 14, 26, 12);
+        this.tweens.add({ targets: g, alpha: 0, scaleX: 1.4, duration: 700, onComplete: () => g.destroy() });
+        return;
+      }
+      case 'wave': {
+        // Tidal Guardian: a wall of water rolls along the wave's path.
+        const a = toScreen(ev.x, ev.y), b = toScreen(ev.x2, ev.y2);
+        const crest = this.add.graphics().setDepth(8e6);
+        crest.fillStyle(0x4ab0e0, 0.75); crest.fillEllipse(0, 0, 34, 18);
+        crest.fillStyle(0xe0f8ff, 0.9); crest.fillEllipse(0, -6, 26, 7);
+        crest.setPosition(a.x, a.y - 8);
+        this.tweens.add({ targets: crest, x: b.x, y: b.y - 8, alpha: { from: 1, to: 0.2 }, duration: 900, ease: 'Sine.easeIn', onComplete: () => crest.destroy() });
         return;
       }
       case 'revive': {
