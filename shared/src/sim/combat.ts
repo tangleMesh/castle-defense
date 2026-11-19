@@ -301,8 +301,11 @@ export function stepCombatUnits(sim: Sim) {
   // Regeneration and poison first, for everyone at once: inside each unit's turn the outcome
   // depended on whether the enemy had already struck (regen is capped at full hp).
   for (const e of acting) {
-    const regen = (UNITS[e.type].regen ?? 0) + modsOf(sim, e.id).regen;
+    const mods = modsOf(sim, e.id);
+    const regen = (UNITS[e.type].regen ?? 0) + mods.regen;
     if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
+    // Decay auras (City of Decay) rot enemy units; nobody earns a bounty for what rot kills.
+    if (mods.decay > 0) dealDamage(sim, e, mods.decay / TICK_RATE, 'chaos', -1, true);
     if (e.poison) {
       dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
       if (--e.poison.left <= 0) delete e.poison;

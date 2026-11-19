@@ -3,3 +3,4 @@ import './duskmoon';
 import './bloodtusk';
 import './sunspire';
 import './frostmark';
+import './gravewake';

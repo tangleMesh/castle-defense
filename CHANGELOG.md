@@ -7,6 +7,16 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.32.0
+
+- **New faction: Gravewake Legion**, after the castle-fight map's undead race.
+  - **Units:** zombies with a rotting bite, then plague bearers whose cloud rots nearby enemies; necromancers who raise skeletons, then the Lich King who raises death knights; vampires with lifesteal, whose lords call bats; banshees whose fear weakens enemies; the flesh golem; the flying bone wyrm.
+  - **Buildings:** a skull pile that raises skeletons; the Turret of Souls; the Death Pit, which slays the nearest weak enemy outright; and the City of Decay special, which rots every enemy unit on the battlefield.
+  - **Look:** zombies, robed necromancers with skull staffs, a crowned floating lich, skeletons, pale vampires and bats, banshees, a stitched golem and a skeletal wyrm. Buildings are a rotting hay cart and barns, rib-arched bone temples, a crypt, a graveyard, a haunted mine, a slaughterhouse, a dragon's ribcage, skull piles, a death pit and a rot-spewing necropolis, all on dead earth.
+- **New mechanics:**
+  - decay auras (enemies lose HP every second);
+  - the slay power, with a dark ray and a violet burst.
+
 ## 0.31.1
 
 - **Bloodtusk and Sunspire tuning after building duels.** The hand-converted values had clear outliers.

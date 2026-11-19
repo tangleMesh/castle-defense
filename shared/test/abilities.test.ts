@@ -474,3 +474,35 @@ describe('Frostmark mechanics', () => {
     expect(sim.mods.get(foe.id)?.dmg).toBeCloseTo(1 + UNITS.fm_ancient_wendigo.aura!.value);
   });
 });
+
+describe('Gravewake mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'gravewake' },
+    { userId: 'b', name: 'B', team: 1, faction: 'thornwild' },
+  ];
+  const simG = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 12 });
+
+  it('the City of Decay rots every enemy unit on the battlefield, regeneration notwithstanding', () => {
+    const sim = simG();
+    building(sim, 0, 'gw_city_of_decay', 10, 30);
+    const far = unit(sim, 1, 'tw_boulder_ram', 100, 5);
+    far.hp = far.maxHp = 1e5;
+    for (let i = 0; i < 2 * TICK_RATE; i++) { far.x = 100; far.y = 5; sim.step(); }
+    const net = -BUILDINGS.gw_city_of_decay.aura!.value - (UNITS.tw_boulder_ram.regen ?? 0);
+    expect(far.maxHp - far.hp).toBeCloseTo(2 * net, 0);
+  });
+
+  it('the Death Pit slays the nearest weak enemy but not champions', () => {
+    const sim = simG();
+    building(sim, 0, 'gw_death_pit', 30, 18);
+    const champ = unit(sim, 1, 'tw_ancient_treant', 34, 19), weak = unit(sim, 1, 'tw_vineling', 38, 19);
+    let slain = false;
+    for (let i = 0; i < (BUILDINGS.gw_death_pit.power!.cooldown + 1) * TICK_RATE && !slain; i++) {
+      champ.x = 34; champ.y = 19; weak.x = 38; weak.y = 19;
+      slain = sim.step().some((e) => e.t === 'slay');
+    }
+    expect(slain).toBe(true);
+    expect(weak.hp).toBe(0);
+    expect(champ.hp).toBeGreaterThan(0);
+  });
+});

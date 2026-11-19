@@ -9,7 +9,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   const out: string[] = [];
   if (u.aura) {
     const a = u.aura;
-    const v = a.stat === 'dmg' || a.stat === 'speed' || a.stat === 'haste' ? `${a.value > 0 ? '+' : ''}${pct(a.value)}` : `+${a.value}`;
+    const v = a.stat === 'dmg' || a.stat === 'speed' || a.stat === 'haste' ? `${a.value > 0 ? '+' : ''}${pct(a.value)}` : `${a.value > 0 ? '+' : ''}${a.value}`;
     out.push(`Aura: ${a.target === 'ally' ? 'allies' : 'enemies'} within ${a.radius} tiles get ${v} ${STAT[a.stat]}`);
   }
   if (u.charge) out.push(`Charge: the first blow after marching deals ${u.charge}× damage`);
@@ -47,6 +47,7 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'slay') return `Sudden death: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles with at most ${p.dmg} HP dies at once`;
   if (p.kind === 'hex' && p.air) return `Freezing blast: every ${p.cooldown}s the toughest enemy flyer within ${p.range} tiles is frozen for ${p.duration}s and takes ${p.dmg} magic damage`;
   if (p.kind === 'hex') return `Hex: every ${p.cooldown}s the toughest enemy unit within ${p.range} tiles is turned into a harmless critter for ${p.duration}s`;
   if (p.kind === 'beam') return `Light beam: every ${p.cooldown}s a ray hits the nearest enemy unit within ${p.range} tiles for ${p.dmg} magic damage`;

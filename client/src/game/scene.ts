@@ -1174,6 +1174,22 @@ export class GameScene extends Phaser.Scene {
         this.spark(pb.x, pb.y - 12, 0xffe890, 6, 0.5);
         return;
       }
+      case 'slay': {
+        // Death Pit: a black ray and a burst of ghostly purple where the victim stood.
+        const a = this.views.get(ev.a), b = this.views.get(ev.b);
+        if (!b) return;
+        const pb = toScreen(b.x, b.y);
+        if (a) {
+          const pa = toScreen(a.x, a.y);
+          const g = this.add.graphics().setDepth(8e6);
+          g.lineStyle(4, 0x2a0a3a, 0.8); g.lineBetween(pa.x, pa.y - 30, pb.x, pb.y - 12);
+          g.lineStyle(1.5, 0xb070ff, 0.9); g.lineBetween(pa.x, pa.y - 30, pb.x, pb.y - 12);
+          this.tweens.add({ targets: g, alpha: 0, duration: 500, onComplete: () => g.destroy() });
+        }
+        this.puff(pb.x, pb.y - 12, 0x6a3a8a, 12, 24);
+        this.spark(pb.x, pb.y - 14, 0xd0a0ff, 8, 0.6);
+        return;
+      }
       case 'revive': {
         // Golden Shrine: the fallen rise in a column of light.
         const v = this.views.get(ev.id);

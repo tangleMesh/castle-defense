@@ -148,6 +148,7 @@ export type SimEvent =
   | { t: 'hex'; id: number; d: number }
   | { t: 'beam'; a: number; b: number }
   | { t: 'revive'; id: number }
+  | { t: 'slay'; a: number; b: number }
   | { t: 'heal'; a: number; b: number }
   | { t: 'die'; id: number; x: number; y: number; k: EntityKind }
   /** Kill bounty paid to player `p` (last hit). */

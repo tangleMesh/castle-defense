@@ -9,6 +9,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Bloodtusk follows the "orc" race.
 - Sunspire follows the "elf" race (the high elves of the Elven Union).
 - Frostmark follows the "northern" race.
+- Gravewake follows the "undead" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -151,6 +152,21 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Frost Launcher → Greater Frost Launcher | frost launcher → greater | frost bolts freeze enemy buildings: no training, shooting or casting |
 | World Freezer → Eternal Winter | world freezer | the special: a long blizzard (damage and 50% slow) on the enemy army |
 
+## Gravewake ("undead")
+
+| Gravewake | Inspired by | Notes |
+|---|---|---|
+| Rotting Hay Cart → Tainted Farm → Defiled Granary | rotting hay cart → tainted farm → defiled granary | zombies with a rotting bite → plague bearers with a rotting cloud (8 HP/s aura) |
+| Temple of Bone → Temple of Necromancy → Lich Citadel | temple of bone → necromancy → high citadel | necromancers raise skeletons (warriors, death knights); the lich resists magic |
+| Crypt → Graveyard | crypt → graveyard | vampires with lifesteal; the lord calls bats |
+| Haunted Mine | haunted mine | banshees: fear aura (−15% enemy damage), slowing chains, some magic resistance |
+| Slaughterhouse | slaughter house | the flesh golem: siege, demolishes buildings, pulverises |
+| Dragon Cemetery | dragon cemetery | the bone wyrm: flying, splashing frost breath |
+| Skull Pile → Skull Shrine | skull pile → skull shrine | raises two skeletons (warriors) every 14 / 15 s |
+| Turret of Souls | turret of souls | tower |
+| Death Pit | death pit | slays the nearest enemy unit with up to 800 HP every 15 s |
+| City of Decay → Necropolis | city of decay | the special: every enemy unit on the battlefield rots, 6 / 10 HP/s |
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -175,6 +191,8 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | power `bombard` with `freeze` | the shell freezes buildings (and briefly units) it hits |
 | power `hex` with `air` | freezes the toughest flyer and deals damage |
 | aura with a negative value on `enemy` | weakens enemies (less damage / armour) |
+| aura `regen` with a negative value on `enemy` | decay: enemies lose HP every second (no bounty) |
+| power `slay` | kills the nearest enemy unit with at most `dmg` max HP |
 | power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |

@@ -18,7 +18,7 @@ export const CommandSchema = z.discriminatedUnion('c', [
   z.object({ c: z.literal('buySapphire') }),
 ]);
 
-export const FactionSchema = z.enum(['ironvow', 'thornwild', 'shardbound', 'cogspark', 'duskmoon', 'bloodtusk', 'sunspire', 'frostmark']);
+export const FactionSchema = z.enum(['ironvow', 'thornwild', 'shardbound', 'cogspark', 'duskmoon', 'bloodtusk', 'sunspire', 'frostmark', 'gravewake']);
 export const GameModeSchema = z.enum(['standard', 'random']);
 export const AiLevelSchema = z.enum(['easy', 'normal', 'hard', 'brutal']);
 

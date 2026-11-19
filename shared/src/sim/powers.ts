@@ -1,7 +1,7 @@
 import { TICK_RATE } from '../constants';
 import { BUILDINGS, type PowerDef } from '../data';
 import { distToRect } from '../map/map';
-import { dealDamage } from './combat';
+import { dealDamage, rewardKill } from './combat';
 import { footprint } from './grid';
 import type { Sim } from './sim';
 import type { Entity } from './state';
@@ -28,7 +28,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -126,6 +126,22 @@ function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
   if (!best) return false;
   sim.emit({ t: 'beam', a: e.id, b: best.id });
   dealDamage(sim, best, p.dmg, 'magic', e.owner);
+  return true;
+}
+
+/** Sudden death: the nearest enemy unit in range that isn't too strong (max HP ≤ dmg) dies at once. */
+function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  let best: Entity | undefined, bestD = Infinity;
+  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg) continue;
+    const d = Math.hypot(u.x - c.x, u.y - c.y);
+    if (d <= p.range && d < bestD) { best = u; bestD = d; }
+  }
+  if (!best) return false;
+  sim.emit({ t: 'slay', a: e.id, b: best.id });
+  best.hp = 0;
+  rewardKill(sim, best, e.owner);
   return true;
 }
 
