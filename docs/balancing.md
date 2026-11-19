@@ -39,7 +39,7 @@ npm run balance:check                # measure only; exit 1 if out of band and p
 npm run balance -- --stages factions # re-tune only what failed (units | factions | bots, comma-separated)
 npm run balance                      # all stages, then write shared/src/data/tuning.ts and docs/balance-report.md
 npm run balance -- --quick --dry     # smoke test (~5 min), writes nothing
-npm run balance -- --stages factions --sizes 1,2,3,4 --games 48 --verify-games 120 --pairings 4 --iterations 8 --tolerance 0.03
+npm run balance -- --stages factions --sizes 1,2,3,4 --games 144 --verify-games 360 --pairings 24 --iterations 8 --tolerance 0.03
 npm run balance -- --reset           # start from an untuned game (after a big redesign)
 ```
 
@@ -77,7 +77,8 @@ The game snowballs, so single results are noisy, and small changes can flip a ma
   same number of games (`--games` per step, `--verify-games` per verification). Seeding every pairing equally gave
   1v1 only 20 of 512 games while it counted for a quarter of the result. Cheap 1v1 games now carry the same weight
   as expensive 4v4 ones, which makes verifications both more precise and faster.
-- **A sample per step, the full grid only to verify.** Each tuning step plays `--pairings` (default 4) line-up pairings per
+- **Budgets scale with the factions.** Step and verification games (`--games` 12 / `--verify-games` 30 per faction and team size) and the pairings per step (`--pairings`, 2 per faction) grow with the number of factions. The ladder, the strategy stage and the building duels play a fixed random sample of their grids (which grow with the square of the faction count): the game budgets of the old 4-faction runs.
+- **A sample per step, the full grid only to verify.** Each tuning step plays `--pairings` (default 2 per faction) line-up pairings per
   team size, on fresh seeds, drawn uniformly at random and re-drawn every step, so a step measures the same thing as the
   full grid on average. (Always including pure vs pure biased the steps against the verification by 10–20 points.)
 - **Lenient verification.** A result only counts after a **verification run** of the full grid on new seeds with 2.5× the

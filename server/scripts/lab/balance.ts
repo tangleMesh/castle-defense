@@ -44,11 +44,13 @@ const dry = flag('dry') || check;
 const stages = arg('stages', 'units,factions,bots,strategies').split(',');
 const sizes = arg('sizes', quick ? '1,2' : '1,2,3,4').split(',').map(Number);
 /** Non-mirror games per team size: per tuning step, and per verification of the full grid. */
-const stepGames = Number(arg('games', quick ? '16' : '48'));
-const verifyGames = Number(arg('verify-games', quick ? '40' : '120'));
+// Scaled with the number of factions (each faction should appear in a similar number of games).
+const stepGames = Number(arg('games', String((quick ? 4 : 12) * Math.max(4, FACTION_IDS.length))));
+const verifyGames = Number(arg('verify-games', String((quick ? 10 : 30) * Math.max(4, FACTION_IDS.length))));
 const iterations = Number(arg('iterations', quick ? '3' : '8'));
 const tol = Number(arg('tolerance', '0.03'));
-const pairingsPerSize = Number(arg('pairings', '4'));
+// Line-up pairings per team size in a tuning step: enough that every faction plays in each step.
+const pairingsPerSize = Number(arg('pairings', String(Math.max(4, 2 * FACTION_IDS.length))));
 const botSeeds = Number(arg('bot-seeds', quick ? '2' : '6'));
 const strategySeeds = Number(arg('strategy-seeds', quick ? '2' : '4'));
 const strategyLevels = arg('strategy-levels', 'normal,hard').split(',') as AiLevel[];
@@ -66,6 +68,22 @@ const failed = new Set<string>();
 let seedCounter = 0;
 /** Fresh, never reused seed base for every measurement. */
 const freshSeeds = () => 200_000 + 1_000_003 * ++seedCounter;
+
+/**
+ * Deterministic random sample of `n` jobs (all of them if there are fewer). The ladder, strategy
+ * and duel grids grow with the square of the faction count; a fixed game budget keeps a run of a
+ * dozen factions to a few hours while every faction still shows up in about the same share of games.
+ */
+function sampleJobs<T>(jobs: T[], n: number, seed: number): T[] {
+  if (jobs.length <= n) return jobs;
+  let r = (seed * 7919 + 13) >>> 0;
+  const rnd = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const a = jobs.slice();
+  for (let i = a.length - 1; i > 0; i--) { const t = Math.floor(rnd() * (i + 1)); [a[i], a[t]] = [a[t], a[i]]; }
+  return a.slice(0, n);
+}
+/** Game budgets of the 4-faction runs these stages were designed with. */
+const LADDER_GAMES_PER_SEED = 32, STRATEGY_GAMES_PER_SEED = 32, DUEL_BUDGET = quick ? 1200 : 3600;
 
 /** End decided games early (shared/src/lab/match.ts `decided`): the balancer only needs winners. */
 const adjudicate = !flag('no-adjudicate');
@@ -139,7 +157,8 @@ async function measureLadder(label: string, n: number) {
   const steps: Array<{ hi: AiLevel; lo: AiLevel; rate: Rate; pairings: Array<{ key: string } & Rate> }> = [];
   for (let i = AI_LEVELS.length - 1; i > 0; i--) {
     const hi = AI_LEVELS[i], lo = AI_LEVELS[i - 1];
-    const jobs = ladderMatrix({ hi, lo, seeds: n, seedBase: freshSeeds() });
+    const base = freshSeeds();
+    const jobs = sampleJobs(ladderMatrix({ hi, lo, seeds: n, seedBase: base }), n * LADDER_GAMES_PER_SEED, base);
     const sum = summarizeLadder(jobs, await play(`${label} ${hi}>${lo}`, jobs));
     steps.push({ hi, lo, rate: sum.total, pairings: sum.pairings });
   }
@@ -147,7 +166,7 @@ async function measureLadder(label: string, n: number) {
 }
 
 async function measureDuels() {
-  const jobs = duelJobs(400);
+  const jobs = sampleJobs(duelJobs(400), DUEL_BUDGET, freshSeeds());
   pool.tuning = structuredClone(tuning);
   pool.done = 0; pool.total = 0; pool.onProgress = progress('duels');
   const res = await Promise.all(jobs.map(async (j) => {
@@ -390,7 +409,10 @@ async function stageStrategies() {
     'Each strategy is the same level\'s brain pushed towards one style (shared/src/lab/sparring.ts). The bot should win about half of these games or more; '
     + 'below 40% with the whole 95% CI under 50% it has a blind spot.', '');
   for (const level of strategyLevels) {
-    const jobs = strategyMatrix({ level, partners: SPARRING, seeds: strategySeeds, seedBase: freshSeeds() });
+    const base = freshSeeds();
+    const all = strategyMatrix({ level, partners: SPARRING, seeds: strategySeeds, seedBase: base });
+    // The same budget for every strategy, whatever the number of faction pairings.
+    const jobs = Object.keys(SPARRING).flatMap((name, k) => sampleJobs(all.filter((j) => j.key[1].startsWith(`${name}:`)), strategySeeds * STRATEGY_GAMES_PER_SEED, base + k));
     const res = await play(`strategies (${level})`, jobs);
     // Per strategy, and per strategist faction (which faction's version of it is the problem).
     const agg = new Map<string, { w: number; n: number; by: Map<string, { w: number; n: number }> }>();
