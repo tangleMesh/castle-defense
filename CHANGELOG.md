@@ -7,6 +7,21 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.35.1
+
+- **Frostmark and Gravewake tuning after building duels.**
+  - **Frostmark, weaker:**
+    - Wendigos and Ancient Wendigos: less HP, damage and pulverise; the howl is now −20%.
+    - Magnataur: rarer, smaller crits and a weaker stomp.
+    - Rime Throwers: less damage.
+  - **Frostmark, stronger:** Frost Wolves.
+  - **Gravewake, weaker:**
+    - Necromancers raise their skeletons every 18 s instead of 14 s, and the skeletons last 16 s.
+    - Flesh Golem: pulverises every 4th blow.
+    - Bone Wyrm and Lich King: less damage.
+    - Vampire Lords: less lifesteal.
+  - **Gravewake, stronger:** zombies, skeletons, vampires and banshees.
+
 ## 0.35.0
 
 - **New faction: Blightroot Coven**, after the castle-fight map's corrupted race. All twelve races of the map are now in the game.

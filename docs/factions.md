@@ -145,7 +145,7 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Frostmark | Inspired by | Notes |
 |---|---|---|
 | Snowy Rocks → Icy Rocks → Glacier | snowy rocks → icy rocks → glacier | frost wolves → polar bears (cleave) → magnataurs (cleave, triple crit, stomp) |
-| Ice Claws → Frost Claws | ice claws → frost claws | wendigos that pulverise; the ancient one howls enemies weaker (−25% damage aura) |
+| Ice Claws → Frost Claws | ice claws → frost claws | wendigos that pulverise; the ancient one howls enemies weaker (−20% damage aura) |
 | Igloo → Great Igloo | igloo → modern igloo | rime throwers (fast chilling ice shards) → raging throwers (3 targets) |
 | Ice Troll Hut → Voodoo Lounge | ice troll hut → voodoo lounge | chilling casters that give nearby allies frost armour (+3 / +5) |
 | Crystal Palace | crystal palace | the ice queen: chilling magic and a frost nova every 4th spell |
