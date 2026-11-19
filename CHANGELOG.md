@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.43.1
+
+- **Multi-target attacks are limited to the attacker's own reach.**
+  - Chain lightning, storms and bouncing tower shots jump only to enemies within the attacker's range + 2 tiles.
+  - Before, each jump could reach 3.5 tiles from the last victim, so a chain could wander across a whole line of units.
+  - Multi-shot volleys already measured from the shooter.
+
 ## 0.43.0
 
 - **City of Magic works like a real polymorph, map-wide:**

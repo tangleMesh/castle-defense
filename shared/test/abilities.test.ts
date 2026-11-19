@@ -748,3 +748,19 @@ describe('Sunspire map-wide specials', () => {
     expect(revived).toBe(1);
   });
 });
+
+describe('multi-target reach', () => {
+  it("chain lightning only jumps to enemies within the caster's reach, not along a line of victims", () => {
+    const sim = newSim();
+    const caster = Object.values(UNITS).find((u) => (u.chain ?? 0) >= 3 && u.range >= 3)!;
+    const a = unit(sim, 0, caster.id, 62, 31);
+    // A line of enemies stepping away from the caster, 2 tiles apart.
+    const line = [0, 1, 2, 3, 4].map((k) => unit(sim, 1, 'iv_shieldbearer', 62 + caster.range + 2 * k, 31));
+    for (const u of line) u.hp = u.maxHp = 1e5;
+    const st = attackStats(a)!;
+    performAttack(sim, a, st, line[0], 1);
+    const reach = caster.range + 2;
+    for (const u of line) if (sim.edgeDist(a, u) > reach) expect(u.hp, `${u.x - a.x} tiles away`).toBe(1e5);
+    expect(line[0].hp).toBeLessThan(1e5);
+  });
+});

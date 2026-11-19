@@ -167,15 +167,21 @@ function bonusMult(sim: Sim, a: Entity, t: Entity): number {
  * Lightning that jumps from `first` to the nearest not-yet-hit enemy within 3.5 tiles, losing 20%
  * per jump. Returns everything it hit.
  */
+/** How far beyond its own range a chain may jump from the caster. */
+const CHAIN_REACH = 2;
+
 function chainFrom(sim: Sim, a: Entity, st: AttackStats, first: Entity, dmg: number, jumps: number, type: AttackType): Entity[] {
   const hit = [first];
   dealDamage(sim, first, dmg, type, a.owner, false, true);
   let last = first, cur = dmg;
+  // Every jump stays within reach of the caster (its range + CHAIN_REACH), not of the last
+  // victim, so a chain can't wander across the battlefield.
+  const reach = Math.max(st.range, 0.5) + CHAIN_REACH;
   for (let i = 1; i < jumps; i++) {
     cur *= 0.8;
     let next: Entity | undefined, nd = Infinity;
     for (const u of sim.hash.query(last.x, last.y, 3.5)) {
-      if (hit.includes(u) || !canTarget(sim, a, st, u)) continue;
+      if (hit.includes(u) || !canTarget(sim, a, st, u) || sim.edgeDist(a, u) > reach) continue;
       const d = Math.hypot(u.x - last.x, u.y - last.y);
       if (d < nd) { nd = d; next = u; }
     }
