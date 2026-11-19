@@ -1,4 +1,4 @@
-import type { PublicUser } from '@bc/shared';
+import { FACTION_IDS, type PublicUser } from '@bc/shared';
 import { Bot } from './bot';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -52,7 +52,7 @@ export async function fullMatchScenario(base: string, opts: { perTeam: number; b
   const log: string[] = [];
   const bots: Bot[] = [];
   for (let i = 0; i < opts.perTeam * 2; i++) {
-    const b = new Bot(base, `${opts.prefix}${i}`, i % 2 ? 'thornwild' : 'ironvow', 100 + i);
+    const b = new Bot(base, `${opts.prefix}${i}`, FACTION_IDS[i % FACTION_IDS.length], 100 + i);
     await b.register();
     await b.connect();
     bots.push(b);
