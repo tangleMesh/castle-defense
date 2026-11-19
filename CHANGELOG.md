@@ -7,6 +7,15 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.29.1
+
+- **Duskmoon tuning after building duels** (the hand-converted values had some outliers):
+  - Avatar of Vengeance: less HP, damage, lifesteal and death blast; dodges every 4th blow instead of every 3rd.
+  - Avenging Spirit: also weaker, and dodges every 5th blow.
+  - Druids and Sage Druids: less damage, and their entangle slows by 40% / 50% instead of 50% / 60%.
+  - Glaive Thrower and Huntress: slightly less damage.
+  - Ranger and Amazon: a bit stronger.
+
 ## 0.29.0
 
 - **New faction: Bloodtusk Horde**, after the castle-fight map's orc race.

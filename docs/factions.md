@@ -92,7 +92,7 @@ Trait: riveted plating, +2 armour on every Cogspark building (the map's power pl
 | Duskmoon | Inspired by | Notes |
 |---|---|---|
 | Hunters' Hall → Rangers' Hall → Amazons' Hall | hunter's hall → ranger's → amazon's hall | archers; rangers and amazons hit 3 / 5 enemies per volley (multi-shot) |
-| Moon Shrine → Moon Altar | moon shrine → moon altar | druids whose bolts entangle (damage over time, 50–60% slow); the sage's roots grip groups |
+| Moon Shrine → Moon Altar | moon shrine → moon altar | druids whose bolts entangle (damage over time, 40–50% slow); the sage's roots grip groups |
 | House of Shadows → Guild of Shadows | house → guild of shadows | assassins: evasion and a 3× / 4× backstab (first blow) |
 | Pillaged Hut → Scorched Mansion | pillaged hut → scorched mansion | avenging spirits: armour-piercing, evasive, lifesteal; the avatar explodes when it falls |
 | Glaive Works | night elf siege factory | glaive thrower: 9-tile siege, the glaive bounces between 4 enemies |
