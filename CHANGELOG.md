@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.44.0+8 · balance
+
+- **First balancer run with all twelve factions,** using the 30-minute mode.
+- **Unit tuning:** duel outliers adjusted, for example Tidecall's murlocs and Royal Guards, Gravewake's Flesh Golem, Ironvow Militia and Mangonel.
+- **Faction power:** values for every faction, and the Normal bot gets 0.86 income.
+- **Not converged yet:** the final check (152 games) still has Gravewake at 72%, Frostmark 62% and Thornwild 63%, with Doomforge at 32% and Blightroot 39%. Each run moves a faction at most about 12%, so more runs follow.
+
 ## 0.44.0
 
 - **Statistics page after the final round:**
