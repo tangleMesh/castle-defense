@@ -25,9 +25,9 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
-  AI_LEVELS, BUILDINGS, COMMITTED_TUNING, FACTION_IDS, NEUTRAL_TUNING, SPARRING, UNITS, duelJobs, factionMatrix, formatReport, ladderMatrix,
+  AI_LEVELS, BUILDINGS, COMMITTED_TUNING, FACTION_IDS, NEUTRAL_TUNING, SPARRING, UNITS, compKey, compositions, duelJobs, formatReport, ladderMatrix,
   fitLogistic, fitPower, fitTarget, strategyMatrix, summarize, summarizeLadder, tierOf, wilson,
-  type AiLevel, type FitPoint, type MatrixJob, type MatrixReport, type Rate, type Tuning,
+  type AiLevel, type FactionId, type FitPoint, type LabPlayer, type MatrixJob, type MatrixReport, type Rate, type Tuning,
 } from '@bc/shared';
 import { LabPool, progress } from './pool';
 
@@ -83,7 +83,7 @@ function sampleJobs<T>(jobs: T[], n: number, seed: number): T[] {
   return a.slice(0, n);
 }
 /** Game budgets of the 4-faction runs these stages were designed with. */
-const LADDER_GAMES_PER_SEED = 32, STRATEGY_GAMES_PER_SEED = 32, DUEL_BUDGET = quick ? 1200 : 3600;
+const LADDER_GAMES_PER_SEED = 32, STRATEGY_GAMES_PER_SEED = 32, DUEL_BUDGET = quick ? 600 : 2000;
 
 /** End decided games early (shared/src/lab/match.ts `decided`): the balancer only needs winners. */
 const adjudicate = !flag('no-adjudicate');
@@ -120,23 +120,45 @@ async function measureFactions(label: string, gamesPerSize: number, opts: { mirr
   const base = freshSeeds();
   let r = ((opts.subset ?? 0) * 7919 + 17) >>> 0;
   const rnd = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
-  const canon = (j: MatrixJob) => [...j.key].sort().join('|');
   const jobs: MatrixJob[] = [];
+  const team = (c: FactionId[]): LabPlayer[] => c.map((faction) => ({ faction, level: 'hard' as AiLevel }));
+  const pushPair = (a: FactionId[], b: FactionId[], seeds: number, seedBase: number) => {
+    for (let k = 0; k < seeds; k++) for (const swap of [false, true]) {
+      const [x, y] = swap ? [b, a] : [a, b];
+      jobs.push({ teams: [team(x), team(y)], seed: seedBase + jobs.length * 7919 + k, key: [compKey(x), compKey(y)] });
+    }
+  };
   sizes.forEach((size, si) => {
     const sizeBase = base + si * 100_003;
-    let keys = [...new Set(factionMatrix({ sizes: [size], level: 'hard', seeds: 1 }).filter((j) => j.key[0] !== j.key[1]).map(canon))];
-    // Steps play a sample of pairings; verification plays the full grid while it fits the budget
-    // (with four factions, 4v4 alone has ~600 pairings), else a fresh random sample of it.
+    // Line-ups of this size; with a dozen factions 4v4 alone has ~1,400 of them (~930k pairings),
+    // so pairings are drawn at random instead of enumerating the grid.
+    const comps = compositions(size);
+    const total = (comps.length * (comps.length - 1)) / 2;
+    // Steps play a sample of pairings; verification plays the full grid while it fits the budget,
+    // else a fresh random sample of it.
     const limit = opts.subset !== undefined ? pairingsPerSize : Math.max(pairingsPerSize, Math.ceil(gamesPerSize / 2));
-    if (keys.length > limit) {
-      if (opts.subset === undefined) r = (base + si * 7919) >>> 0;
-      for (let i = keys.length - 1; i > 0; i--) { const t = Math.floor(rnd() * (i + 1)); [keys[i], keys[t]] = [keys[t], keys[i]]; }
-      keys = keys.slice(0, limit);
+    if (opts.subset === undefined) r = (base + si * 7919) >>> 0;
+    const pairs: Array<[number, number]> = [];
+    if (total <= limit) {
+      for (let i = 0; i < comps.length; i++) for (let j = i + 1; j < comps.length; j++) pairs.push([i, j]);
+    } else {
+      const seen = new Set<number>();
+      while (pairs.length < limit) {
+        const i = Math.floor(rnd() * comps.length), j = Math.floor(rnd() * comps.length);
+        if (i === j) continue;
+        const [lo, hi] = i < j ? [i, j] : [j, i];
+        if (seen.has(lo * comps.length + hi)) continue;
+        seen.add(lo * comps.length + hi); pairs.push([lo, hi]);
+      }
     }
-    const n = Math.max(1, Math.round(gamesPerSize / (2 * keys.length)));
-    jobs.push(...factionMatrix({ sizes: [size], level: 'hard', seeds: n, seedBase: sizeBase }).filter((j) => j.key[0] !== j.key[1] && keys.includes(canon(j))));
-    // Mirror matches only feed the side check, so fewer of them are enough.
-    if (opts.mirrors) jobs.push(...factionMatrix({ sizes: [size], level: 'hard', seeds: Math.max(1, Math.round(n / 3)), seedBase: sizeBase + 50_000 }).filter((j) => j.key[0] === j.key[1]));
+    const n = Math.max(1, Math.round(gamesPerSize / (2 * pairs.length)));
+    for (const [i, j] of pairs) pushPair(comps[i], comps[j], n, sizeBase);
+    // Mirror matches only feed the side check, so fewer of them (and of the line-ups) are enough.
+    if (opts.mirrors) {
+      const order = comps.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) { const t = Math.floor(rnd() * (i + 1)); [order[i], order[t]] = [order[t], order[i]]; }
+      for (const i of order.slice(0, Math.max(4, Math.ceil(limit / 4)))) pushPair(comps[i], comps[i], Math.max(1, Math.round(n / 3)), sizeBase + 50_000);
+    }
   });
   const res = await play(label, jobs);
   const bySize = new Map<number, MatrixReport>();
