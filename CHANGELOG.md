@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.42.2
+
+- **Bloodtusk kodos weaker:**
+  - Kodo HP 1050 → 890.
+  - Spellbreaker, War Drum and Shield Bearer riders: HP 1250 → 1060, damage 25 → 22.
+  - War Drum aura +20% → +15% damage.
+  - Shield Bearer aura +4 → +3 armour.
+
 ## 0.42.1
 
 - **Warden's Crossbow is much stronger and cheaper:** 150 gold instead of 200, and 100 pierce damage per bolt (one per second) instead of 30.

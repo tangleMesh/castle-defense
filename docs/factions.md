@@ -116,7 +116,7 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 |---|---|---|
 | Fighters' Hall → Veterans' Hall → Axemasters' Hall | fighters' hall → advanced → superior | grunts; veterans crit every 4th blow; axemasters crit 2.5× and pulverise every 3rd |
 | Troll Hut → Trappers' Hut → Forest Trappers' Hole | troll hut → trapper's hut → forest trapper's hole | axe-throwing trolls that rage below half health (twice as fast); trappers ensnare (stun), the forest trapper catches groups and regenerates |
-| Kodo Pen → Spellbreaker / War Drum / Shield Bearer Pen | kodo farm and its three rider upgrades | tanky kodos; riders with 60% magic resistance, a +20% damage aura or a +4 armour aura |
+| Kodo Pen → Spellbreaker / War Drum / Shield Bearer Pen | kodo farm and its three rider upgrades | tanky kodos; riders with 60% magic resistance, a +15% damage aura or a +3 armour aura |
 | Wyvern Roost | falcon-clan encampment | wyvern riders with poisoned spears |
 | Shaman Tent → Spirit Lodge | shamanic tent → infostealer's place | casters with a damage aura; spirit walkers call lightning every 4th spell |
 | Orc Siege Works | orcish siege factory | catapults with burning splash shells |
