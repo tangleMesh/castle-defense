@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitLogistic, fitTarget, logit, type FitPoint } from '../src/lab/fit';
+import { fitLogistic, fitPower, fitTarget, logit, type FitPoint } from '../src/lab/fit';
 
 describe('balancer logistic fit', () => {
   it('recovers intercepts and slope from plenty of data', () => {
@@ -19,5 +19,24 @@ describe('balancer logistic fit', () => {
     expect(f.b).toBeCloseTo(30, 0);
     expect(f.a[0]).toBeCloseTo(logit(0.6), 1);
     expect(fitTarget(f, 0, 0.5)).toBeCloseTo(-logit(0.6) / 30, 2);
+  });
+});
+
+describe('fitPower', () => {
+  it('never weakens a faction that keeps losing, even when noise inverts the slope', () => {
+    // Four factions; group 2 loses at every power it was tried with, group 1 wins; the noise is
+    // such that a free fit finds a negative slope.
+    const pts: FitPoint[] = [
+      { group: 0, x: 0, rate: 0.58, n: 60 }, { group: 1, x: 0, rate: 0.79, n: 60 }, { group: 2, x: 0, rate: 0.26, n: 60 }, { group: 3, x: 0, rate: 0.37, n: 60 },
+      { group: 0, x: -0.03, rate: 0.61, n: 60 }, { group: 1, x: -0.04, rate: 0.56, n: 60 }, { group: 2, x: 0.05, rate: 0.22, n: 60 }, { group: 3, x: 0.02, rate: 0.6, n: 60 },
+      { group: 0, x: -0.05, rate: 0.54, n: 60 }, { group: 1, x: -0.08, rate: 0.49, n: 60 }, { group: 2, x: 0.11, rate: 0.42, n: 60 }, { group: 3, x: 0.02, rate: 0.56, n: 60 },
+      { group: 0, x: 0.01, rate: 0.6, n: 60 }, { group: 1, x: -0.02, rate: 0.58, n: 60 }, { group: 2, x: 0.05, rate: 0.33, n: 60 }, { group: 3, x: -0.04, rate: 0.46, n: 60 },
+      { group: 0, x: 0.04, rate: 0.64, n: 60 }, { group: 1, x: 0.01, rate: 0.49, n: 60 }, { group: 2, x: -0.05, rate: 0.34, n: 60 }, { group: 3, x: -0.01, rate: 0.56, n: 60 },
+    ];
+    const f = fitPower(pts, 4);
+    expect(f.b).toBeGreaterThan(10);
+    // The loser's target power lies above where it was last measured, the winner's below.
+    expect(-f.a[2] / f.b).toBeGreaterThan(-0.05);
+    expect(-f.a[1] / f.b).toBeLessThan(0.01);
   });
 });

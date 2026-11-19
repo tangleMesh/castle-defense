@@ -46,6 +46,16 @@ export function fitLogistic(points: FitPoint[], groups: number, prior: { b0: num
   return { a: theta.slice(0, groups), b: theta[groups] };
 }
 
+/**
+ * The balancer's faction-power fit: a shared slope with prior 30 ± 15. A flat or inverted fitted
+ * slope is noise (many factions, few games each); the intercepts fitted with it would point the
+ * wrong way (a losing faction weakened further), so the fit is redone with the slope held at 30.
+ */
+export function fitPower(points: FitPoint[], groups: number): Fit {
+  const fit = fitLogistic(points, groups, { b0: 30, bSd: 15 });
+  return fit.b >= 12 ? fit : fitLogistic(points, groups, { b0: 30, bSd: 0.5 });
+}
+
 /** Knob value at which `group` is predicted to win `target`. */
 export function fitTarget(fit: Fit, group: number, target: number): number {
   return (logit(target) - fit.a[group]) / fit.b;

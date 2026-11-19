@@ -26,7 +26,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
   AI_LEVELS, BUILDINGS, COMMITTED_TUNING, FACTION_IDS, NEUTRAL_TUNING, SPARRING, UNITS, duelJobs, factionMatrix, formatReport, ladderMatrix,
-  fitLogistic, fitTarget, strategyMatrix, summarize, summarizeLadder, tierOf, wilson,
+  fitLogistic, fitPower, fitTarget, strategyMatrix, summarize, summarizeLadder, tierOf, wilson,
   type AiLevel, type FitPoint, type MatrixJob, type MatrixReport, type Rate, type Tuning,
 } from '@bc/shared';
 import { LabPool, progress } from './pool';
@@ -268,8 +268,8 @@ async function stageFactions(): Promise<FactionMeasure> {
     if (n) points.push({ group: g, x: strength(f), rate: clamp(m.overall[f], 0.02, 0.98), n });
   });
   const step = () => {
-    const fit = fitLogistic(points, FACTION_IDS.length, { b0: 30, bSd: 15 });
-    const b = Math.max(fit.b, 8); // never trust a flat or inverted slope
+    const fit = fitPower(points, FACTION_IDS.length);
+    const b = fit.b;
     const before = { ...lp };
     FACTION_IDS.forEach((f, g) => { lp[f] += clamp(-fit.a[g] / b - strength(f), -0.06, 0.06); });
     setPower();
