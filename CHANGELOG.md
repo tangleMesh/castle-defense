@@ -7,6 +7,20 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.31.1
+
+- **Bloodtusk and Sunspire tuning after building duels.** The hand-converted values had clear outliers.
+  - **Bloodtusk, weaker:**
+    - Forest Trapper: less damage, smaller nets, less regeneration.
+    - Axemaster: double crits every 4th blow instead of 2.5× every 3rd.
+    - Troll Berserker: less damage.
+  - **Bloodtusk, stronger:** grunts, veterans, kodos and the kodo riders.
+  - **Sunspire, weaker:**
+    - Elder Blademaster: 2.5× crit every 4th strike.
+    - Blood Mage: less damage.
+    - Sorceress and Wizard: weaker lightning and heals.
+    - Master Archer, Dragonhawk Rider and Archer: slightly less damage.
+
 ## 0.31.0
 
 - **New faction: Frostmark Clans**, after the castle-fight map's northern race.
