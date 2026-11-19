@@ -7,6 +7,20 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.36.1
+
+- **Doomforge, Tidecall and Blightroot tuning after building duels.**
+  - **Tidecall, weaker:**
+    - −10% HP and damage: Murloc Warriors, Murloc Champions, the Ancient Hydra and its heads, and Royal Guards.
+    - −5% HP and damage: Spitters, Sirens, Assassins, Guardians and Winged Serpents.
+  - **Doomforge:**
+    - The Chaos Champion has −14% HP and damage.
+    - The Twins and the Red Dragon have −5%.
+    - The Satyr has +7%.
+  - **Blightroot:**
+    - The Corrupted Annihilator has −14% HP and damage.
+    - The Corrupted Ent has +7%.
+
 ## 0.36.0
 
 - **Every faction has its own builder**, in its race's style:
