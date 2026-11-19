@@ -495,3 +495,7 @@ button.mode { cursor: pointer; }
 
 .tip-upgrade { color: #9ad0ff; }
 .upgrade-hint { color: #9ad0ff; font-size: 12.5px; }
+
+.chat-line .chat-scope { color: var(--dim); font-size: 0.85em; }
+.chat-line.all .chat-scope { color: #f0c060; }
+.chat-input.all { border-color: #f0c060; }

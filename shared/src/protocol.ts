@@ -46,7 +46,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   /** The client has loaded the battlefield (the round's start countdown waits for everyone). */
   z.object({ type: z.literal('match.loaded') }),
   z.object({ type: z.literal('game.leave') }),
-  z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(300) }),
+  // In a match: `all` reaches every player (enemies too); otherwise only the own team.
+  z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(300), all: z.boolean().optional() }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -107,5 +108,5 @@ export type ServerMessage =
   | { type: 'match.snapshot'; snap: Snapshot }
   | { type: 'match.paused'; paused: boolean; reason: string; waitingFor: string[]; votes: string[]; resumeIn?: number }
   | { type: 'match.end'; reason: 'finished' | 'saved' | 'left'; winner?: 0 | 1; score?: [number, number] }
-  | { type: 'chat'; from: string; text: string; scope: 'lobby' | 'match' }
+  | { type: 'chat'; from: string; text: string; scope: 'lobby' | 'match' | 'team' }
   | { type: 'error'; message: string };

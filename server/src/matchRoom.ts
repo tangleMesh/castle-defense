@@ -116,9 +116,15 @@ export class MatchRoom {
         if (conn.userId !== this.o.hostId) return conn.send({ type: 'error', message: 'Only the host can save & exit' });
         void this.saveAndClose();
         return;
-      case 'chat':
-        this.broadcast({ type: 'chat', from: conn.username, text: msg.text, scope: 'match' });
+      case 'chat': {
+        // Shift+Enter: everyone (scope 'match'); Enter: the sender's team only.
+        if (msg.all) { this.broadcast({ type: 'chat', from: conn.username, text: msg.text, scope: 'match' }); return; }
+        const team = this.o.players.find((p) => p.userId === conn.userId)?.team;
+        const mates = new Set(this.o.players.filter((p) => p.team === team).map((p) => p.userId));
+        const json = JSON.stringify({ type: 'chat', from: conn.username, text: msg.text, scope: 'team' } satisfies ServerMessage);
+        for (const [userId, c] of this.conns) if (mates.has(userId)) c.sendRaw(json);
         return;
+      }
     }
   }
 

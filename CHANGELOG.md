@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.39.0
+
+- **In-game chat with team and all channels:**
+  - **Enter:** chats with your allies.
+  - **Shift+Enter:** chats with every player in the match, enemies included.
+  - **Labels:** messages are tagged [Allies] or [All], and the input box shows which channel you're typing to.
+
 ## 0.38.0
 
 - **New game mode: Mirror.** Each round both teams get the same random factions, never one faction twice in a team.

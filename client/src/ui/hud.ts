@@ -99,7 +99,7 @@ export class Hud {
       session.on('selection', () => { this.sellArmed = 0; this.refreshCard(true); this.refreshInfo(true); }),
       session.on('pause', () => this.renderPause()),
       session.on('end', (m) => this.renderEnd(m)),
-      session.on('chat', (m) => this.addChat(m.from, m.text)),
+      session.on('chat', (m) => this.addChat(m.from, m.text, m.scope)),
     );
     const onKey = (e: KeyboardEvent) => this.onKey(e);
     const onKeyUp = (e: KeyboardEvent) => {
@@ -173,13 +173,13 @@ export class Hud {
     ));
     this.msg = h('div', { class: 'hud-msg' });
     this.chatLog = h('div', { class: 'chat-log' });
-    this.chatInput = h('input', { class: 'chat-input', maxLength: 300, placeholder: 'Say something… (Enter to send, Esc to cancel)' });
+    this.chatInput = h('input', { class: 'chat-input', maxLength: 300, placeholder: 'To allies… (Enter to send, Esc to cancel)' });
     this.chatInput.hidden = true;
     this.chatInput.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter') {
         const text = this.chatInput.value.trim();
-        if (text) this.sendRaw({ type: 'chat', text });
+        if (text) this.sendRaw({ type: 'chat', text, all: this.chatAll });
         this.chatInput.value = '';
         this.chatInput.hidden = true;
         this.chatInput.blur();
@@ -803,8 +803,18 @@ export class Hud {
     this.message(text, 'error');
   }
 
-  private addChat(from: string, text: string) {
-    const line = h('div', { class: 'chat-line' }, h('b', null, `${from}: `), text);
+  /** Opens the chat input: to allies, or (Shift+Enter) to everyone. */
+  private chatAll = false;
+  private openChat(all: boolean) {
+    this.chatAll = all;
+    this.chatInput.placeholder = all ? 'To everyone, enemies too… (Enter to send, Esc to cancel)' : 'To allies… (Enter to send, Esc to cancel)';
+    this.chatInput.classList.toggle('all', all);
+    this.chatInput.hidden = false;
+    this.chatInput.focus();
+  }
+
+  private addChat(from: string, text: string, scope: 'lobby' | 'match' | 'team' = 'match') {
+    const line = h('div', { class: `chat-line ${scope === 'team' ? 'team' : 'all'}` }, h('span', { class: 'chat-scope' }, scope === 'team' ? '[Allies] ' : '[All] '), h('b', null, `${from}: `), text);
     this.chatLog.append(line);
     while (this.chatLog.children.length > 8) this.chatLog.firstChild!.remove();
     setTimeout(() => line.classList.add('fade'), 12000);
@@ -975,7 +985,7 @@ export class Hud {
         h('div', null, 'T: rescue strike · F1/Space: builder · Backspace: castle'),
         h('div', null, 'B: castle shop (builder items)'),
         h('div', null, 'Arrows / screen edge / middle-drag: camera · Wheel: zoom · Alt: show all building health bars · Hold Tab: scoreboard'),
-        h('div', null, 'Enter: chat'),
+        h('div', null, 'Enter: team chat · Shift+Enter: chat with everyone'),
         h('div', null, 'Fog of war: you see your own base, plus 12 tiles around each of your team\'s units'),
       ),
     ));
@@ -994,7 +1004,8 @@ export class Hud {
       if (this.board.hidden && this.session.latest) { this.board.hidden = false; this.renderBoard(this.session.latest); }
       return;
     }
-    if (e.key === 'Enter') { this.chatInput.hidden = false; this.chatInput.focus(); e.preventDefault(); return; }
+    // Enter: chat with your team; Shift+Enter: with everyone, enemies included.
+    if (e.key === 'Enter') { this.openChat(e.shiftKey); e.preventDefault(); return; }
     if (e.key === 'F10') { this.toggleMenu(); e.preventDefault(); return; }
     if (e.key === 'Escape') {
       if (!this.menu.hidden) this.toggleMenu(false);
