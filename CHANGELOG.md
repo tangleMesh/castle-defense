@@ -7,6 +7,16 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.37.0
+
+- **Economy:**
+  - Every round starts with 150 gold instead of 100.
+  - Warden's Crossbow costs 200 instead of 540, so it is a cheap early pick.
+- **Repair is a bit slower:**
+  - A full repair of a building takes 9× its build time instead of 8×.
+  - Builders repair the castle at 11 HP/s instead of 12.
+- **Fix: a unit killed in the same tick as its own blow is due now still strikes,** whichever side the game handles first that tick. Before, two archers finishing each other off could leave one standing depending on processing order.
+
 ## 0.36.1
 
 - **Doomforge, Tidecall and Blightroot tuning after building duels.**

@@ -23,26 +23,34 @@ function play(levels: ['easy' | 'normal' | 'hard', 'easy' | 'normal' | 'hard'], 
 
 describe('AI players', () => {
   it('normal and hard bots build anti-air against a flyer army', () => {
-    // Thornwild hard brain biased to pure flyers (moths) against an Ironvow bot.
-    for (const level of ['normal', 'hard'] as const) {
+    // Thornwild hard brain biased to pure flyers (moths) against an Ironvow bot. What the bot built
+    // before it saw a flyer depends on its opening (and the start gold); the test is its reaction:
+    // anti-air among its first two spawners once flyers are on the field, and several overall.
+    for (const level of ['normal', 'hard'] as const) for (const seed of [1, 2, 3]) {
       const sim = Sim.create({ countdownTicks: 0,
         players: [
           { userId: makeBotId(level, 'a'), name: 'a', team: 0, faction: 'ironvow' },
           { userId: makeBotId('hard', 'b'), name: 'b', team: 1, faction: 'thornwild' },
         ],
-        bestOf: 1, seed: 1,
+        bestOf: 1, seed,
       });
-      const ais = [new AiPlayer(0, level, 32), new AiPlayer(1, 'hard', 39, { bias: { air: 10 } })];
+      const ais = [new AiPlayer(0, level, 31 + seed), new AiPlayer(1, 'hard', 38 + seed, { bias: { air: 10 } })];
+      let before: Set<number> | null = null;
       while (sim.state.phase === 'playing' && sim.state.tick < TICK_RATE * 60 * 9) {
         const cmds: PlayerCommand[] = [];
         for (const ai of ais) for (const cmd of ai.update(sim)) cmds.push({ player: ai.player, cmd });
         sim.step(cmds);
+        if (!before && sim.state.entities.some((e) => e.team === 1 && e.kind === 'unit' && UNITS[e.type].air)) before = new Set(sim.playerBuildings(0).map((e) => e.id));
       }
-      const spawners = sim.playerBuildings(0).map((e) => BUILDINGS[e.type].spawn).filter((sp) => !!sp);
-      const aa = spawners.filter((sp) => UNITS[sp!.unit].targetsAir || UNITS[sp!.unit].air).length;
-      expect(aa, `${level}: ${aa} of ${spawners.length} spawners shoot up`).toBeGreaterThanOrEqual(Math.ceil(spawners.length / 2));
+      expect(before, 'the flyer army showed up').not.toBeNull();
+      const isAa = (id: string) => { const sp = BUILDINGS[id].spawn; return !!sp && !!(UNITS[sp.unit].targetsAir || UNITS[sp.unit].air); };
+      const after = sim.playerBuildings(0).filter((e) => !before!.has(e.id) && BUILDINGS[e.type].spawn).map((e) => e.type);
+      const all = sim.playerBuildings(0).map((e) => e.type).filter(isAa);
+      expect(after.slice(0, 2).some(isAa), `${level} #${seed}: built ${after.join(', ')} after the first flyer`).toBe(true);
+      // Normal counters less eagerly than hard.
+      expect(all.length, `${level} #${seed}: anti-air spawners`).toBeGreaterThanOrEqual(level === 'hard' ? 2 : 1);
     }
-  }, 60_000);
+  }, 120_000);
 
   it('encodes the difficulty in the bot id', () => {
     expect(isBotId(makeBotId('hard', 'x'))).toBe(true);

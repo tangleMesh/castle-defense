@@ -342,7 +342,8 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   if (e.hp <= 0) {
     // Killed this tick: its last blow still lands (no movement, no regeneration).
     const st = attackStats(e)!, t = sim.get(e.targetId);
-    if (!e.cd && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg * (1 + modsOf(sim, e.id).dmgMalus));
+    // Its own turn would have counted the cooldown down first: a blow due this very tick still lands.
+    if ((e.cd ?? 0) <= 1 && !e.stun && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg * (1 + modsOf(sim, e.id).dmgMalus));
     return;
   }
   const st = attackStats(e)!;

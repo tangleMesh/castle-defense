@@ -12,8 +12,8 @@ const newSim = () => Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 5
 const buy = (sim: Sim, item: string, player = 0) => sim.step([{ player, cmd: { c: 'buy', item } }]);
 
 describe('builder items', () => {
-  it('are expensive late-game purchases', () => {
-    for (const i of ITEMS) expect(i.cost, i.id).toBeGreaterThanOrEqual(420);
+  it('are expensive late-game purchases (the crossbow is a cheap early pick)', () => {
+    for (const i of ITEMS) expect(i.cost, i.id).toBeGreaterThanOrEqual(i.id === 'crossbow' ? 200 : 420);
   });
 
   it('buying costs gold, refuses duplicates, a full bag and empty purses', () => {

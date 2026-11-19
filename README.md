@@ -18,7 +18,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
   - *Tidecall* (naga) fights with regenerating murlocs in pairs, naga guardians, sirens with lobsters, dragon turtles, winged serpents and an elite hydra. It has no tower, but an oracle that turns enemies, an earthquake pyramid and a tidal guardian whose tsunamis sweep the field.
   - *Blightroot* (corrupted) fields treants whose blows weaken, void walkers that rot armour, felhounds, infernal machines that detonate, drakes and an incubus, with tentacles from the deep, a well of pain and an Eye of Corruption that strips every enemy's armour.
   - *Cogspark* (mechanical) fields flamegunners, plated tanks, rotorcraft, golems and suicide goblins, with shield generators, a bouncing energy tower and scrap heaps that mend buildings.
-- **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 8× the build time, about 12 HP/s on a tower). The builder can also repair your castle (select it or right-click it): 12 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
+- **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 9× the build time, about 11 HP/s on a tower). The builder can also repair your castle (select it or right-click it): 11 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
 - **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
 - **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
   - *Horn of Valor* (660): +20% damage for every unit of your team.
@@ -27,11 +27,11 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
   - *Pathfinder Boots* (420): your team's units move 15% faster, your builder 30%.
   - *War Drum* (720): every spawn building of your team trains units 15% faster.
   - *Bulwark Seal* (480): +4 armor for every building of your team and the castle.
-  - *Warden's Crossbow* (540): your builder shoots nearby enemy units (it stays invulnerable).
+  - *Warden's Crossbow* (200): your builder shoots nearby enemy units (it stays invulnerable).
   - *Mason's Hammer* (420): every building of your team within 6 tiles of your builder regains 5 HP/s, for free.
 
   The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long and they can afford them.
-- **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 100 gold, enough for one cheap spawn building.
+- **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 150 gold, enough for one cheap spawn building and a head start on the next.
 - **Fast rounds** (about 5–7 minutes): castles have 8000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 24×24 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
 - **Map**: 110×40 tiles, castle to castle from left to right. Each team builds in a 30-tile-wide zone at its end; the 48-tile neutral middle is split into three lanes by rock outcrops.
