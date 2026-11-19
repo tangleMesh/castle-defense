@@ -1,4 +1,4 @@
-import { AI_LEVELS, AI_LEVEL_NAMES, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
+import { AI_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
 import { builderPortrait } from './portraits';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
 import type { Socket } from '../net/socket';
@@ -71,6 +71,7 @@ export class LobbyView {
         h('h1', { class: 'title small' }, 'Castle Defense'),
         h('div', { class: 'me' },
           h('b', null, this.user.username),
+          h('span', { class: 'elo-badge', title: `Elo rating · peak ${s.peakRating ?? START_RATING}` }, `Elo ${s.rating ?? START_RATING}`),
           h('span', { class: 'dim' }, ` · ${s.wins}W ${s.losses}L · ${s.roundsWon} rounds won · ${s.unitsKilled} kills · ${s.rescueStrikesUsed} strikes`),
           h('button', { class: 'btn small ghost', onclick: () => this.onLogout() }, 'Sign out'),
         ),
@@ -260,14 +261,29 @@ export class LobbyView {
     );
   }
 
+  /** The account's rating over its recent matches (oldest left), as a small SVG line. */
+  private ratingChart() {
+    const pts = this.history.map((m) => m.players.find((p) => p.userId === this.user.id)?.ratingAfter).filter((v): v is number => v !== undefined).reverse();
+    if (pts.length < 2) return null;
+    const W = 260, H = 54, lo = Math.min(...pts) - 5, hi = Math.max(...pts) + 5;
+    const xy = pts.map((v, i) => `${((i / (pts.length - 1)) * W).toFixed(1)},${(H - ((v - lo) / (hi - lo)) * H).toFixed(1)}`);
+    const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="elo-chart"><polyline points="${xy.join(' ')}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+    const el = h('div', { class: 'elo-progress', title: `Rating after each of your last ${pts.length} rated matches` });
+    el.innerHTML = svg;
+    return h('div', null, h('div', { class: 'dim small' }, `Rating ${pts[0]} → ${pts[pts.length - 1]} over ${pts.length} matches`), el);
+  }
+
   private renderHistory() {
     return h('section', { class: 'panel-box' },
       h('h2', null, 'Recent battles'),
+      this.ratingChart(),
       this.history.length ? this.history.slice(0, 8).map((m) => {
         const me = m.players.find((p) => p.userId === this.user.id);
         const won = me && me.team === m.winnerTeam;
+        const d = me?.ratingAfter !== undefined && me.ratingBefore !== undefined ? me.ratingAfter - me.ratingBefore : null;
         return h('div', { class: 'hist-row' },
           h('span', { class: won ? 'win' : 'lose' }, won ? 'Victory' : 'Defeat'),
+          d !== null ? h('span', { class: d >= 0 ? 'elo-up' : 'elo-down' }, `${d >= 0 ? '+' : ''}${d}`) : null,
           h('span', null, `${m.score[0]} : ${m.score[1]}`),
           h('span', { class: 'dim' }, m.players.filter((p) => p.userId !== this.user.id).map((p) => p.name).join(', ')),
           h('span', { class: 'dim small' }, timeAgo(m.endedAt)),

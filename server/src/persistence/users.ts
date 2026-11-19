@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
-import type { PublicUser, UserStats } from '@bc/shared';
+import { START_RATING, type PublicUser, type UserStats } from '@bc/shared';
 import type { Collections, UserDoc } from './db';
 
-export const EMPTY_STATS: UserStats = { wins: 0, losses: 0, roundsWon: 0, unitsKilled: 0, rescueStrikesUsed: 0, matches: 0 };
+export const EMPTY_STATS: UserStats = { wins: 0, losses: 0, roundsWon: 0, unitsKilled: 0, rescueStrikesUsed: 0, matches: 0, rating: START_RATING, peakRating: START_RATING };
 
 export function toPublic(u: UserDoc): PublicUser {
   return { id: u._id!.toHexString(), username: u.username, stats: { ...EMPTY_STATS, ...u.stats } };
@@ -55,5 +55,11 @@ export class UserRepo {
     const $inc: Record<string, number> = {};
     for (const [k, v] of Object.entries(inc)) if (v) $inc[`stats.${k}`] = v;
     if (Object.keys($inc).length) await this.c.users.updateOne({ _id: new ObjectId(userId) }, { $inc });
+  }
+
+  /** Sets the Elo rating (and raises the peak when it is a new high). */
+  async setRating(userId: string, rating: number) {
+    if (!ObjectId.isValid(userId)) return;
+    await this.c.users.updateOne({ _id: new ObjectId(userId) }, { $set: { 'stats.rating': rating }, $max: { 'stats.peakRating': rating } });
   }
 }

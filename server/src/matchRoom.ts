@@ -1,6 +1,6 @@
 import {
-  AiPlayer, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats,
-  type ClientMessage, type MatchInitPlayer, type PlayerCommand, type ServerMessage, type Sim, type SimEvent,
+  AiPlayer, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats, BOT_RATING, START_RATING, eloDelta,
+  type ClientMessage, type FactionId, type MatchInitPlayer, type MatchStats, type PlayerCommand, type ServerMessage, type Sim, type SimEvent,
 } from '@bc/shared';
 import type { Conn } from './conn';
 import type { Persistence } from './persistence';
@@ -252,32 +252,69 @@ export class MatchRoom {
     // Let every client play the castle-collapse cinematic before the result screen
     // (scaled with the tick speed so accelerated test matches don't wait).
     await new Promise((r) => setTimeout(r, CASTLE_FALL_SECONDS * 1000 * Math.min(1, this.o.tickMs / (1000 / TICK_RATE))));
-    this.broadcast({ type: 'match.end', reason: 'finished', winner, score: [s.score[0], s.score[1]] });
     const { persistence: db } = this.o;
+    // Elo: accounts move by the team result; bots count with a fixed rating per level.
+    const ratings = new Map<string, number>();
+    try {
+      for (const p of s.players) {
+        const lvl = botLevel(p.userId);
+        if (lvl) ratings.set(p.userId, BOT_RATING[lvl]);
+        else ratings.set(p.userId, (await db.users.byId(p.userId))?.stats?.rating ?? START_RATING);
+      }
+    } catch (err) {
+      console.error('[match] failed to read ratings', err);
+    }
+    const team = (t: 0 | 1) => s.players.filter((p) => p.team === t).map((p) => ratings.get(p.userId) ?? START_RATING);
+    const delta0 = eloDelta(team(0), team(1), winner === 0);
+    const after = (p: (typeof s.players)[number]) => (ratings.get(p.userId) ?? START_RATING) + (p.team === 0 ? delta0 : -delta0);
+    const stats: MatchStats = {
+      mode: s.mode ?? 'standard',
+      rounds: s.rounds.map((r) => ({
+        winner: r.winner, seconds: Math.round(r.ticks / TICK_RATE),
+        players: (r.players ?? []).map((x) => ({ kills: x.kills, lost: x.lost, goldEarned: x.goldEarned, castleDmg: x.castleDmg, faction: x.faction })),
+      })),
+      players: s.players.map((p, i) => {
+        const t = matchStats(p);
+        const human = !isBotId(p.userId);
+        return {
+          userId: p.userId, name: p.name, team: p.team, ...(human ? {} : { bot: botLevel(p.userId) ?? undefined }),
+          factions: s.rounds.map((r) => r.players?.[i]?.faction ?? p.faction),
+          kills: t.kills, lost: t.lost, goldEarned: Math.floor(t.goldEarned), castleDmg: Math.round(t.castleDmg), strikes: t.strikes,
+          ...(human ? { rating: { before: ratings.get(p.userId) ?? START_RATING, after: after(p) } } : {}),
+        };
+      }),
+    };
+    this.broadcast({ type: 'match.end', reason: 'finished', winner, score: [s.score[0], s.score[1]], stats });
     try {
       while (this.saving) await new Promise((r) => setTimeout(r, 10));
       await db.matches.insert({
         _id: this.id,
         // Whole-match totals (the in-game scoreboard shows the current round only).
-        players: s.players.map((p) => {
-          const t = matchStats(p);
-          return { userId: p.userId, name: p.name, team: p.team, faction: p.faction, kills: t.kills, strikes: t.strikes, goldEarned: t.goldEarned };
-        }),
+        players: stats.players.map((p) => ({
+          userId: p.userId, name: p.name, team: p.team, faction: s.players.find((x) => x.userId === p.userId)!.faction,
+          kills: p.kills, strikes: p.strikes, goldEarned: p.goldEarned, lost: p.lost, castleDmg: p.castleDmg,
+          factions: p.factions as FactionId[],
+          ...(p.rating ? { ratingBefore: p.rating.before, ratingAfter: p.rating.after } : {}),
+        })),
         bestOf: s.bestOf,
+        mode: s.mode,
         rounds: s.rounds.map((r) => ({ winner: r.winner, durationTicks: r.ticks })),
         score: [s.score[0], s.score[1]],
         winnerTeam: winner,
         startedAt: this.o.startedAt,
         endedAt: new Date(),
       });
-      await Promise.all(s.players.filter((p) => !isBotId(p.userId)).map((p) => db.users.addStats(p.userId, {
-        matches: 1,
-        wins: p.team === winner ? 1 : 0,
-        losses: p.team === winner ? 0 : 1,
-        roundsWon: s.score[p.team],
-        unitsKilled: matchStats(p).kills,
-        rescueStrikesUsed: matchStats(p).strikes,
-      })));
+      await Promise.all(s.players.filter((p) => !isBotId(p.userId)).map(async (p) => {
+        await db.users.addStats(p.userId, {
+          matches: 1,
+          wins: p.team === winner ? 1 : 0,
+          losses: p.team === winner ? 0 : 1,
+          roundsWon: s.score[p.team],
+          unitsKilled: matchStats(p).kills,
+          rescueStrikesUsed: matchStats(p).strikes,
+        });
+        await db.users.setRating(p.userId, after(p));
+      }));
       await db.savedGames.finish(this.id);
     } catch (err) {
       console.error('[match] failed to record result', err);

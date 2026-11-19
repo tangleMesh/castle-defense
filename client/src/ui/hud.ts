@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries, AI_LEVEL_NAMES, type MatchStats, type MatchStatsPlayer,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -946,11 +946,50 @@ export class Hud {
       h('h1', { class: cls }, title),
       m.score ? h('div', { class: 'banner-score' }, h('span', { style: `color:${TEAM_CSS[0]}` }, m.score[0]), ' : ', h('span', { style: `color:${TEAM_CSS[1]}` }, m.score[1])) : null,
       m.reason === 'saved' ? h('p', null, 'The match was saved. Any of its players can resume it from the lobby later — everyone must rejoin.') : null,
-      h('table', { class: 'roster' }, this.session.latest.players.map((p) => h('tr', null,
+      m.stats ? this.statsPage(m.stats) : h('table', { class: 'roster' }, this.session.latest.players.map((p) => h('tr', null,
         h('td', { style: `color:${TEAM_CSS[p.team]}` }, '●'), h('td', null, p.name), h('td', null, `${p.kills} kills`)))),
       h('button', { class: 'btn', onclick: () => this.onExit() }, 'Return to lobby'),
     ));
     this.overlay.hidden = false;
+  }
+
+  /** Statistics page after the final round: totals per player, Elo changes and the rounds. */
+  private statsPage(st: MatchStats) {
+    const me = st.players.find((p) => p.userId === this.session.players[this.session.you]?.userId);
+    const best = (k: 'kills' | 'castleDmg' | 'goldEarned') => Math.max(...st.players.map((p) => p[k]));
+    const cell = (p: MatchStatsPlayer, k: 'kills' | 'lost' | 'goldEarned' | 'castleDmg' | 'strikes') => {
+      const top = (k === 'kills' || k === 'castleDmg' || k === 'goldEarned') && p[k] > 0 && p[k] === best(k);
+      return h('td', { class: `n${top ? ' top' : ''}` }, num(p[k]));
+    };
+    const facName = (id: string) => FACTIONS[id as keyof typeof FACTIONS]?.name.split(' ')[0] ?? id;
+    const factions = (p: MatchStatsPlayer) => [...new Set(p.factions)].map(facName).join(', ');
+    const elo = (p: MatchStatsPlayer) => {
+      if (!p.rating) return h('td', { class: 'n dim' }, p.bot ? AI_LEVEL_NAMES[p.bot as keyof typeof AI_LEVEL_NAMES] ?? 'AI' : '—');
+      const d = p.rating.after - p.rating.before;
+      return h('td', { class: 'n' }, `${p.rating.after} `, h('span', { class: d >= 0 ? 'elo-up' : 'elo-down' }, `(${d >= 0 ? '+' : ''}${d})`));
+    };
+    const rows = ([0, 1] as const).flatMap((t) => [
+      h('tr', { class: 'team-row' }, h('td', { colspan: '8', style: `color:${TEAM_CSS[t]}` }, `${TEAM_NAMES[t]} team`)),
+      ...st.players.filter((p) => p.team === t).map((p) => h('tr', { class: p === me ? 'me' : '' },
+        h('td', null, h('b', null, p.name), h('div', { class: 'dim small' }, factions(p))),
+        cell(p, 'kills'), cell(p, 'lost'), cell(p, 'goldEarned'), cell(p, 'castleDmg'), cell(p, 'strikes'), elo(p))),
+    ]);
+    const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    const teamSum = (r: MatchStats['rounds'][number], t: 0 | 1, k: 'kills' | 'castleDmg') => r.players.reduce((a, x, i) => a + (st.players[i]?.team === t ? x[k] : 0), 0);
+    return h('div', { class: 'stats-page' },
+      me?.rating ? h('div', { class: 'elo-result' }, 'Your rating ', h('b', null, `${me.rating.after}`), ' ',
+        h('span', { class: me.rating.after >= me.rating.before ? 'elo-up' : 'elo-down' }, `${me.rating.after >= me.rating.before ? '+' : ''}${me.rating.after - me.rating.before}`)) : null,
+      h('table', { class: 'stats-table' },
+        h('thead', null, h('tr', null, h('th', null, 'Player'), h('th', null, 'Kills'), h('th', null, 'Lost'), h('th', null, 'Gold'), h('th', null, 'Castle dmg'), h('th', null, 'Strikes'), h('th', null, 'Elo'))),
+        h('tbody', null, ...rows)),
+      h('h3', null, 'Rounds'),
+      h('div', { class: 'stats-rounds' }, st.rounds.map((r, i) => h('div', { class: 'stats-round' },
+        h('b', null, `Round ${i + 1}`),
+        h('span', { style: `color:${TEAM_CSS[r.winner]}` }, `${TEAM_NAMES[r.winner]} wins`),
+        h('span', { class: 'dim' }, mmss(r.seconds)),
+        h('span', { class: 'dim small' }, `kills ${teamSum(r, 0, 'kills')} : ${teamSum(r, 1, 'kills')}`),
+        st.mode !== 'standard' ? h('span', { class: 'dim small' }, r.players.map((x) => facName(x.faction)).join(' · ')) : null))),
+    );
   }
 
   private votePause(v: boolean) {

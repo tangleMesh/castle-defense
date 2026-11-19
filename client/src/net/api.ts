@@ -40,7 +40,8 @@ export interface SavedGameSummary {
 
 export interface MatchSummary {
   _id: string;
-  players: Array<{ userId: string; name: string; team: 0 | 1; faction: string; kills: number }>;
+  players: Array<{ userId: string; name: string; team: 0 | 1; faction: string; kills: number; ratingBefore?: number; ratingAfter?: number }>;
+  mode?: string;
   score: [number, number];
   winnerTeam: 0 | 1;
   bestOf: number;

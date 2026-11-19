@@ -24,6 +24,13 @@ export interface MatchPlayerDoc {
   kills: number;
   strikes: number;
   goldEarned: number;
+  lost?: number;
+  castleDmg?: number;
+  /** Factions played, per round (random and mirror modes). */
+  factions?: FactionId[];
+  /** Elo before and after (accounts only; absent in matches before ratings existed). */
+  ratingBefore?: number;
+  ratingAfter?: number;
 }
 
 export interface MatchDoc {
@@ -31,6 +38,7 @@ export interface MatchDoc {
   players: MatchPlayerDoc[];
   bestOf: number;
   rounds: Array<{ winner: 0 | 1; durationTicks: number }>;
+  mode?: GameMode;
   score: [number, number];
   winnerTeam: 0 | 1;
   startedAt: Date;

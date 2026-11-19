@@ -65,6 +65,34 @@ export interface UserStats {
   unitsKilled: number;
   rescueStrikesUsed: number;
   matches: number;
+  /** Elo rating (START_RATING for new accounts) and the highest it has been. */
+  rating: number;
+  peakRating: number;
+}
+
+/** One player's line on the statistics page after a match. */
+export interface MatchStatsPlayer {
+  userId: string;
+  name: string;
+  team: 0 | 1;
+  /** Bot difficulty, for computer players. */
+  bot?: string;
+  /** Faction per round (random and mirror modes change it). */
+  factions: string[];
+  kills: number;
+  lost: number;
+  goldEarned: number;
+  castleDmg: number;
+  strikes: number;
+  /** Elo before and after the match (accounts only). */
+  rating?: { before: number; after: number };
+}
+
+/** The statistics page shown after the final round. */
+export interface MatchStats {
+  mode: string;
+  rounds: Array<{ winner: 0 | 1; seconds: number; players: Array<{ kills: number; lost: number; goldEarned: number; castleDmg: number; faction: string }> }>;
+  players: MatchStatsPlayer[];
 }
 
 export interface RoomSlot {
@@ -107,6 +135,6 @@ export type ServerMessage =
   | { type: 'match.init'; matchId: string; you: number; players: MatchInitPlayer[]; bestOf: number; hostId: string; resumed: boolean }
   | { type: 'match.snapshot'; snap: Snapshot }
   | { type: 'match.paused'; paused: boolean; reason: string; waitingFor: string[]; votes: string[]; resumeIn?: number }
-  | { type: 'match.end'; reason: 'finished' | 'saved' | 'left'; winner?: 0 | 1; score?: [number, number] }
+  | { type: 'match.end'; reason: 'finished' | 'saved' | 'left'; winner?: 0 | 1; score?: [number, number]; stats?: MatchStats }
   | { type: 'chat'; from: string; text: string; scope: 'lobby' | 'match' | 'team' }
   | { type: 'error'; message: string };

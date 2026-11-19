@@ -96,7 +96,10 @@ export function checkRoundEnd(sim: Sim) {
   const loser: Team = dead.length === 2 ? (sim.castle(0).hp <= sim.castle(1).hp ? 0 : 1) : dead[0];
   const winner = (1 - loser) as Team;
   s.score[winner]++;
-  s.rounds.push({ winner, ticks: s.tick - s.roundStartTick });
+  s.rounds.push({
+    winner, ticks: s.tick - s.roundStartTick,
+    players: s.players.map((p) => ({ faction: p.faction, kills: p.kills, strikes: p.strikes, goldEarned: Math.floor(p.goldEarned), lost: p.lost ?? 0, castleDmg: Math.round(p.castleDmg ?? 0) })),
+  });
   const needed = Math.floor(s.bestOf / 2) + 1;
   if (s.score[winner] >= needed) {
     s.phase = 'matchOver';

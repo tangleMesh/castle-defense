@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.44.0
+
+- **Statistics page after the final round:**
+  - **Per player:** kills, units lost, gold earned, castle damage and rescue strikes over the whole match, the factions they played, and their Elo change.
+  - **Per round:** the winner, the duration, each team's kills, and the drawn factions in random and mirror modes.
+  - **Highlights:** the best value in each column is marked.
+- **Elo rating for accounts:**
+  - **Start:** every account starts at 1000.
+  - **Team rating:** the average of its players. Bots count with a fixed rating: Easy 800, Normal 1000, Hard 1200, Brutal 1400.
+  - **After a match:** every human on a team gains or loses K = 32 × (result − expected), so an upset earns more.
+  - **Peak:** the highest rating is kept.
+- **Progress in the lobby:**
+  - The rating badge next to your name, with your peak in its tooltip.
+  - The rating change on every recent battle.
+  - A chart of your rating over your recent matches.
+- **Match history** also stores units lost, castle damage, factions per round and the ratings before and after.
+
 ## 0.43.1
 
 - **Multi-target attacks are limited to the attacker's own reach.**

@@ -219,6 +219,8 @@ export type SimEvent =
 export interface RoundRecord {
   winner: Team;
   ticks: number;
+  /** Every player's statistics of this round, in player order (absent in older saves). */
+  players?: Array<RoundStats & { faction: FactionId }>;
 }
 
 export interface SimState {

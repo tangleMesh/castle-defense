@@ -38,7 +38,12 @@ export function createMemoryPersistence(): Persistence {
       async addStats(userId: string, inc: Partial<UserStats>) {
         const u = users.get(userId);
         if (!u) return;
-        for (const [k, v] of Object.entries(inc)) (u.stats as unknown as Record<string, number>)[k] += v ?? 0;
+        for (const [k, v] of Object.entries(inc)) (u.stats as unknown as Record<string, number>)[k] = ((u.stats as unknown as Record<string, number>)[k] ?? 0) + (v ?? 0);
+      },
+      async setRating(userId: string, rating: number) {
+        const u = users.get(userId);
+        if (!u) return;
+        u.stats = { ...EMPTY_STATS, ...u.stats, rating, peakRating: Math.max(u.stats.peakRating ?? EMPTY_STATS.peakRating, rating) };
       },
     },
     matches: {

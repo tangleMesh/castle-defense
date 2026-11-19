@@ -1,4 +1,4 @@
-import { FACTION_IDS, type PublicUser } from '@bc/shared';
+import { ELO_K, FACTION_IDS, START_RATING, type PublicUser } from '@bc/shared';
 import { Bot } from './bot';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -69,10 +69,14 @@ export async function fullMatchScenario(base: string, opts: { perTeam: number; b
   const { matches } = await api<{ matches: Array<{ _id: string; winnerTeam: number }> }>(base, '/api/history', bots[0].token);
   assert(matches.some((m) => m._id === bots[0].matchId), 'match is in history');
   let wins = 0, losses = 0;
+  // The statistics page and Elo: equal teams of fresh accounts, so winners +16 and losers -16.
+  assert(!!end.stats && end.stats.players.length === bots.length && end.stats.rounds.length === (end.score![0] + end.score![1]), 'statistics page data sent');
   for (const b of bots) {
     const { user } = await api<{ user: PublicUser }>(base, '/api/me', b.token);
     assert(user.stats.matches === 1, `${b.name} has 1 match`);
     wins += user.stats.wins; losses += user.stats.losses;
+    const want = START_RATING + (user.stats.wins ? ELO_K / 2 : -ELO_K / 2);
+    assert(user.stats.rating === want, `${b.name} rating ${user.stats.rating} (want ${want})`);
   }
   assert(wins === opts.perTeam && losses === opts.perTeam, `wins/losses split per team (${wins}/${losses})`);
   log.push(`history + stats verified for ${bots.length} players`);

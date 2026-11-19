@@ -17,3 +17,4 @@ export * from './lab/duel';
 export * from './lab/sparring';
 export * from './lab/patch';
 export * from './lab/fit';
+export * from './elo';
