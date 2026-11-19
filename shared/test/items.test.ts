@@ -13,7 +13,7 @@ const buy = (sim: Sim, item: string, player = 0) => sim.step([{ player, cmd: { c
 
 describe('builder items', () => {
   it('are expensive late-game purchases (the crossbow is a cheap early pick)', () => {
-    for (const i of ITEMS) expect(i.cost, i.id).toBeGreaterThanOrEqual(i.id === 'crossbow' ? 200 : 420);
+    for (const i of ITEMS) expect(i.cost, i.id).toBeGreaterThanOrEqual(i.id === 'crossbow' ? 150 : 420);
   });
 
   it('buying costs gold, refuses duplicates, a full bag and empty purses', () => {

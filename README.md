@@ -27,7 +27,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
   - *Pathfinder Boots* (420): your team's units move 15% faster, your builder 30%.
   - *War Drum* (720): every spawn building of your team trains units 15% faster.
   - *Bulwark Seal* (480): +4 armor for every building of your team and the castle.
-  - *Warden's Crossbow* (200): your builder shoots nearby enemy units (it stays invulnerable).
+  - *Warden's Crossbow* (150): your builder shoots nearby enemy units (it stays invulnerable).
   - *Mason's Hammer* (420): every building of your team within 6 tiles of your builder regains 5 HP/s, for free.
 
   The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long and they can afford them.

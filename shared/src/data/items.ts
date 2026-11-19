@@ -57,9 +57,9 @@ export const ITEMS: ItemDef[] = [
     structureArmor: 4,
   },
   {
-    id: 'crossbow', name: "Warden's Crossbow", cost: 200,
-    desc: 'Your builder shoots enemy units within 5.5 tiles (30 pierce damage per second, hits flyers). The builder stays invulnerable.',
-    builderAttack: { dmg: 30, attackType: 'pierce', range: 5.5, cooldown: 1, targetsAir: true },
+    id: 'crossbow', name: "Warden's Crossbow", cost: 150,
+    desc: 'Your builder shoots enemy units within 5.5 tiles: a heavy bolt for 100 pierce damage every second, flyers too. The builder stays invulnerable.',
+    builderAttack: { dmg: 100, attackType: 'pierce', range: 5.5, cooldown: 1, targetsAir: true },
   },
   {
     id: 'hammer', name: "Mason's Hammer", cost: 420,
