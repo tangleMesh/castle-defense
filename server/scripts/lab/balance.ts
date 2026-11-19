@@ -328,8 +328,8 @@ async function stageFactions(): Promise<FactionMeasure> {
     const fit = fitPower(points, FACTION_IDS.length);
     const b = fit.b;
     const before = { ...lp };
-    // Smaller steps on the 30-minute run's smaller samples.
-    const cap = full ? 0.06 : 0.04;
+    // Up to ±6% power per step (the fit's prior slope keeps noisy samples from overshooting).
+    const cap = 0.06;
     FACTION_IDS.forEach((f, g) => { lp[f] += clamp(-fit.a[g] / b - strength(f), -cap, cap); });
     setPower();
     return { b, moved: Math.max(...FACTION_IDS.map((f) => Math.abs(lp[f] - before[f]))) };
