@@ -12,7 +12,7 @@ import { stepPowers } from './powers';
 import { stepEconomy } from './economy';
 import { stepBuildings } from './spawning';
 import { computeAuras, type Mods } from './auras';
-import { stepCombatUnits, stepStructureAttacks } from './combat';
+import { dealDamage, stepCombatUnits, stepStructureAttacks } from './combat';
 import { stepBuilders, stepUnitMovementPost } from './movement';
 import { stepStrikes } from './rescue';
 import { stepItems } from './items';
@@ -120,6 +120,7 @@ export class Sim {
     let gridChanged = false;
     const alive: Entity[] = [];
     const released: Entity[] = [];
+    const blasts: Entity[] = [];
     for (const e of this.state.entities) {
       if (e.hp > 0 || e.kind === 'builder' || e.kind === 'castle') { alive.push(e); continue; }
       this.byId.delete(e.id);
@@ -127,12 +128,23 @@ export class Sim {
         // Summons that faded (ttl 0) weren't lost in battle.
         const p = this.state.players[e.owner]; if (p && e.ttl !== 0) p.lost = (p.lost ?? 0) + 1;
         if (UNITS[e.type].onDeath && !e.smitten) released.push(e);
+        if (UNITS[e.type].deathBlast && !e.smitten) blasts.push(e);
       }
       this.emit({ t: 'die', id: e.id, x: round2(e.x), y: round2(e.y), k: e.kind });
       if (e.kind === 'building') gridChanged = true;
     }
     this.state.entities = alive;
     if (gridChanged) this.invalidateGrid();
+    // Death blasts (Avatar of Vengeance): the fallen unit's revenge hits enemies around it.
+    for (const e of blasts) {
+      const b = UNITS[e.type].deathBlast!;
+      for (const o of this.state.entities) {
+        if (o.team === e.team || o.hp <= 0 || o.kind === 'builder') continue;
+        const d = this.isStructure(o) ? distToRect(footprint(o), e.x, e.y) : Math.hypot(o.x - e.x, o.y - e.y) - this.radius(o);
+        if (d <= b.radius && !(o.kind === 'unit' && this.isAir(o))) dealDamage(this, o, b.dmg, 'magic', e.owner);
+      }
+      this.emit({ t: 'splash', x: round2(e.x), y: round2(e.y), r: b.radius });
+    }
     // Units that burst into smaller ones when they fall (Vinelings → Sproutlings, treants → saplings).
     for (const e of released) {
       const od = UNITS[e.type].onDeath!;

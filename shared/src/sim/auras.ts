@@ -12,9 +12,11 @@ export interface Mods {
   speed: number;
   /** Attack speed multiplier (1.3 = attacks 30% faster). */
   haste: number;
+  /** Flat damage taken off every attack (block aura). */
+  block: number;
 }
 
-const NONE: Mods = Object.freeze({ dmg: 1, armor: 0, regen: 0, speed: 1, haste: 1 });
+const NONE: Mods = Object.freeze({ dmg: 1, armor: 0, regen: 0, speed: 1, haste: 1, block: 0 });
 
 export function modsOf(sim: Sim, id: number): Mods {
   return sim.mods.get(id) ?? NONE;
@@ -83,6 +85,7 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
     case 'regen': m.regen = Math.max(m.regen, aura.value); break;
     case 'speed': m.speed = aura.value < 0 ? Math.min(m.speed, 1 + aura.value) : Math.max(m.speed, 1 + aura.value); break;
     case 'haste': m.haste = Math.max(m.haste, 1 + aura.value); break;
+    case 'block': m.block = Math.max(m.block, aura.value); break;
   }
 }
 
@@ -91,7 +94,7 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
  * on top of building auras. The same stat from several teammates' items doesn't stack.
  */
 function applyItemAuras(sim: Sim) {
-  const bonus: [Mods, Mods] = [{ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0 }, { dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0 }];
+  const bonus: [Mods, Mods] = [{ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0 }, { dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0 }];
   let any = false;
   for (const p of sim.state.players) {
     for (const id of itemsOf(p)) {

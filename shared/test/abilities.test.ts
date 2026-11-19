@@ -264,3 +264,57 @@ describe('new-faction mechanics', () => {
     expect(heap.hp).toBe(100);
   });
 });
+
+describe('Duskmoon mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'duskmoon' },
+    { userId: 'b', name: 'B', team: 1, faction: 'ironvow' },
+  ];
+  const simD = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 4 });
+
+  it('multi-shot: a Ranger volley strikes three enemies in range', () => {
+    const sim = simD();
+    const r = unit(sim, 0, 'dm_ranger', 50, 20);
+    const foes = [0, 1, 2, 3].map((i) => unit(sim, 1, 'iv_militia', 52 + i * 0.7, 20 + (i % 2) * 0.6));
+    for (const f of foes) f.hp = f.maxHp = 1e5;
+    hits(sim, r, foes[0], 1);
+    expect(foes.filter((f) => f.hp < f.maxHp)).toHaveLength(3);
+  });
+
+  it('an Avatar of Vengeance explodes when it falls, not when smitten', () => {
+    const sim = simD();
+    const v = unit(sim, 0, 'dm_vengeance', 60, 20);
+    const near = unit(sim, 1, 'iv_militia', 61, 20), far = unit(sim, 1, 'iv_militia', 66, 20);
+    near.hp = near.maxHp = far.hp = far.maxHp = 1e5;
+    v.hp = 0;
+    sim.removeDead();
+    expect(near.hp).toBeLessThan(near.maxHp);
+    expect(far.hp).toBe(far.maxHp);
+    const sim2 = simD();
+    const v2 = unit(sim2, 0, 'dm_vengeance', 60, 20), n2 = unit(sim2, 1, 'iv_militia', 61, 20);
+    n2.hp = n2.maxHp = 1e5;
+    v2.hp = 0; v2.smitten = true;
+    sim2.removeDead();
+    expect(n2.hp).toBe(n2.maxHp);
+  });
+
+  it('the Obelisk of the Wild blocks a flat part of every hit on nearby allies', () => {
+    const sim = simD();
+    building(sim, 0, 'dm_wild_obelisk', 30, 18);
+    const t = unit(sim, 0, 'dm_assassin', 32, 19), a = unit(sim, 1, 'iv_halberdier', 32.6, 19);
+    delete UNITS.dm_assassin.evade;
+    try {
+      sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit' && e.hp > 0));
+      computeAuras(sim);
+      const d = hits(sim, a, t, 1)[0];
+      const raw = computeDamage(UNITS.iv_halberdier.dmg, 'normal', 'medium', UNITS.dm_assassin.armor);
+      expect(d).toBeCloseTo(raw - BUILDINGS.dm_wild_obelisk.aura!.value, 1);
+    } finally { UNITS.dm_assassin.evade = 6; }
+  });
+
+  it('Moonlit grace: Duskmoon units without their own evasion dodge every 8th blow', () => {
+    expect(UNITS.dm_huntress.evade).toBe(8);
+    expect(UNITS.dm_assassin.evade).toBe(6);
+    expect(UNITS.iv_militia.evade).toBeUndefined();
+  });
+});

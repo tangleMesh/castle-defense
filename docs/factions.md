@@ -5,6 +5,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Thornwild follows the "nature" race.
 - Shardbound follows the "elemental" race.
 - Cogspark follows the "mechanical" race.
+- Duskmoon follows the "night elf" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -85,6 +86,23 @@ After translating, building duels (`npm run lab -- duels`) caught the clear outl
 
 Trait: riveted plating, +2 armour on every Cogspark building (the map's power plant).
 
+## Duskmoon ("night elf")
+
+| Duskmoon | Inspired by | Notes |
+|---|---|---|
+| Hunters' Hall → Rangers' Hall → Amazons' Hall | hunter's hall → ranger's → amazon's hall | archers; rangers and amazons hit 3 / 5 enemies per volley (multi-shot) |
+| Moon Shrine → Moon Altar | moon shrine → moon altar | druids whose bolts entangle (damage over time, 50–60% slow); the sage's roots grip groups |
+| House of Shadows → Guild of Shadows | house → guild of shadows | assassins: evasion and a 3× / 4× backstab (first blow) |
+| Pillaged Hut → Scorched Mansion | pillaged hut → scorched mansion | avenging spirits: armour-piercing, evasive, lifesteal; the avatar explodes when it falls |
+| Glaive Works | night elf siege factory | glaive thrower: 9-tile siege, the glaive bounces between 4 enemies |
+| Fountain of Wonders | fountain of wonders | faerie dragons: magic flyers that heal allies |
+| Obelisk of the Wild | obelisk of wilderness | aura: every hit on nearby allies deals 4 less damage |
+| Elune's Lantern | Elune's lantern | magic tower |
+| Moonstone Cache | (Duskmoon's own) | +20% income |
+| Starfall Obelisk → Elune's Wrath | starfall obelisk | the special: rains stars on the enemy army (no champion) |
+
+Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are fragile but evasive).
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -100,6 +118,10 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | `block` | flat damage off every attack (at least 25% gets through) |
 | `airOnly` | attacks flyers only |
 | `summon: { unit, count, every, ttl }` | calls helpers that fade after `ttl` s |
+| `multishot: n` | every attack also strikes n − 1 further enemies in range |
+| `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |
+| aura `stat: 'block'` | flat damage off every hit on nearby allies |
+| trait `unitEvade: n` | every unit of the faction without its own evasion dodges every n-th blow |
 | `suicide: { radius }` | the first attack is an explosion of `dmg` on every enemy unit and building within `radius`; the unit dies, no bounty |
 | aura `stat: 'haste'` | attack speed |
 | building `power` | `bombard` (shell on the nearest enemy building) or `cyclone` (damage + slow zone on the nearest enemy; with `air`, a meteor shower on flyers only) |

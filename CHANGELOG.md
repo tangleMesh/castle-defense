@@ -7,6 +7,21 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.28.0
+
+- **New faction: Duskmoon Covenant**, after the castle-fight map's night elf race. As with the other factions, the map gives the structure and numbers; names, text and look are our own.
+  - **Units:** huntresses, then rangers, then amazons, whose volleys hit 3 / 5 enemies; druids that entangle; assassins that backstab; avenging spirits that pierce armour and explode when they fall; glaive throwers whose glaive bounces; healing faerie dragons.
+  - **Buildings:** an aura that blocks part of every hit, the moonbeam lantern tower, the Moonstone Cache (+20% income), and the Starfall Obelisk special, which rains stars on the enemy instead of training a champion.
+  - **Trait:** every unit dodges every 8th blow.
+  - **Look:** lavender-skinned elves with moon tattoos, ghostly spirits and butterfly-winged faerie dragons. Buildings are curved silver-and-bark elven halls with crescent tips, a moon arch, haunted ruins, a moonwell, a lantern post and a starfall observatory, all on moonlit grass.
+- **New mechanics:**
+  - multi-shot;
+  - death blasts;
+  - a block aura;
+  - a faction-wide evasion trait.
+- Sprite code for new factions now lives in its own module per race (`client/src/game/races/`).
+- The Ironvow trait no longer claims to be the only faction with healers.
+
 ## 0.27.1
 
 - **Shardbound and Cogspark get their own look.** Every unit and building is painted in its own style, inspired by the castle-fight map's elementals and mechanical race. Before, they reused the existing shapes in new colours.

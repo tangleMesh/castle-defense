@@ -1,5 +1,6 @@
 import { CASTLE_SIZE, type BuildingDef } from '@bc/shared';
 import { EX, EY, SK, TEAM_COLORS, TX, TY } from './iso';
+import { BUILDING_PAINTERS, PLINTHS } from './painters';
 import { css, fillPoly, grad, lit, mix, path, radial, rng, shade, softEllipse, type Ctx } from './paint';
 
 /**
@@ -9,29 +10,29 @@ import { css, fillPoly, grad, lit, mix, path, radial, rng, shade, softEllipse, t
  * and the sun; the "right" face is the narrow east wall, in shade.
  */
 
-type Pt = { x: number; y: number };
-const pt = (x: number, y: number): Pt => ({ x, y });
+export type Pt = { x: number; y: number };
+export const pt = (x: number, y: number): Pt => ({ x, y });
 /** Half a tile on screen along x / y (for ground ellipses under footprints). */
-const HX = TX / 2, HY = TY / 2;
+export const HX = TX / 2, HY = TY / 2;
 /** Margin (px) around a footprint on structure canvases, for overhangs and props. */
 export const STRUCT_MARGIN = 24;
 /** Ground centre of an s×s footprint whose front-right (south-east) corner is at (ox, oy). */
-const centreOf = (ox: number, oy: number, s: number): Pt => pt(ox - (s * (EX.x + EY.x)) / 2, oy - (s * (EX.y + EY.y)) / 2);
+export const centreOf = (ox: number, oy: number, s: number): Pt => pt(ox - (s * (EX.x + EY.x)) / 2, oy - (s * (EX.y + EY.y)) / 2);
 /** Front-right corner of a k×k box centred on the ground point c. */
-const cornerFor = (c: Pt, k: number): Pt => pt(c.x + (k * (EX.x + EY.x)) / 2, c.y + (k * (EX.y + EY.y)) / 2);
+export const cornerFor = (c: Pt, k: number): Pt => pt(c.x + (k * (EX.x + EY.x)) / 2, c.y + (k * (EX.y + EY.y)) / 2);
 /**
  * Canvas x of the front-right ground corner of an s×s footprint: the back-right corner leans
  * s × SK further right, and that has to fit inside the margin too.
  */
 export const footX = (w: number, s: number) => w - STRUCT_MARGIN - s * SK;
-const lerp = (a: Pt, b: Pt, t: number): Pt => pt(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
-const up = (p: Pt, h: number): Pt => pt(p.x, p.y - h);
+export const lerp = (a: Pt, b: Pt, t: number): Pt => pt(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+export const up = (p: Pt, h: number): Pt => pt(p.x, p.y - h);
 
-const LIGHT = { left: 1.0, right: 0.66, top: 1.12 };
+export const LIGHT = { left: 1.0, right: 0.66, top: 1.12 };
 
 /** Points of interest collected while painting (canvas coords): flag tops, chimney mouths, light sources. */
 export interface Anchors { flags: Pt[]; smoke: Pt[]; glow: Pt[] }
-let A: Anchors = { flags: [], smoke: [], glow: [] };
+export let A: Anchors = { flags: [], smoke: [], glow: [] };
 /** Anchors painted since the last call, relative to (ox, oy). */
 export function takeAnchors(ox: number, oy: number): Anchors {
   const rel = (p: Pt) => pt(p.x - ox, p.y - oy);
@@ -39,7 +40,7 @@ export function takeAnchors(ox: number, oy: number): Anchors {
   A = { flags: [], smoke: [], glow: [] };
   return out;
 }
-const BEAM = 0x3e2a1c;
+export const BEAM = 0x3e2a1c;
 
 export interface Box {
   /** Ground corners: L(eft), F(ront/bottom), R(ight), B(ack/top). */
@@ -62,10 +63,10 @@ export function boxGeo(ox: number, oy: number, a: number, b: number, h: number):
   return { L, F, R, B, tL, tF, tR, tB, a, b, h, c: lerp(tL, tR, 0.5) };
 }
 
-type FacePainter = (ctx: Ctx, U: number, V: number, light: number) => void;
+export type FacePainter = (ctx: Ctx, U: number, V: number, light: number) => void;
 
 /** Paint the left (sunlit) face: local (u, v) with u ∈ [0, a] tiles from L to F, v ∈ [0, h] px upwards. */
-function faceLeft(ctx: Ctx, g: Box, paint: FacePainter) {
+export function faceLeft(ctx: Ctx, g: Box, paint: FacePainter) {
   ctx.save();
   path(ctx, [[g.L.x, g.L.y], [g.F.x, g.F.y], [g.tF.x, g.tF.y], [g.tL.x, g.tL.y]]);
   ctx.clip();
@@ -75,7 +76,7 @@ function faceLeft(ctx: Ctx, g: Box, paint: FacePainter) {
 }
 
 /** Paint the right (shaded) face: u ∈ [0, b] tiles from F to R. */
-function faceRight(ctx: Ctx, g: Box, paint: FacePainter) {
+export function faceRight(ctx: Ctx, g: Box, paint: FacePainter) {
   ctx.save();
   path(ctx, [[g.F.x, g.F.y], [g.R.x, g.R.y], [g.tR.x, g.tR.y], [g.tF.x, g.tF.y]]);
   ctx.clip();
@@ -85,7 +86,7 @@ function faceRight(ctx: Ctx, g: Box, paint: FacePainter) {
 }
 
 /** Paint the top face: u ∈ [0, a] from L towards F, w ∈ [0, b] from L towards B. */
-function faceTop(ctx: Ctx, g: Box, paint: (ctx: Ctx, U: number, W: number) => void) {
+export function faceTop(ctx: Ctx, g: Box, paint: (ctx: Ctx, U: number, W: number) => void) {
   ctx.save();
   path(ctx, [[g.tL.x, g.tL.y], [g.tF.x, g.tF.y], [g.tR.x, g.tR.y], [g.tB.x, g.tB.y]]);
   ctx.clip();
@@ -95,7 +96,7 @@ function faceTop(ctx: Ctx, g: Box, paint: (ctx: Ctx, U: number, W: number) => vo
 }
 
 /** Ambient occlusion at the foot of a wall and a soft edge darkening at the corners. */
-function wallShading(ctx: Ctx, U: number, V: number, light: number) {
+export function wallShading(ctx: Ctx, U: number, V: number, light: number) {
   ctx.fillStyle = grad(ctx, 0, 0, 0, Math.min(14, V), [[0, 0x000000, 0.42], [1, 0x000000, 0]]);
   ctx.fillRect(0, 0, U, Math.min(14, V));
   if (light < 1) {
@@ -198,7 +199,7 @@ export function plankWall(wood: number, seed: number): FacePainter {
 }
 
 /** Window in face space (u, v = bottom-left of the opening). Warm interior light. */
-function windowAt(ctx: Ctx, u: number, v: number, w: number, h: number, light: number, arched = false) {
+export function windowAt(ctx: Ctx, u: number, v: number, w: number, h: number, light: number, arched = false) {
   const frame = css(lit(0x2a1c12, light));
   ctx.fillStyle = frame;
   ctx.fillRect(u - 0.02, v - 1, w + 0.04, h + 2 + (arched ? 2 : 0));
@@ -211,7 +212,7 @@ function windowAt(ctx: Ctx, u: number, v: number, w: number, h: number, light: n
   ctx.fillRect(u - 0.03, v - 1.6, w + 0.06, 1.2);
 }
 
-function doorAt(ctx: Ctx, u: number, w: number, h: number, light: number) {
+export function doorAt(ctx: Ctx, u: number, w: number, h: number, light: number) {
   ctx.fillStyle = css(lit(0x6a6458, light));
   ctx.fillRect(u - 0.03, 0, w + 0.06, h + 2);
   ctx.fillStyle = css(lit(0x4a3020, light * 0.9));
@@ -227,10 +228,10 @@ function doorAt(ctx: Ctx, u: number, w: number, h: number, light: number) {
 
 // ------------------------------------------------------------------ roofs
 
-type Roof = 'tile' | 'slate' | 'thatch' | 'shingle';
+export type Roof = 'tile' | 'slate' | 'thatch' | 'shingle';
 
 /** A roof plane from an eave (e0 → e1) up to a ridge (r0 → r1), painted with courses. */
-function roofPlane(ctx: Ctx, e0: Pt, e1: Pt, r1: Pt, r0: Pt, color: number, light: number, kind: Roof, seed: number) {
+export function roofPlane(ctx: Ctx, e0: Pt, e1: Pt, r1: Pt, r0: Pt, color: number, light: number, kind: Roof, seed: number) {
   const r = rng(seed);
   ctx.save();
   path(ctx, [[e0.x, e0.y], [e1.x, e1.y], [r1.x, r1.y], [r0.x, r0.y]]);
@@ -287,7 +288,7 @@ function roofPlane(ctx: Ctx, e0: Pt, e1: Pt, r1: Pt, r0: Pt, color: number, ligh
 }
 
 /** Gable roof over a box; the ridge runs along the left face (from back-left to front-right). */
-function gableRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, wall: FacePainter, seed: number) {
+export function gableRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, wall: FacePainter, seed: number) {
   const o = 3; // eave overhang in px
   const tL = pt(g.tL.x - o, g.tL.y + 1), tF = pt(g.tF.x, g.tF.y + o * 0.6), tR = pt(g.tR.x + o, g.tR.y + 1), tB = pt(g.tB.x, g.tB.y - 1);
   const m1 = up(lerp(g.tL, g.tB, 0.5), rise), m2 = up(lerp(g.tF, g.tR, 0.5), rise);
@@ -313,7 +314,7 @@ function gableRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, wa
 }
 
 /** Four-sided hip / pyramid roof. */
-function hipRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, seed: number) {
+export function hipRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, seed: number) {
   const o = 3;
   const tL = pt(g.tL.x - o, g.tL.y), tF = pt(g.tF.x, g.tF.y + o * 0.6), tR = pt(g.tR.x + o, g.tR.y), tB = pt(g.tB.x, g.tB.y - 1);
   const apex = up(g.c, rise);
@@ -325,7 +326,7 @@ function hipRoof(ctx: Ctx, g: Box, rise: number, color: number, kind: Roof, seed
 }
 
 /** Cylinder tower with stone courses; returns the top centre. */
-function roundTower(ctx: Ctx, cx: number, by: number, rx: number, h: number, stone: number, seed: number) {
+export function roundTower(ctx: Ctx, cx: number, by: number, rx: number, h: number, stone: number, seed: number) {
   const ry = rx / 2;
   const r = rng(seed);
   ctx.save();
@@ -361,7 +362,7 @@ function roundTower(ctx: Ctx, cx: number, by: number, rx: number, h: number, sto
   return pt(cx, by - h);
 }
 
-function coneRoof(ctx: Ctx, cx: number, by: number, rx: number, h: number, color: number, seed: number) {
+export function coneRoof(ctx: Ctx, cx: number, by: number, rx: number, h: number, color: number, seed: number) {
   const ry = rx / 2;
   const r = rng(seed);
   const apex = pt(cx, by - h);
@@ -398,7 +399,7 @@ function coneRoof(ctx: Ctx, cx: number, by: number, rx: number, h: number, color
 }
 
 /** Crenellations along the two front top edges of a box. */
-function crenellate(ctx: Ctx, g: Box, stone: number, seed: number, count = 0, frontOnly = false) {
+export function crenellate(ctx: Ctx, g: Box, stone: number, seed: number, count = 0, frontOnly = false) {
   const r = rng(seed);
   const edges: Array<[Pt, Pt, boolean]> = [...(frontOnly ? [] : [[g.tB, g.tL, true], [g.tR, g.tB, false]] as Array<[Pt, Pt, boolean]>), [g.tL, g.tF, true], [g.tF, g.tR, false]];
   for (const [p, q, leftFace] of edges) {
@@ -419,7 +420,7 @@ function crenellate(ctx: Ctx, g: Box, stone: number, seed: number, count = 0, fr
 }
 
 /** Flat walkway on top of a box (stone flags). */
-function stoneTop(ctx: Ctx, g: Box, stone: number) {
+export function stoneTop(ctx: Ctx, g: Box, stone: number) {
   faceTop(ctx, g, (c, U, W) => {
     c.fillStyle = css(lit(shade(stone, 0.9), LIGHT.top));
     c.fillRect(0, 0, U, W);
@@ -451,7 +452,7 @@ function earthPatch(ctx: Ctx, ox: number, oy: number, s: number, seed: number) {
 }
 
 /** Cobbled top of a plinth: irregular stones, darker joints. */
-function cobbleTop(ctx: Ctx, g: Box, stone: number, seed: number) {
+export function cobbleTop(ctx: Ctx, g: Box, stone: number, seed: number) {
   const r = rng(seed + 77);
   faceTop(ctx, g, (c, U, W) => {
     c.fillStyle = css(lit(shade(stone, 0.7), LIGHT.top)); c.fillRect(0, 0, U, W);
@@ -491,6 +492,8 @@ export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) 
     crystalPlinth(ctx, ox, oy, s, seed);
   } else if (def.faction === 'cogspark') {
     steelDeck(ctx, ox, oy, s, seed);
+  } else if (PLINTHS[def.faction]) {
+    PLINTHS[def.faction](ctx, ox, oy, s, seed);
   } else {
     // low cobbled plinth, slightly inset
     const plinth = boxGeo(ox, oy - 1, s - 0.08, s - 0.08, 3);
@@ -672,7 +675,7 @@ export function paintBuilding(ctx: Ctx, def: BuildingDef, w: number, h: number) 
 
 // ------------------------------------------------------------------ props on buildings
 
-function chimney(ctx: Ctx, p: Pt, seed: number, wide = false) {
+export function chimney(ctx: Ctx, p: Pt, seed: number, wide = false) {
   const g = boxGeo(p.x, p.y + 6, wide ? 0.32 : 0.24, wide ? 0.32 : 0.24, 14);
   const w = stoneWall(0x7a7064, seed, 3.5);
   faceLeft(ctx, g, w); faceRight(ctx, g, w);
@@ -738,19 +741,19 @@ function targetBoard(ctx: Ctx, g: Box) {
   cols.forEach((c, i) => { ctx.fillStyle = css(lit(c, 0.9)); ctx.beginPath(); ctx.ellipse(p.x + 8, p.y - 14, 6 - i * 1.4, 7 - i * 1.6, 0, 0, Math.PI * 2); ctx.fill(); });
 }
 
-function brazier(ctx: Ctx, p: Pt) {
+export function brazier(ctx: Ctx, p: Pt) {
   A.glow.push(pt(p.x, p.y - 4));
   ctx.fillStyle = css(0x2a2420); ctx.beginPath(); ctx.ellipse(p.x, p.y - 2, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = radial(ctx, p.x, p.y - 4, 4, [[0, 0xfff0a0], [0.5, 0xff9a30], [1, 0xc04010, 0]]);
   ctx.beginPath(); ctx.ellipse(p.x, p.y - 4, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function torch(ctx: Ctx, p: Pt) {
+export function torch(ctx: Ctx, p: Pt) {
   ctx.fillStyle = css(0x2a1c12); ctx.fillRect(p.x - 0.8, p.y - 2, 1.6, 7);
   ctx.fillStyle = css(0x4a4440); ctx.fillRect(p.x - 2, p.y - 3, 4, 1.6);
 }
 
-function dome(ctx: Ctx, c: Pt, r: number, h: number, color: number) {
+export function dome(ctx: Ctx, c: Pt, r: number, h: number, color: number) {
   // drum
   ctx.fillStyle = grad(ctx, c.x - r, 0, c.x + r, 0, [[0, lit(0xe8e0cc, 0.95)], [0.4, lit(0xe8e0cc, 1.1)], [1, lit(0xe8e0cc, 0.6)]]);
   ctx.beginPath(); ctx.ellipse(c.x, c.y, r, r / 2, 0, 0, Math.PI); ctx.lineTo(c.x - r, c.y - 6); ctx.ellipse(c.x, c.y - 6, r, r / 2, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill();
@@ -774,7 +777,7 @@ function sunHalo(ctx: Ctx, x: number, y: number) {
   ctx.restore();
 }
 
-function nest(ctx: Ctx, c: Pt, accent: number, seed: number) {
+export function nest(ctx: Ctx, c: Pt, accent: number, seed: number) {
   const r = rng(seed);
   softEllipse(ctx, c.x + 2, c.y + 2, 22, 9, 0x000000, 0.35);
   for (let i = 0; i < 90; i++) {
@@ -892,7 +895,7 @@ export function foliage(ctx: Ctx, cx: number, cy: number, rx: number, ry: number
   ctx.restore();
 }
 
-function roundHut(ctx: Ctx, cx: number, by: number, rx: number, h: number, wall: number, roof: number, seed: number) {
+export function roundHut(ctx: Ctx, cx: number, by: number, rx: number, h: number, wall: number, roof: number, seed: number) {
   const ry = rx / 2;
   softEllipse(ctx, cx + 6, by + 4, rx + 10, ry + 6, 0x000000, 0.35);
   // wattle walls
@@ -929,7 +932,7 @@ function roundHut(ctx: Ctx, cx: number, by: number, rx: number, h: number, wall:
   ctx.beginPath(); ctx.moveTo(cx, by - h * 2.3); ctx.lineTo(cx + 5, by - h * 2.3 - 9); ctx.stroke();
 }
 
-function totem(ctx: Ctx, x: number, y: number, accent: number) {
+export function totem(ctx: Ctx, x: number, y: number, accent: number) {
   softEllipse(ctx, x + 2, y, 5, 2, 0x000000, 0.35);
   ctx.fillStyle = grad(ctx, x - 3, 0, x + 3, 0, [[0, 0x8a6040], [1, 0x4a3020]]);
   ctx.fillRect(x - 2.5, y - 26, 5, 26);
@@ -981,7 +984,7 @@ function standingStones(ctx: Ctx, g: Box, stone: number, seed: number) {
   }
 }
 
-function crystal(ctx: Ctx, x: number, y: number, h: number, color: number) {
+export function crystal(ctx: Ctx, x: number, y: number, h: number, color: number) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = radial(ctx, x, y - h * 0.5, h * 0.7, [[0, color, 0.45], [1, color, 0]]);
@@ -1230,13 +1233,13 @@ export { lerp as lerpPt };
 
 // ------------------------------------------------------------------ Shardbound & Cogspark structures
 
-interface Site {
+export interface Site {
   ox: number; oy: number; s: number; mid: Pt; seed: number; H: number;
   inset: (k: number) => readonly [number, number];
   stand: (k: number) => readonly [number, number];
 }
 
-function glowAt(ctx: Ctx, x: number, y: number, r: number, color: number, a: number) {
+export function glowAt(ctx: Ctx, x: number, y: number, r: number, color: number, a: number) {
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = radial(ctx, x, y, r, [[0, color, a], [1, color, 0]]);
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
@@ -1288,7 +1291,7 @@ function steelDeck(ctx: Ctx, ox: number, oy: number, s: number, seed: number) {
 }
 
 /** Corrugated metal sheeting (vertical ribs) with rivet rows. */
-function metalWall(base: number, seed: number): FacePainter {
+export function metalWall(base: number, seed: number): FacePainter {
   return (ctx, U, V, light) => {
     const r = rng(seed);
     for (let u = 0, i = 0; u < U; u += 0.06, i++) {
@@ -1304,7 +1307,7 @@ function metalWall(base: number, seed: number): FacePainter {
 }
 
 /** Big metal gear (emblem). */
-function gearAt(ctx: Ctx, x: number, y: number, r: number, color: number, teeth = 10) {
+export function gearAt(ctx: Ctx, x: number, y: number, r: number, color: number, teeth = 10) {
   ctx.fillStyle = grad(ctx, x - r, y - r, x + r, y + r, [[0, lit(color, 1.3)], [1, lit(color, 0.6)]]);
   ctx.beginPath();
   for (let k = 0; k < teeth; k++) {
@@ -1315,7 +1318,7 @@ function gearAt(ctx: Ctx, x: number, y: number, r: number, color: number, teeth 
   ctx.fillStyle = css(0x2a2a2a); ctx.beginPath(); ctx.ellipse(x, y, r * 0.3, r * 0.27, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function smokestack(ctx: Ctx, x: number, y: number, h: number, w: number, color = 0x4a4a50) {
+export function smokestack(ctx: Ctx, x: number, y: number, h: number, w: number, color = 0x4a4a50) {
   ctx.fillStyle = grad(ctx, x - w, 0, x + w, 0, [[0, lit(color, 1.25)], [1, lit(color, 0.55)]]);
   ctx.fillRect(x - w, y - h, w * 2, h);
   ctx.fillStyle = css(0xd8b030); ctx.fillRect(x - w, y - h * 0.55, w * 2, 1.6);
@@ -1324,7 +1327,7 @@ function smokestack(ctx: Ctx, x: number, y: number, h: number, w: number, color 
 }
 
 /** A round element (ellipse-based) drum: side wall and top, used for basins, wells and generator bases. */
-function drum(ctx: Ctx, cx: number, by: number, rx: number, h: number, color: number, top: number, light = 1) {
+export function drum(ctx: Ctx, cx: number, by: number, rx: number, h: number, color: number, top: number, light = 1) {
   const ry = rx / 2;
   ctx.fillStyle = grad(ctx, cx - rx, 0, cx + rx, 0, [[0, lit(color, 0.95 * light)], [0.3, lit(color, 1.12 * light)], [1, lit(color, 0.55 * light)]]);
   ctx.beginPath(); ctx.ellipse(cx, by, rx, ry, 0, 0, Math.PI); ctx.lineTo(cx - rx, by - h); ctx.ellipse(cx, by - h, rx, ry, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill();
@@ -1332,7 +1335,7 @@ function drum(ctx: Ctx, cx: number, by: number, rx: number, h: number, color: nu
   ctx.strokeStyle = css(0x000000, 0.3); ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(cx, by, rx, ry, 0, 0, Math.PI); ctx.stroke();
 }
 
-function floatingCrystal(ctx: Ctx, x: number, y: number, h: number, color: number) {
+export function floatingCrystal(ctx: Ctx, x: number, y: number, h: number, color: number) {
   glowAt(ctx, x, y - h * 0.5, h * 0.9, color, 0.45);
   const w = h * 0.32;
   fillPoly(ctx, [[x, y - h], [x - w, y - h * 0.5], [x, y]], css(lit(color, 1.35)));
@@ -1773,6 +1776,7 @@ function paintNewStyle(ctx: Ctx, def: BuildingDef, st: Site) {
       A.flags.push(pt(p0.x, p0.y - H * 0.8));
       break;
     }
-    default: break;
+    default:
+      BUILDING_PAINTERS[m.style]?.(ctx, def, st);
   }
 }

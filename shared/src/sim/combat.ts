@@ -91,7 +91,7 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   if (target.hp <= 0) return 0;
   const armor = armorOf(sim, target);
   let dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
-  const block = attack && target.kind === 'unit' ? UNITS[target.type].block : undefined;
+  const block = attack && target.kind === 'unit' ? (UNITS[target.type].block ?? 0) + modsOf(sim, target.id).block : 0;
   if (block) dmg = Math.max(dmg * 0.25, dmg - block);
   target.hp -= dmg;
   if (target.hp <= 0 && target.kind !== 'castle') {
@@ -191,6 +191,21 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   // Shield wall: ranged attacks lose part of their force.
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
+  // Multi-shot: the same volley strikes further enemies in range, nearest first.
+  if (ud?.multishot && ud.multishot > 1) {
+    const extra: Array<[Entity, number]> = [];
+    for (const o of sim.hash.query(a.x, a.y, st.range + 2)) {
+      if (o === t || !canTarget(sim, a, st, o)) continue;
+      const d = sim.edgeDist(a, o);
+      if (d <= st.range) extra.push([o, d]);
+    }
+    extra.sort((p, q) => p[1] - q[1] || p[0].id - q[0].id);
+    for (const [o] of extra.slice(0, ud.multishot - 1)) {
+      sim.emit({ t: 'atk', a: a.id, b: o.id, r: ranged });
+      const or = ranged && UNITS[o.type]?.rangedResist ? 1 - UNITS[o.type].rangedResist! : 1;
+      dealDamage(sim, o, raw * or, st.attackType, a.owner, !!ud.ignoreArmor, true);
+    }
+  }
   if (charged || crit) sim.emit({ t: 'splash', x: Math.round(t.x * 100) / 100, y: Math.round(t.y * 100) / 100, r: 0.6 });
   if (ud) {
     onHit(sim, a, ud, t, dealt, ranged);

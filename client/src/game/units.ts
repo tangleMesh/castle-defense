@@ -1,6 +1,7 @@
 import type { UnitDef } from '@bc/shared';
 import { css, grad, lit, mix, radial, shade, softEllipse, type Ctx } from './paint';
 import { foliage } from './structures';
+import { UNIT_PAINTERS } from './painters';
 
 /**
  * Painted unit sprites, side-on (facing right; the scene mirrors them), with walk and attack
@@ -17,7 +18,7 @@ const STEEL = 0xb8bec8;
 const WOOD = 0x6a4a2a;
 const LEATHER = 0x6a4a30;
 
-interface Pose {
+export interface Pose {
   /** Walk phase in [0, 1). */
   ph: number;
   moving: boolean;
@@ -31,22 +32,22 @@ function poseOf(frame: Frame): Pose {
 }
 
 /** Stroke a limb segment with round ends, lit on its upper side. */
-function limb(c: Ctx, x0: number, y0: number, x1: number, y1: number, w: number, color: number, light = 1) {
+export function limb(c: Ctx, x0: number, y0: number, x1: number, y1: number, w: number, color: number, light = 1) {
   c.strokeStyle = css(lit(color, light * 0.8)); c.lineWidth = w;
   c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
   c.strokeStyle = css(lit(color, light * 1.12), 0.8); c.lineWidth = w * 0.45;
   c.beginPath(); c.moveTo(x0 - w * 0.15, y0 - w * 0.15); c.lineTo(x1 - w * 0.15, y1 - w * 0.15); c.stroke();
 }
 
-function blob(c: Ctx, x: number, y: number, rx: number, ry: number, color: number, light = 1) {
+export function blob(c: Ctx, x: number, y: number, rx: number, ry: number, color: number, light = 1) {
   c.fillStyle = radial(c, x - rx * 0.35, y - ry * 0.4, Math.max(rx, ry) * 1.5, [[0, lit(color, 1.3 * light)], [0.5, lit(color, 0.95 * light)], [1, lit(color, 0.55 * light)]]);
   c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fill();
 }
 
-type Helmet = 'helm' | 'greathelm' | 'hood' | 'cap' | 'circlet' | 'antlers' | 'leafhood' | 'goggles' | 'none';
-type Armor = 'plate' | 'mail' | 'leather' | 'robe' | 'leaf';
+export type Helmet = 'helm' | 'greathelm' | 'hood' | 'cap' | 'circlet' | 'antlers' | 'leafhood' | 'goggles' | 'none';
+export type Armor = 'plate' | 'mail' | 'leather' | 'robe' | 'leaf';
 
-interface HumanOpts {
+export interface HumanOpts {
   h: number;
   body: number;
   accent: number;
@@ -65,7 +66,7 @@ interface HumanOpts {
 type Pt = { x: number; y: number };
 
 /** A humanoid side-on. Returns head and hands for gear. */
-function humanoid(c: Ctx, cx: number, fy: number, S: (v: number) => number, o: HumanOpts, pose: Pose) {
+export function humanoid(c: Ctx, cx: number, fy: number, S: (v: number) => number, o: HumanOpts, pose: Pose) {
   const h = S(o.h);
   const sw = Math.sin(pose.ph * Math.PI * 2);
   const bob = pose.moving ? -Math.abs(Math.cos(pose.ph * Math.PI * 2)) * S(1.2) : 0;
@@ -183,13 +184,13 @@ function helmet(c: Ctx, x: number, y: number, r: number, kind: Helmet, accent: n
   }
 }
 
-function fillTri(c: Ctx, x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, color: number, a = 1) {
+export function fillTri(c: Ctx, x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, color: number, a = 1) {
   c.fillStyle = css(color, a); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.lineTo(x2, y2); c.closePath(); c.fill();
 }
 
 // ------------------------------------------------------------------ gear
 
-const sword = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) => {
+export const sword = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) => {
   const ang = attack ? -0.15 : -1.05;
   const len = S(11);
   const tx = hand.x + Math.cos(ang) * len, ty = hand.y + Math.sin(ang) * len;
@@ -201,7 +202,7 @@ const sword = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) 
   c.beginPath(); c.moveTo(hand.x - Math.sin(ang) * S(2.4), hand.y + Math.cos(ang) * S(2.4)); c.lineTo(hand.x + Math.sin(ang) * S(2.4), hand.y - Math.cos(ang) * S(2.4)); c.stroke();
 };
 
-const roundShield = (S: (v: number) => number, color: number, big: boolean) => (c: Ctx, hand: Pt) => {
+export const roundShield = (S: (v: number) => number, color: number, big: boolean) => (c: Ctx, hand: Pt) => {
   const x = hand.x + S(big ? 3 : 1.5), y = hand.y - S(big ? 3 : 1);
   if (big) {
     c.fillStyle = grad(c, x - S(5), 0, x + S(5), 0, [[0, lit(color, 1.25)], [1, lit(color, 0.6)]]);
@@ -215,7 +216,7 @@ const roundShield = (S: (v: number) => number, color: number, big: boolean) => (
   }
 };
 
-const polearm = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) => {
+export const polearm = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) => {
   const ang = attack ? -0.08 : -1.35;
   const len = S(28);
   const bx = hand.x - Math.cos(ang) * S(8), by = hand.y - Math.sin(ang) * S(8);
@@ -230,7 +231,7 @@ const polearm = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt
   c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx + Math.cos(ang) * S(4), ty + Math.sin(ang) * S(4)); c.strokeStyle = css(STEEL); c.lineWidth = S(1); c.stroke();
 };
 
-const bow = (S: (v: number) => number, attack: boolean, wood: number) => (c: Ctx, hand: Pt) => {
+export const bow = (S: (v: number) => number, attack: boolean, wood: number) => (c: Ctx, hand: Pt) => {
   const r = S(9);
   c.strokeStyle = css(lit(wood, 1)); c.lineWidth = S(1.4);
   c.beginPath(); c.arc(hand.x - S(4), hand.y, r, -1.1, 1.1); c.stroke();
@@ -241,7 +242,7 @@ const bow = (S: (v: number) => number, attack: boolean, wood: number) => (c: Ctx
   if (attack) { c.strokeStyle = css(0xe8e0d0); c.lineWidth = S(0.7); c.beginPath(); c.moveTo(hand.x - S(8), hand.y); c.lineTo(hand.x + S(6), hand.y); c.stroke(); }
 };
 
-const crossbow = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) => {
+export const crossbow = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: Pt) => {
   c.strokeStyle = css(lit(WOOD, 1)); c.lineWidth = S(2);
   c.beginPath(); c.moveTo(hand.x - S(4), hand.y + S(1)); c.lineTo(hand.x + S(6), hand.y - S(0.5)); c.stroke();
   c.strokeStyle = css(lit(STEEL, 1)); c.lineWidth = S(1.2);
@@ -249,7 +250,7 @@ const crossbow = (S: (v: number) => number, attack: boolean) => (c: Ctx, hand: P
   if (attack) { c.fillStyle = css(0xfff0c0, 0.8); c.beginPath(); c.arc(hand.x + S(8), hand.y - S(0.5), S(1.3), 0, Math.PI * 2); c.fill(); }
 };
 
-const staff = (S: (v: number) => number, accent: number, attack: boolean) => (c: Ctx, hand: Pt) => {
+export const staff = (S: (v: number) => number, accent: number, attack: boolean) => (c: Ctx, hand: Pt) => {
   c.strokeStyle = css(lit(WOOD, 1)); c.lineWidth = S(1.3);
   const top = { x: hand.x + S(1), y: hand.y - S(attack ? 16 : 13) };
   c.beginPath(); c.moveTo(hand.x - S(0.5), hand.y + S(9)); c.lineTo(top.x, top.y); c.stroke();
@@ -261,7 +262,7 @@ const staff = (S: (v: number) => number, accent: number, attack: boolean) => (c:
 
 // ------------------------------------------------------------------ bodies
 
-function quadruped(c: Ctx, cx: number, fy: number, S: (v: number) => number, pose: Pose, o: {
+export function quadruped(c: Ctx, cx: number, fy: number, S: (v: number) => number, pose: Pose, o: {
   len: number; h: number; body: number; belly?: number; neck?: boolean; antlers?: boolean; mane?: number; spines?: number; tail?: boolean; eye?: number;
 }) {
   const sw = pose.ph * Math.PI * 2;
@@ -458,6 +459,7 @@ export function paintUnit(c: Ctx, u: UnitDef, frame: Frame) {
     case 'golem': ironGolem(c, cx, fy, S, m.body, m.accent, pose, m.variant); break;
     case 'shredder': shredder(c, cx, fy, S, m.body, m.accent, pose); break;
     case 'mech': goliath(c, cx, fy, S, m.body, m.accent, pose, m.variant); break;
+    default: UNIT_PAINTERS[m.shape]?.(c, u, cx, fy, S, pose);
   }
 }
 
@@ -570,7 +572,7 @@ type SFn = (v: number) => number;
 const TAU = Math.PI * 2;
 
 /** Additive glow disc. */
-function glow(c: Ctx, x: number, y: number, r: number, color: number, a: number) {
+export function glow(c: Ctx, x: number, y: number, r: number, color: number, a: number) {
   c.save(); c.globalCompositeOperation = 'lighter';
   c.fillStyle = radial(c, x, y, r, [[0, color, a], [1, color, 0]]);
   c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
@@ -578,7 +580,7 @@ function glow(c: Ctx, x: number, y: number, r: number, color: number, a: number)
 }
 
 /** Jagged lightning stroke between two points. */
-function bolt(c: Ctx, x0: number, y0: number, x1: number, y1: number, S: SFn, seed: number, color = 0xe8f4ff, w = 0.8) {
+export function bolt(c: Ctx, x0: number, y0: number, x1: number, y1: number, S: SFn, seed: number, color = 0xe8f4ff, w = 0.8) {
   let s = seed * 9301 + 49297;
   const r = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
   c.strokeStyle = css(color, 0.95); c.lineWidth = S(w);
@@ -841,13 +843,13 @@ function avatar(c: Ctx, cx: number, fy: number, S: SFn, body: number, accent: nu
 const GOBLIN = 0x7aa04a;
 const RIVET = 0xd8c8a0;
 
-function rivets(c: Ctx, x0: number, y0: number, x1: number, y1: number, n: number, S: SFn) {
+export function rivets(c: Ctx, x0: number, y0: number, x1: number, y1: number, n: number, S: SFn) {
   c.fillStyle = css(RIVET, 0.85);
   for (let i = 0; i < n; i++) { const t = n === 1 ? 0.5 : i / (n - 1); c.beginPath(); c.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, S(0.45), 0, TAU); c.fill(); }
 }
 
 /** Riveted metal box (side view), lit from the upper left. */
-function plate(c: Ctx, x: number, y: number, w: number, h: number, color: number, S: SFn, l = 1) {
+export function plate(c: Ctx, x: number, y: number, w: number, h: number, color: number, S: SFn, l = 1) {
   c.fillStyle = grad(c, 0, y, 0, y + h, [[0, lit(color, 1.3 * l)], [0.35, lit(color, 1 * l)], [1, lit(color, 0.6 * l)]]);
   c.fillRect(x, y, w, h);
   c.strokeStyle = css(0x000000, 0.35); c.lineWidth = S(0.5); c.strokeRect(x, y, w, h);

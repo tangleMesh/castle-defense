@@ -1,6 +1,6 @@
 import type { BuildingDef, UnitDef } from './types';
 
-const STAT: Record<string, string> = { dmg: 'damage', armor: 'armour', regen: 'HP/s regeneration', speed: 'speed', haste: 'attack speed' };
+const STAT: Record<string, string> = { dmg: 'damage', armor: 'armour', regen: 'HP/s regeneration', speed: 'speed', haste: 'attack speed', block: 'damage blocked per hit' };
 const VS: Record<string, string> = { air: 'flyers', structure: 'buildings', light: 'light armour', medium: 'medium armour', heavy: 'heavy armour', fortified: 'fortified' };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
@@ -32,6 +32,8 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.evade) out.push(`Evasion: every ${nth(u.evade)} attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
   if (u.block) out.push(`Hardened skin: blocks ${u.block} damage of every attack`);
+  if (u.multishot) out.push(`Multi-shot: every volley strikes ${u.multishot} enemies`);
+  if (u.deathBlast) out.push(`Revenge: when it falls it explodes for ${Math.round(u.deathBlast.dmg)} damage within ${u.deathBlast.radius} tiles`);
   if (u.suicide) out.push(`Suicide blast: its first attack explodes, hitting every enemy unit and building within ${u.suicide.radius} tiles (no bounty)`);
   if (u.summon) out.push(`Summons ${u.summon.count} ${units[u.summon.unit]?.name ?? u.summon.unit}${u.summon.count > 1 ? 's' : ''} every ${u.summon.every}s (they last ${u.summon.ttl}s)`);
   return out;
@@ -69,6 +71,8 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.slam) dmg += (u.slam.dmg * 1.8) / (u.slam.every * perHit);
   if (u.storm) dmg += (u.storm.dmg * Math.min(3, u.storm.jumps) * 0.8) / (u.storm.every * perHit);
   if (u.bash) dmg += Math.min(0.5, u.bash.stun / (u.bash.every * u.cooldown));
+  if (u.multishot) dmg += (u.multishot - 1) * 0.45;
+  if (u.deathBlast) dmg += 0.1;
   // One blast and the unit is gone.
   if (u.suicide) dmg *= 0.3;
   if (u.summon) dmg += 0.15 * u.summon.count * Math.min(1, u.summon.ttl / u.summon.every);

@@ -3,6 +3,7 @@ import { BUILDINGS, CASTLE_SIZE, UNITS } from '@bc/shared';
 import { SK, TX, TY } from './iso';
 import { blurred, grad, paper, radial, softEllipse, rng as prng } from './paint';
 import { UNIT_CANVAS, UNIT_FRAMES, outline, paintBuilder, paintUnit } from './units';
+import './races';
 import { PROP_SIZE, paintBush, paintOak, paintPine, paintRock } from './props';
 import { footX, buildingCanvasSize, castleCanvasSize, paintBuilding, paintCastle, paintRuin, takeAnchors, type Anchors } from './structures';
 

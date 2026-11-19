@@ -17,7 +17,7 @@ export const IRONVOW: FactionDef = {
   color: 0x4a78c8,
   traits: [
     'Masonry: all buildings have +1 armour',
-    'Faith: the only faction with healers',
+    'Faith: priests and saints heal the wounded',
     'Shield wall & steel: Shieldbearers shrug off arrows, Halberdiers break heavy armour, cavalry charges and stuns',
     'Engineering: towers upgrade into splash cannons or a Siege Battery that shells enemy buildings',
     'Steady income: the Counting House raises your income',

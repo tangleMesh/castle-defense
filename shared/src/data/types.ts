@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -9,7 +9,9 @@ export interface UnitModel {
     // Shardbound elementals
     | 'water' | 'wisp' | 'flame' | 'spark' | 'rock' | 'elementalist' | 'avatar'
     // Cogspark machines
-    | 'goblin' | 'tank' | 'copter' | 'golem' | 'shredder' | 'mech';
+    | 'goblin' | 'tank' | 'copter' | 'golem' | 'shredder' | 'mech'
+    // Duskmoon night elves
+    | 'moonarcher' | 'druid' | 'shade' | 'wraith' | 'glaivecart' | 'faeriedragon';
   body: number;
   accent: number;
   scale: number;
@@ -22,7 +24,9 @@ export interface BuildingModel {
     // Shardbound
     | 'fountain' | 'cage' | 'altar' | 'pillar' | 'rockpile' | 'codex' | 'obelisk' | 'guardspire' | 'well' | 'nexus'
     // Cogspark
-    | 'factory' | 'hangar' | 'lab' | 'generator' | 'tesla' | 'scrapheap' | 'exchange' | 'foundry';
+    | 'factory' | 'hangar' | 'lab' | 'generator' | 'tesla' | 'scrapheap' | 'exchange' | 'foundry'
+    // Duskmoon
+    | 'moonhall' | 'moonshrine' | 'shadowhouse' | 'ruinhut' | 'glaiveworks' | 'wonderwell' | 'wildstone' | 'moonlantern' | 'moonstone' | 'starfall';
   wall: number;
   roof: number;
   height: number;
@@ -93,14 +97,18 @@ export interface UnitDef {
    * and buildings) within `radius` of the target in full, then the unit is gone (no bounty).
    */
   suicide?: { radius: number };
+  /** Every attack also strikes up to `multishot - 1` further enemies in range (multi-shot arrows). */
+  multishot?: number;
+  /** When it falls (not to a rescue strike), it explodes: `dmg` magic damage to enemies within `radius`. */
+  deathBlast?: { dmg: number; radius: number };
   /** Calls `count` units every `every` seconds; they fade after `ttl` seconds. */
   summon?: { unit: string; count: number; every: number; ttl: number };
   model: UnitModel;
 }
 
 export interface AuraDef {
-  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste';
-  /** dmg/speed/haste (attack speed): multiplier delta (0.2 = +20%), armor: flat, regen: hp/s. */
+  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste' | 'block';
+  /** dmg/speed/haste (attack speed): multiplier delta (0.2 = +20%), armor: flat, regen: hp/s, block: flat damage off every attack. */
   value: number;
   radius: number;
   target: 'ally' | 'enemy';
@@ -166,7 +174,7 @@ export interface FactionDef {
   /** Short summary of what makes the faction play differently (lobby). */
   traits: string[];
   /** Applied to every unit / building of the faction. */
-  trait?: { unitRegen?: number; buildingRegen?: number; buildingArmor?: number };
+  trait?: { unitRegen?: number; buildingRegen?: number; buildingArmor?: number; unitEvade?: number };
   /** Buildable building ids in command-card order. */
   build: string[];
   buildings: BuildingDef[];

@@ -5,10 +5,11 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 - **Spawn buildings** train one unit at a time on a timer. Many of them can be upgraded (some offer a choice of two upgrades).
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
 - **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (each faction's champion building, upgradable twice) and elite upgrades of spawn buildings cost a sapphire on top of their gold.
-- **Four distinct factions**, each modelled on a classic castle-fight race, see [docs/factions.md](docs/factions.md):
+- **Distinct factions**, each modelled on a classic castle-fight race, see [docs/factions.md](docs/factions.md):
   - *Ironvow* (human) fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry.
   - *Thornwild* (nature) swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy.
   - *Shardbound* (elementals) binds missile-proof water spirits, sky-hunting wind, splitting fire, chain lightning and siege earth, and its storm books rain on the ground or burn the sky.
+  - *Duskmoon* (night elves) fights with evasive archers whose volleys hit several enemies, entangling druids, backstabbing assassins, vengeful spirits that explode when they fall, healing faerie dragons and a starfall obelisk.
   - *Cogspark* (mechanical) fields flamegunners, plated tanks, rotorcraft, golems and suicide goblins, with shield generators, a bouncing energy tower and scrap heaps that mend buildings.
 - **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 8× the build time, about 12 HP/s on a tower). The builder can also repair your castle (select it or right-click it): 12 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
 - **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
