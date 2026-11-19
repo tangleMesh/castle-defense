@@ -94,20 +94,20 @@ export const DOOMFORGE: FactionDef = {
     // ---------------------------------------------------------------- destruction
     {
       id: 'df_magic_ruin', name: 'Magic Tower Ruin', faction: 'doomforge', cost: 150, hp: 650, armor: 2, buildTime: 10, size: 2,
-      desc: 'Every 10 s the nearest enemy unit within 13 tiles suffers a present of chaos: in turn 350 damage, a 4 s stun, death (up to 525 HP), or nothing at all.',
-      power: { kind: 'chaos', cooldown: 10, range: 13, radius: 0, dmg: 350, duration: 4 },
+      desc: 'Every 10 s the nearest enemy unit anywhere on the map suffers a present of chaos: in turn 350 damage, a 4 s stun, death (up to 525 HP), or nothing at all.',
+      power: { kind: 'chaos', global: true, cooldown: 10, range: 13, radius: 0, dmg: 350, duration: 4 },
       model: { style: 'magicruin', wall: 0x6a5a6a, roof: FEL, height: 30 },
     },
     {
       id: 'df_volcano', name: 'Volcano', faction: 'doomforge', cost: 200, hp: 700, armor: 3, buildTime: 12, size: 2,
-      desc: 'Every 12 s the ground erupts under the nearest enemy ground units within 14 tiles: heavy damage for 3 s.',
-      power: { kind: 'cyclone', cooldown: 12, range: 14, radius: 2.5, dmg: 55, duration: 3, slow: 0 },
+      desc: 'Every 12 s the ground erupts under the nearest enemy ground units anywhere on the map: heavy damage for 3 s.',
+      power: { kind: 'cyclone', global: true, cooldown: 12, range: 14, radius: 2.5, dmg: 55, duration: 3, slow: 0 },
       model: { style: 'volcano', wall: 0x4a3a32, roof: HELLFIRE, height: 34 },
     },
     {
       id: 'df_destruction_shrine', name: 'Shrine of Destruction', faction: 'doomforge', cost: 280, hp: 700, armor: 3, buildTime: 14, size: 2,
-      desc: "Every 40 s Hell's Fist strikes the nearest enemy building within 30 tiles: 300 damage, and it is crippled for 20 s (no training, shooting or casting).",
-      power: { kind: 'bombard', cooldown: 40, range: 30, radius: 1, dmg: 300, freeze: 20 },
+      desc: "Every 40 s Hell's Fist strikes the nearest enemy building anywhere on the map: 300 damage, and it is crippled for 12 s (no training, shooting or casting).",
+      power: { kind: 'bombard', global: true, cooldown: 40, range: 30, radius: 1, dmg: 300, freeze: 12 },
       model: { style: 'destructionshrine', wall: OBSIDIAN, roof: HELLFIRE, height: 36 },
     },
     // ---------------------------------------------------------------- special

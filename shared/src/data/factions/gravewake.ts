@@ -127,8 +127,8 @@ export const GRAVEWAKE: FactionDef = {
     },
     {
       id: 'gw_death_pit', name: 'Death Pit', faction: 'gravewake', cost: 220, hp: 650, armor: 2, buildTime: 12, size: 2,
-      desc: 'Every 15 s the nearest enemy unit within 14 tiles with at most 800 HP dies at once (champions and elites are too strong).',
-      power: { kind: 'slay', cooldown: 15, range: 14, radius: 0, dmg: 800 },
+      desc: 'Every 15 s the nearest enemy unit anywhere on the map with at most 800 HP dies at once (champions and elites are too strong).',
+      power: { kind: 'slay', global: true, cooldown: 15, range: 14, radius: 0, dmg: 800 },
       model: { style: 'deathpit', wall: GRAVE, roof: VOID, height: 18 },
     },
     // ---------------------------------------------------------------- special

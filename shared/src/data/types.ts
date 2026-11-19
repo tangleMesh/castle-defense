@@ -215,6 +215,12 @@ export interface PowerDef {
   /** Tentacles: the unit summoned and how many. */
   unit?: string;
   count?: number;
+  /**
+   * Reaches the whole map (targets the nearest valid enemy anywhere; `range` is then unused).
+   * Bombards, storms and single-target or summoning powers; tower-like (beam, hex) and
+   * self-centred or directional powers (stasis, tsunami, erase) stay local.
+   */
+  global?: boolean;
   /** Bombard: what the shell hits is frozen for this many seconds (buildings stop training, shooting and casting). */
   freeze?: number;
 }

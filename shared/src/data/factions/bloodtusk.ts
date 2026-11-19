@@ -132,8 +132,8 @@ export const BLOODTUSK: FactionDef = {
     },
     {
       id: 'bt_serpent_rock', name: 'Serpent Rock', faction: 'bloodtusk', cost: 160, hp: 700, armor: 3, buildTime: 10, size: 2,
-      desc: 'Every 12 s the stone serpent spits poison on the nearest enemy ground units within 13 tiles: damage and a 20% slow for 5 s.',
-      power: { kind: 'cyclone', cooldown: 12, range: 13, radius: 2.4, dmg: 20, duration: 5, slow: 0.2 },
+      desc: 'Every 12 s the stone serpent spits poison on the nearest enemy ground units anywhere on the map: damage and a 20% slow for 5 s.',
+      power: { kind: 'cyclone', global: true, cooldown: 12, range: 13, radius: 2.4, dmg: 20, duration: 5, slow: 0.2 },
       model: { style: 'serpentrock', wall: 0x6a6a5a, roof: 0x6ad040, height: 26 },
     },
     {

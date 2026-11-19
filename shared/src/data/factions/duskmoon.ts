@@ -129,15 +129,15 @@ export const DUSKMOON: FactionDef = {
     // ---------------------------------------------------------------- special
     {
       id: 'dm_starfall', name: 'Starfall Obelisk', faction: 'duskmoon', cost: 400, hp: 1800, armor: 6, buildTime: 20, size: 2, special: true, sapphires: 1,
-      desc: 'SPECIAL: costs a sapphire. Every 25 s stars rain on the nearest enemy army within 16 tiles for 8 s. Upgrades into Elune\'s Wrath.',
-      power: { kind: 'cyclone', cooldown: 25, range: 16, radius: 3.5, dmg: 34, duration: 8, slow: 0 },
+      desc: 'SPECIAL: costs a sapphire. Every 25 s stars rain on the nearest enemy army anywhere on the map for 8 s. Upgrades into Elune\'s Wrath.',
+      power: { kind: 'cyclone', global: true, cooldown: 25, range: 16, radius: 3.5, dmg: 34, duration: 8, slow: 0 },
       upgrades: ['dm_starfall_2'],
       model: { style: 'starfall', wall: SILVER, roof: MOON, height: 50 },
     },
     {
       id: 'dm_starfall_2', name: "Elune's Wrath", faction: 'duskmoon', cost: 350, hp: 2400, armor: 7, buildTime: 15, size: 2, special: true, upgradeOnly: true,
       desc: 'Stars fall every 18 s, harder and wider.',
-      power: { kind: 'cyclone', cooldown: 18, range: 18, radius: 4, dmg: 46, duration: 8, slow: 0 },
+      power: { kind: 'cyclone', global: true, cooldown: 18, range: 18, radius: 4, dmg: 46, duration: 8, slow: 0 },
       model: { style: 'starfall', wall: SILVER, roof: 0xe0f8ff, height: 58 },
     },
   ],

@@ -57,20 +57,22 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
-  if (p.kind === 'tentacles') return `Tentacle prison: every ${num(p.cooldown)}s ${p.count} tentacles burst from the ground around the nearest enemy within ${num(p.range)} tiles (they last ${num(p.duration)}s)`;
-  if (p.kind === 'charm') return `Control: every ${num(p.cooldown)}s the nearest enemy unit within ${num(p.range)} tiles with at most ${num(p.dmg)} HP joins your side`;
+  // Global powers reach the whole map.
+  const within = p.global ? 'anywhere on the map' : `within ${num(p.range)} tiles`;
+  if (p.kind === 'tentacles') return `Tentacle prison: every ${num(p.cooldown)}s ${p.count} tentacles burst from the ground around the nearest enemy ${within} (they last ${num(p.duration)}s)`;
+  if (p.kind === 'charm') return `Control: every ${num(p.cooldown)}s the nearest enemy unit ${within} with at most ${num(p.dmg)} HP joins your side`;
   if (p.kind === 'wave') return `Tsunami: every ${num(p.cooldown)}s a wave rolls ${num(p.range)} tiles towards the enemy, ${num(p.dmg)} damage to every ground unit in its path`;
-  if (p.kind === 'chaos') return `Present of chaos: every ${num(p.cooldown)}s the nearest enemy unit within ${num(p.range)} tiles suffers the next fate: ${num(p.dmg)} damage, a ${num(p.duration)}s stun, death (up to ${Math.round(p.dmg * 1.5)} HP), or nothing`;
-  if (p.kind === 'erase') return `Erase: every ${num(p.cooldown)}s every enemy unit of the most numerous type within ${num(p.range)} tiles dies (types with more than ${num(p.dmg)} HP are immune)`;
-  if (p.kind === 'slay') return `Sudden death: every ${num(p.cooldown)}s the nearest enemy unit within ${num(p.range)} tiles with at most ${num(p.dmg)} HP dies at once`;
-  if (p.kind === 'hex' && p.air) return `Freezing blast: every ${num(p.cooldown)}s the toughest enemy flyer within ${num(p.range)} tiles is frozen for ${num(p.duration)}s and takes ${num(p.dmg)} magic damage`;
-  if (p.kind === 'hex') return `Hex: every ${num(p.cooldown)}s the toughest enemy unit within ${num(p.range)} tiles is turned into a harmless critter for ${num(p.duration)}s`;
-  if (p.kind === 'beam') return `Light beam: every ${num(p.cooldown)}s a ray hits the nearest enemy unit within ${num(p.range)} tiles for ${num(p.dmg)} magic damage`;
-  if (p.kind === 'stasis') return `Stasis: every ${num(p.cooldown)}s all enemy units within ${num(p.range)} tiles are frozen for ${num(p.duration)}s`;
-  if (p.kind === 'cyclone' && p.air) return `Meteor shower: every ${num(p.cooldown)}s meteors rain on the nearest enemy flyer within ${num(p.range)} tiles for ${num(p.duration)}s (${num(p.dmg)} damage/s to flyers in radius ${num(p.radius)})`;
-  if (p.kind === 'bombard' && p.freeze) return `Frost bolt: every ${num(p.cooldown)}s a bolt hits the nearest enemy building within ${num(p.range)} tiles (${num(p.dmg)} damage in radius ${num(p.radius)}) and freezes it for ${num(p.freeze)}s: no training, shooting or casting`;
-  if (p.kind === 'bombard') return `Bombard: every ${num(p.cooldown)}s a shell hits the nearest enemy building within ${num(p.range)} tiles (${num(p.dmg)} siege damage in radius ${num(p.radius)}, half to units)`;
-  return `Cyclone: every ${num(p.cooldown)}s a storm settles on the nearest enemy within ${num(p.range)} tiles for ${num(p.duration)}s (${num(p.dmg)} damage/s and ${pct(p.slow ?? 0)} slow in radius ${num(p.radius)})`;
+  if (p.kind === 'chaos') return `Present of chaos: every ${num(p.cooldown)}s the nearest enemy unit ${within} suffers the next fate: ${num(p.dmg)} damage, a ${num(p.duration)}s stun, death (up to ${Math.round(p.dmg * 1.5)} HP), or nothing`;
+  if (p.kind === 'erase') return `Erase: every ${num(p.cooldown)}s every enemy unit of the most numerous type ${within} dies (types with more than ${num(p.dmg)} HP are immune)`;
+  if (p.kind === 'slay') return `Sudden death: every ${num(p.cooldown)}s the nearest enemy unit ${within} with at most ${num(p.dmg)} HP dies at once`;
+  if (p.kind === 'hex' && p.air) return `Freezing blast: every ${num(p.cooldown)}s the toughest enemy flyer ${within} is frozen for ${num(p.duration)}s and takes ${num(p.dmg)} magic damage`;
+  if (p.kind === 'hex') return `Hex: every ${num(p.cooldown)}s the toughest enemy unit ${within} is turned into a harmless critter for ${num(p.duration)}s`;
+  if (p.kind === 'beam') return `Light beam: every ${num(p.cooldown)}s a ray hits the nearest enemy unit ${within} for ${num(p.dmg)} magic damage`;
+  if (p.kind === 'stasis') return `Stasis: every ${num(p.cooldown)}s all enemy units ${within} are frozen for ${num(p.duration)}s`;
+  if (p.kind === 'cyclone' && p.air) return `Meteor shower: every ${num(p.cooldown)}s meteors rain on the nearest enemy flyer ${within} for ${num(p.duration)}s (${num(p.dmg)} damage/s to flyers in radius ${num(p.radius)})`;
+  if (p.kind === 'bombard' && p.freeze) return `Frost bolt: every ${num(p.cooldown)}s a bolt hits the nearest enemy building ${within} (${num(p.dmg)} damage in radius ${num(p.radius)}) and freezes it for ${num(p.freeze)}s: no training, shooting or casting`;
+  if (p.kind === 'bombard') return `Bombard: every ${num(p.cooldown)}s a shell hits the nearest enemy building ${within} (${num(p.dmg)} siege damage in radius ${num(p.radius)}, half to units)`;
+  return `Cyclone: every ${num(p.cooldown)}s a storm settles on the nearest enemy ${within} for ${num(p.duration)}s (${num(p.dmg)} damage/s and ${pct(p.slow ?? 0)} slow in radius ${num(p.radius)})`;
 }
 
 /** Building abilities besides spawning and auras (tooltips): mending, bouncing tower shots, powers. */

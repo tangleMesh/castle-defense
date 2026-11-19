@@ -168,17 +168,34 @@ describe('summons', () => {
 });
 
 describe('building powers', () => {
-  it('the Siege Battery shells the nearest enemy building in range', () => {
+  it('the Siege Battery shells the nearest enemy building, anywhere on the map', () => {
     const sim = newSim();
     const battery = building(sim, 0, 'iv_siege_battery', 30, 18);
     const target = building(sim, 1, 'tw_burrow', 55, 18);
-    building(sim, 1, 'tw_burrow', 85, 18); // out of range
+    building(sim, 1, 'tw_burrow', 85, 18); // farther away
     const p = BUILDINGS.iv_siege_battery.power!;
     const events: SimEvent[] = [];
     for (let i = 0; i < p.cooldown * TICK_RATE + 2 * TICK_RATE; i++) events.push(...sim.step());
     const shell = events.find((e) => e.t === 'shell');
     expect(shell).toMatchObject({ a: battery.id, x: 56, y: 19 });
     expect(target.hp).toBeLessThan(target.maxHp - p.dmg);
+  });
+
+  it("global powers reach across the map, local ones (beams) don't", () => {
+    const sim = newSim();
+    // Battery deep in the own zone, the only enemy building deep in the enemy zone (~75 tiles away).
+    const battery = building(sim, 0, 'iv_siege_battery', 6, 18);
+    const far = building(sim, 1, 'tw_burrow', 100, 18);
+    expect(BUILDINGS.iv_siege_battery.power!.global).toBe(true);
+    const events: SimEvent[] = [];
+    for (let i = 0; i < (BUILDINGS.iv_siege_battery.power!.cooldown + 2) * TICK_RATE; i++) events.push(...sim.step());
+    expect(events.find((e) => e.t === 'shell')).toMatchObject({ a: battery.id });
+    expect(far.hp).toBeLessThan(far.maxHp);
+    // Tower-like and self-centred powers keep their range.
+    for (const b of Object.values(BUILDINGS)) {
+      if (b.power && ['beam', 'hex', 'stasis', 'wave', 'erase'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
+      if (b.power && ['bombard', 'cyclone', 'slay', 'charm', 'chaos', 'tentacles'].includes(b.power.kind)) expect(b.power.global, b.id).toBe(true);
+    }
   });
 
   it('the Howling Hollow drops a cyclone that hurts and slows enemies', () => {

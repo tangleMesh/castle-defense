@@ -123,21 +123,21 @@ export const SHARDBOUND: FactionDef = {
     // ---------------------------------------------------------------- utility
     {
       id: 'sb_codex', name: 'Codex of Conjuration', faction: 'shardbound', cost: 170, hp: 700, armor: 2, buildTime: 10, size: 2,
-      desc: 'Every 15 s a monsoon settles on the nearest enemy ground unit: damage and a 15% slow. Upgrades into Codex of Storms (ground) or Codex of Meteors (flyers).',
-      power: { kind: 'cyclone', cooldown: 15, range: 13, radius: 2.5, dmg: 12, duration: 5, slow: 0.15 },
+      desc: 'Every 15 s a monsoon settles on the nearest enemy ground unit anywhere on the map: damage and a 15% slow. Upgrades into Codex of Storms (ground) or Codex of Meteors (flyers).',
+      power: { kind: 'cyclone', global: true, cooldown: 15, range: 13, radius: 2.5, dmg: 12, duration: 5, slow: 0.15 },
       upgrades: ['sb_codex_storms', 'sb_codex_meteors'],
       model: { style: 'codex', wall: DEEP, roof: SHARD, height: 24 },
     },
     {
       id: 'sb_codex_storms', name: 'Codex of Storms', faction: 'shardbound', cost: 110, hp: 900, armor: 3, buildTime: 9, size: 2, upgradeOnly: true,
-      desc: 'Every 15 s a blizzard settles on the nearest enemy ground unit within 14 tiles: heavy damage and a 25% slow for 7 s.',
-      power: { kind: 'cyclone', cooldown: 15, range: 14, radius: 2.8, dmg: 24, duration: 7, slow: 0.25 },
+      desc: 'Every 15 s a blizzard settles on the nearest enemy ground unit anywhere on the map: heavy damage and a 25% slow for 7 s.',
+      power: { kind: 'cyclone', global: true, cooldown: 15, range: 14, radius: 2.8, dmg: 24, duration: 7, slow: 0.25 },
       model: { style: 'codex', wall: DEEP, roof: 0x7ab0ff, height: 28 },
     },
     {
       id: 'sb_codex_meteors', name: 'Codex of Meteors', faction: 'shardbound', cost: 110, hp: 900, armor: 3, buildTime: 9, size: 2, upgradeOnly: true,
-      desc: 'Every 15 s a meteor shower burns the nearest enemy flyers within 15 tiles: 45 damage per second for 4 s. Flyers only.',
-      power: { kind: 'cyclone', cooldown: 15, range: 15, radius: 2.5, dmg: 45, duration: 4, slow: 0, air: true },
+      desc: 'Every 15 s a meteor shower burns the nearest enemy flyers anywhere on the map: 45 damage per second for 4 s. Flyers only.',
+      power: { kind: 'cyclone', global: true, cooldown: 15, range: 15, radius: 2.5, dmg: 45, duration: 4, slow: 0, air: true },
       model: { style: 'codex', wall: DEEP, roof: 0xe06a2a, height: 28 },
     },
     {

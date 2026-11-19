@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.40.0
+
+- **Special buildings reach the whole map.** Their powers used to stop at the edge of their own build zone, so bombards could never reach an enemy building. They now hit the nearest valid enemy anywhere on the map, which is the most advanced attacker:
+  - Bombards: Siege Battery, frost bolts, Hell's Fist.
+  - Every storm, blizzard and meteor shower.
+  - Sudden death, control, present of chaos and the tentacle prison.
+- **Some powers stay local, since they'd be overpowered everywhere:**
+  - Light beams and hexes act like towers.
+  - Stasis works around its totem.
+  - The tsunami rolls out from its building.
+  - Erase would wipe a whole unit type across the map.
+- **Shorter freezes to make up for the range:**
+  - Frost Launcher: 4 s instead of 6.
+  - Greater Frost Launcher: 6 s instead of 9.
+  - Hell's Fist: 12 s instead of 20.
+- **Tooltips and descriptions say "anywhere on the map".**
+
 ## 0.39.1
 
 - **Stats reset every round.** The in-game scoreboard and overview (kills, units lost, gold earned, castle damage, rescue strikes) count the current round only.

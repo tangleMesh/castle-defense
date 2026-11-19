@@ -114,8 +114,8 @@ export const BLIGHTROOT: FactionDef = {
     },
     {
       id: 'br_forgotten_one', name: 'Forgotten One', faction: 'blightroot', cost: 160, hp: 650, armor: 2, buildTime: 10, size: 2,
-      desc: 'Every 12 s six tentacles burst from the ground around the nearest enemy ground unit within 13 tiles; they last 9 s.',
-      power: { kind: 'tentacles', cooldown: 12, range: 13, radius: 1.2, dmg: 0, duration: 9, unit: 'br_tentacle', count: 6 },
+      desc: 'Every 12 s six tentacles burst from the ground around the nearest enemy ground unit anywhere on the map; they last 9 s.',
+      power: { kind: 'tentacles', global: true, cooldown: 12, range: 13, radius: 1.2, dmg: 0, duration: 9, unit: 'br_tentacle', count: 6 },
       model: { style: 'forgottenone', wall: 0x3a4a3a, roof: VOIDC, height: 26 },
     },
     {

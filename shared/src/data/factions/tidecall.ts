@@ -110,14 +110,14 @@ export const TIDECALL: FactionDef = {
     },
     {
       id: 'tc_pyramid', name: 'Ancient Pyramid', faction: 'tidecall', cost: 215, hp: 700, armor: 3, buildTime: 12, size: 2,
-      desc: 'Every 10 s the earth splits under the nearest enemy ground units within 14 tiles: a little damage and a 50% slow for 8 s.',
-      power: { kind: 'cyclone', cooldown: 10, range: 14, radius: 3, dmg: 6, duration: 8, slow: 0.5 },
+      desc: 'Every 10 s the earth splits under the nearest enemy ground units anywhere on the map: a little damage and a 50% slow for 8 s.',
+      power: { kind: 'cyclone', global: true, cooldown: 10, range: 14, radius: 3, dmg: 6, duration: 8, slow: 0.5 },
       model: { style: 'pyramid', wall: SAND, roof: SEA, height: 32 },
     },
     {
       id: 'tc_oracle', name: 'Oracle of Sirens', faction: 'tidecall', cost: 185, hp: 600, armor: 2, buildTime: 11, size: 2,
-      desc: 'Every 16 s the nearest enemy unit within 13 tiles with at most 800 HP is charmed and fights for you.',
-      power: { kind: 'charm', cooldown: 16, range: 13, radius: 0, dmg: 800 },
+      desc: 'Every 16 s the nearest enemy unit anywhere on the map with at most 800 HP is charmed and fights for you.',
+      power: { kind: 'charm', global: true, cooldown: 16, range: 13, radius: 0, dmg: 800 },
       model: { style: 'oracle', wall: SAND, roof: 0xff9ad0, height: 34 },
     },
     // ---------------------------------------------------------------- special

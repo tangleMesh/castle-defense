@@ -134,7 +134,7 @@ export const THORNWILD: FactionDef = {
       id: 'tw_howling_hollow', name: 'Howling Hollow', faction: 'thornwild', cost: 180, hp: 700, armor: 3, buildTime: 10, size: 2, upgradeOnly: true,
       desc: 'Keeps the regrowth aura, and every 14 s a cyclone settles on the nearest enemy within 14 tiles: damage and a 25% slow for 7 s.',
       aura: { stat: 'regen', value: 5, radius: 7, target: 'ally' },
-      power: { kind: 'cyclone', cooldown: 14, range: 14, radius: 2.5, dmg: 22, duration: 7, slow: 0.25 },
+      power: { kind: 'cyclone', global: true, cooldown: 14, range: 14, radius: 2.5, dmg: 22, duration: 7, slow: 0.25 },
       model: { style: 'tree', wall: 0x5a6a4a, roof: 0x8ac8a0, height: 30 },
     },
     {

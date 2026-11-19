@@ -48,6 +48,13 @@ function mend(sim: Sim, e: Entity, hps: number, radius: number) {
   }
 }
 
+/** How far a power reaches: the whole map for global powers. */
+const reach = (p: PowerDef) => (p.global ? Infinity : p.range);
+/** Candidate targets within `range` of `c` (every entity for a global power). */
+function around(sim: Sim, c: { x: number; y: number }, range: number): Iterable<Entity> {
+  return range === Infinity ? sim.state.entities : sim.hash.query(c.x, c.y, range + 1);
+}
+
 function centre(e: Entity) {
   return { x: e.tx! + e.size! / 2, y: e.ty! + e.size! / 2 };
 }
@@ -58,7 +65,7 @@ function bombard(sim: Sim, e: Entity, p: PowerDef): boolean {
   for (const b of sim.structures()) {
     if (b.team === e.team || b.hp <= 0) continue;
     const d = distToRect(footprint(b), c.x, c.y);
-    if (d <= p.range && d < bestD) { best = b; bestD = d; }
+    if (d <= reach(p) && d < bestD) { best = b; bestD = d; }
   }
   if (!best) return false;
   const at = centre(best);
@@ -70,10 +77,10 @@ function bombard(sim: Sim, e: Entity, p: PowerDef): boolean {
 function cyclone(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
-  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+  for (const u of around(sim, c, reach(p))) {
     if (u.team === e.team || u.hp <= 0 || sim.isAir(u) !== !!p.air) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
-    if (d <= p.range && d < bestD) { best = u; bestD = d; }
+    if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
   if (!best) return false;
   const ticks = Math.round((p.duration ?? 6) * TICK_RATE);
@@ -133,10 +140,10 @@ function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
 function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
-  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+  for (const u of around(sim, c, reach(p))) {
     if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
-    if (d <= p.range && d < bestD) { best = u; bestD = d; }
+    if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
   if (!best) return false;
   sim.emit({ t: 'slay', a: e.id, b: best.id });
@@ -148,7 +155,7 @@ function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
 function nearestEnemyUnit(sim: Sim, e: Entity, range: number): Entity | undefined {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
-  for (const u of sim.hash.query(c.x, c.y, range + 1)) {
+  for (const u of around(sim, c, range)) {
     if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit') continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= range && d < bestD) { best = u; bestD = d; }
@@ -161,7 +168,7 @@ function nearestEnemyUnit(sim: Sim, e: Entity, range: number): Entity | undefine
  * casts, so it is deterministic and mirror matches stay mirrored): a blast, a stun, death, nothing.
  */
 function chaos(sim: Sim, e: Entity, p: PowerDef): boolean {
-  const t = nearestEnemyUnit(sim, e, p.range);
+  const t = nearestEnemyUnit(sim, e, reach(p));
   if (!t) return false;
   const fate = (e.revives = (e.revives ?? 0) + 1) % 4;
   if (fate === 1) { sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, p.dmg, 'magic', e.owner); }
@@ -193,10 +200,10 @@ function erase(sim: Sim, e: Entity, p: PowerDef): boolean {
 function charm(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
-  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+  for (const u of around(sim, c, reach(p))) {
     if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg || u.ttl !== undefined) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
-    if (d <= p.range && d < bestD) { best = u; bestD = d; }
+    if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
   if (!best) return false;
   best.owner = e.owner; best.team = e.team;
@@ -226,7 +233,7 @@ function wave(sim: Sim, e: Entity, p: PowerDef): boolean {
 
 /** Tentacle prison: summoned units burst from the ground in a ring around the nearest enemy unit. */
 function tentacles(sim: Sim, e: Entity, p: PowerDef): boolean {
-  const t = nearestEnemyUnit(sim, e, p.range);
+  const t = nearestEnemyUnit(sim, e, reach(p));
   if (!t || sim.isAir(t) || !p.unit) return false;
   const def = UNITS[p.unit], n = p.count ?? 4;
   const ttl = Math.round((p.duration ?? 10) * TICK_RATE);

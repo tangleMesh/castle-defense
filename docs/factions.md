@@ -182,7 +182,7 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Demon Gate | demon gate | infernals: tough, hit air, immolation (12 HP/s to enemies nearby) |
 | Magic Tower Ruin | magic tower ruin | present of chaos: a blast, a stun, death or nothing, in turn |
 | Volcano | volcano | eruption under the nearest enemies |
-| Shrine of Destruction | shrine of destruction | Hell's Fist cripples the nearest enemy building for 20 s |
+| Shrine of Destruction | shrine of destruction | Hell's Fist cripples the nearest enemy building for 12 s, anywhere on the map |
 | Eraser → Eraser II → Eraser III | eraser | the special: kills every enemy unit of the most numerous kind (up to 1000 HP) |
 
 Like the map's race: chaos damage (full against every armour type), no tower and no siege unit.
@@ -241,6 +241,7 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | power `hex` / `beam` | stuns the toughest enemy in range / a ray of magic damage on the nearest |
 | building `revive: { every, radius }` | every n-th own unit that falls nearby rises again |
 | power `bombard` with `freeze` | the shell freezes buildings (and briefly units) it hits |
+| power with `global` | reaches the whole map (nearest valid enemy anywhere): bombards, storms, sudden death, control, chaos, tentacles; beams, hexes, stasis, tsunami and erase stay local |
 | power `hex` with `air` | freezes the toughest flyer and deals damage |
 | aura with a negative value on `enemy` | weakens enemies (less damage / armour) |
 | aura `regen` with a negative value on `enemy` | decay: enemies lose HP every second (no bounty) |

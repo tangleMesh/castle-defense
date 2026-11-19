@@ -140,8 +140,8 @@ export const IRONVOW: FactionDef = {
     },
     {
       id: 'iv_siege_battery', name: 'Siege Battery', faction: 'ironvow', cost: 200, hp: 900, armor: 4, buildTime: 12, size: 2, upgradeOnly: true,
-      desc: 'Artillery: every 15 s a heavy shell flies at the nearest enemy building within 30 tiles. Can\'t defend itself.',
-      power: { kind: 'bombard', cooldown: 15, range: 30, radius: 2.5, dmg: 200 },
+      desc: 'Artillery: every 15 s a heavy shell flies at the nearest enemy building anywhere on the map. Can\'t defend itself.',
+      power: { kind: 'bombard', global: true, cooldown: 15, range: 30, radius: 2.5, dmg: 200 },
       model: { style: 'workshop', wall: 0x5a6070, roof: 0x3a3a3a, height: 24 },
     },
     {
