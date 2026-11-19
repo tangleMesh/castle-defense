@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
@@ -587,13 +587,15 @@ export class Hud {
     if (d.spawn) {
       const u = UNITS[d.spawn.unit];
       lines.push(`Spawns <b>${d.spawn.count}× ${u.name}</b> every ${d.spawn.interval}s`);
-      lines.push(`${Math.round(u.hp)} HP · ${+u.dmg.toFixed(1)} ${ATTACK_LABEL[u.attackType]} dmg (strong vs ${strongAgainst(u.attackType)}) · ${ARMOR_LABEL[u.armorType]} armor ${u.armor}${u.air ? ' · <i>flying</i>' : ''}${u.range > 1.5 ? ` · range ${u.range}` : ''}`);
+      lines.push(`${Math.round(u.hp)} HP · ${num(u.dmg)} ${ATTACK_LABEL[u.attackType]} dmg (strong vs ${strongAgainst(u.attackType)}) · ${ARMOR_LABEL[u.armorType]} armor ${u.armor}${u.air ? ' · <i>flying</i>' : ''}${u.range > 1.5 ? ` · range ${u.range}` : ''}`);
       for (const a of unitAbilities(u, UNITS)) lines.push(`<span class="tip-ability">✦ ${a}</span>`);
     }
     if (d.aura) lines.push(`Aura radius ${d.aura.radius}`);
-    if (d.attack) lines.push(`Attack ${d.attack.dmg} ${ATTACK_LABEL[d.attack.attackType]}, range ${d.attack.range}${d.attack.splash ? ', splash' : ''}`);
+    if (d.attack) lines.push(`Attack ${num(d.attack.dmg)} ${ATTACK_LABEL[d.attack.attackType]}, range ${d.attack.range}${d.attack.splash ? ', splash' : ''}`);
     for (const a of buildingAbilities(d)) lines.push(`<span class="tip-ability">✦ ${a}</span>`);
-    if (d.regen) lines.push(`Living wood: regrows ${d.regen} HP/s`);
+    const up = upgradeHint(d);
+    if (up) lines.push(`<span class="tip-upgrade">⬆ ${up}</span>`);
+    if (d.regen) lines.push(`Living wood: regrows ${num(d.regen)} HP/s`);
     lines.push(`<span class="tip-meta">${d.hp} HP · build ${d.buildTime}s${d.special ? ' · <b>SPECIAL</b>' : ''}</span>`);
     return lines.join('<br>');
   }
@@ -642,13 +644,13 @@ export class Hud {
     }
     const [, kind, type, owner, team, , , hp, maxHp, extra] = row;
     const ownerName = owner >= 0 ? s.playerName(owner) : `${TEAM_NAMES[team]} team`;
-    const hpBar = h('div', { class: 'ihp' }, h('div', { style: `width:${(100 * hp) / maxHp}%` }), h('span', null, `${hp} / ${maxHp}`));
+    const hpBar = h('div', { class: 'ihp' }, h('div', { style: `width:${(100 * hp) / maxHp}%` }), h('span', null, `${Math.ceil(hp)} / ${Math.round(maxHp)}`));
     const portrait = (key: string) => h('div', { class: 'portrait', style: `border-color:${css(TEAM_COLORS[team])}` }, h('img', { src: this.icon(key), alt: '' }));
     if (kind === 0) {
       const u = UNITS[type];
       this.info.append(portrait(`u_${type}`), h('div', { class: 'istats' },
         h('div', { class: 'info-title' }, u.name), h('div', { class: 'dim' }, ownerName), hpBar,
-        h('div', null, `Attack: ${+u.dmg.toFixed(1)} ${ATTACK_LABEL[u.attackType]}${u.range > 1.5 ? ` · range ${u.range}` : ' · melee'}${u.splash ? ' · splash' : ''}${u.chain ? ` · chains ${u.chain}` : ''}`),
+        h('div', null, `Attack: ${num(u.dmg)} ${ATTACK_LABEL[u.attackType]}${u.range > 1.5 ? ` · range ${u.range}` : ' · melee'}${u.splash ? ' · splash' : ''}${u.chain ? ` · chains ${u.chain}` : ''}`),
         h('div', null, `Armor: ${u.armor} ${ARMOR_LABEL[u.armorType]} · Speed ${u.speed}${u.air ? ' · flying' : ''}`),
         unitAbilities(u, UNITS).map((a) => h('div', { class: 'ability' }, `✦ ${a}`)),
         h('div', { class: 'dim' }, `Strong vs ${strongAgainst(u.attackType)} · Bounty ${u.bounty}g`),
@@ -661,6 +663,7 @@ export class Hud {
         h('div', { class: 'desc' }, d.desc),
         d.spawn ? h('div', null, `Spawns ${d.spawn.count}× ${UNITS[d.spawn.unit].name} every ${d.spawn.interval}s`) : null,
         ...buildingAbilities(d).map((t) => h('div', { class: 'ability' }, `✦ ${t}`)),
+        upgradeHint(d) ? h('div', { class: 'upgrade-hint' }, `⬆ ${upgradeHint(d)}`) : null,
         d.spawn && extra === 100 ? (this.spawnBar = h('div', { class: 'ispawn', title: 'Time until the next unit' }, h('div'), h('span'))) : null,
       ));
       this.updateSpawnBar();
@@ -1013,3 +1016,11 @@ export class Hud {
 }
 
 export type { Mode };
+
+/** "Upgradable into X (300g + 1 sapphire) or Y (…)" for buildings with upgrades, else undefined. */
+function upgradeHint(d: (typeof BUILDINGS)[string]): string | undefined {
+  const ups = (d.upgrades ?? []).map((id) => BUILDINGS[id]).filter(Boolean);
+  if (!ups.length) return undefined;
+  const cost = (u: (typeof BUILDINGS)[string]) => `${u.cost}g${u.sapphires ? ` + ${u.sapphires} sapphire${u.sapphires > 1 ? 's' : ''}` : ''}`;
+  return `Upgradable into ${ups.map((u) => `${u.name} (${cost(u)})`).join(' or ')}`;
+}

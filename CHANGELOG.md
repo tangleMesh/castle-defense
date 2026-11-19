@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.37.1
+
+- **Tidier numbers in the UI:**
+  - Values from 10 up show as whole numbers, smaller ones with at most one decimal, so a tuned poison reads 4.2 dmg/s instead of 4.2312….
+  - HP bars show whole HP.
+- **Building tooltips and the info panel show upgrade paths:** "⬆ Upgradable into Shield Hall (…g) or Halberd Hall (…g)", with sapphire costs.
+
 ## 0.37.0
 
 - **Economy:**
