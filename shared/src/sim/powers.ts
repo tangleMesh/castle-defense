@@ -1,5 +1,5 @@
 import { TICK_RATE } from '../constants';
-import { BUILDINGS, type PowerDef } from '../data';
+import { BUILDINGS, UNITS, type PowerDef } from '../data';
 import { distToRect } from '../map/map';
 import { dealDamage, rewardKill } from './combat';
 import { footprint } from './grid';
@@ -28,7 +28,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -221,6 +221,21 @@ function wave(sim: Sim, e: Entity, p: PowerDef): boolean {
     if (off <= p.radius + sim.radius(u)) dealDamage(sim, u, p.dmg, 'magic', e.owner);
   }
   sim.emit({ t: 'wave', x: r2(c.x), y: r2(c.y), x2: r2(ex), y2: r2(ey), r: p.radius });
+  return true;
+}
+
+/** Tentacle prison: summoned units burst from the ground in a ring around the nearest enemy unit. */
+function tentacles(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const t = nearestEnemyUnit(sim, e, p.range);
+  if (!t || sim.isAir(t) || !p.unit) return false;
+  const def = UNITS[p.unit], n = p.count ?? 4;
+  const ttl = Math.round((p.duration ?? 10) * TICK_RATE);
+  for (let k = 0; k < n; k++) {
+    // Point-symmetric ring: team 1's ring is the mirror image of team 0's.
+    const a = (k / n) * Math.PI * 2 + (e.team === 0 ? 0 : Math.PI);
+    sim.add({ kind: 'unit', type: p.unit, owner: e.owner, team: e.team, x: t.x + Math.cos(a) * p.radius, y: t.y + Math.sin(a) * p.radius, hp: def.hp, maxHp: def.hp, cd: 0, healCd: 0, ttl });
+  }
+  sim.emit({ t: 'splash', x: r2(t.x), y: r2(t.y), r: p.radius });
   return true;
 }
 

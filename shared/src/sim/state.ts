@@ -63,6 +63,8 @@ export interface Entity {
   stun?: number;
   /** Summoned unit: fades after this many more ticks. */
   ttl?: number;
+  /** Weakened by a corrupted blow: deals `mult` less damage for `left` more ticks. */
+  weaken?: { mult: number; left: number };
   /** Fallen allies counted by a reviving shrine. */
   revives?: number;
   /** Ticks until the next summon (units) or power (buildings). */

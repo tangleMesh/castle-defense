@@ -7,6 +7,17 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.35.0
+
+- **New faction: Blightroot Coven**, after the castle-fight map's corrupted race. All twelve races of the map are now in the game.
+  - **Units:** corrupted ents, then treants, then the elite Annihilator, whose blows weaken their target; void walkers and keepers whose aura rots enemy armour; felhounds with an attack-speed aura; infernal machines and tanks that detonate when destroyed; nether and shadow drakes; the incubus.
+  - **Buildings:** a chaos splash tower; the Forgotten One, which raises tentacles around the enemy; the Well of Pain; and the Eye of Corruption special, which strips armour from every enemy unit on the battlefield.
+  - **Look:** rotten treants with fel-green cracks, violet void walkers, tendrilled felhounds, spider-legged infernal machines, smoky drakes, a horned incubus and tentacles. Buildings are corrupted ancients (dead trees with glowing faces), broken void rings, a fel shrine with a hound skull, a hellgate furnace, a winged demon statue, a protector tree clutching a boulder, a toothed maw, a well of pain and a giant bloodshot eye on roots, all on blighted ground.
+- **New mechanics:**
+  - weakening blows;
+  - the tentacle power.
+- **Fix:** weakening auras on enemies (−damage, −armour) now stack with the enemy's own boosts instead of being overwritten by them.
+
 ## 0.34.0
 
 - **New faction: Tidecall Dominion**, after the castle-fight map's naga race.

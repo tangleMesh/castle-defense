@@ -62,7 +62,8 @@ describe.each(FACTION_IDS)('faction %s', (id) => {
       expect(u.hp, u.id).toBeGreaterThan(0);
       expect(u.dmg, u.id).toBeGreaterThan(0);
       expect(u.cooldown, u.id).toBeGreaterThan(0.2);
-      expect(u.speed, u.id).toBeGreaterThan(0.5);
+      // Stationary summons (tentacles) don't move at all; everything else must.
+      if (u.speed !== 0) expect(u.speed, u.id).toBeGreaterThan(0.5);
       expect(u.speed, u.id).toBeLessThan(8);
       expect(u.range, u.id).toBeGreaterThan(0);
       if (u.aura) expect(u.aura.radius, u.id).toBeGreaterThan(0);

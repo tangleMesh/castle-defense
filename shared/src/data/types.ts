@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake' | 'doomforge' | 'tidecall';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake' | 'doomforge' | 'tidecall' | 'blightroot';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -23,7 +23,9 @@ export interface UnitModel {
     // Doomforge demons
     | 'demon' | 'satyr' | 'quilldemon' | 'twin' | 'succubus' | 'fiend' | 'reddragon' | 'infernal'
     // Tidecall naga
-    | 'murloc' | 'spitter' | 'hydra' | 'naga' | 'lobster' | 'dragonturtle' | 'wingedserpent';
+    | 'murloc' | 'spitter' | 'hydra' | 'naga' | 'lobster' | 'dragonturtle' | 'wingedserpent'
+    // Blightroot corrupted
+    | 'blightent' | 'voidwalker' | 'felhound' | 'infernalmachine' | 'netherdrake' | 'incubus' | 'tentacle';
   body: number;
   accent: number;
   scale: number;
@@ -50,7 +52,9 @@ export interface BuildingModel {
     // Doomforge
     | 'chaoscitadel' | 'demoncage' | 'greedaltar' | 'bloodfountain' | 'dragonnest' | 'demongate' | 'magicruin' | 'volcano' | 'destructionshrine' | 'eraser'
     // Tidecall
-    | 'murloccamp' | 'swampwell' | 'spawningpool' | 'nagaspring' | 'reptilepool' | 'snaketemple' | 'coralstatue' | 'pyramid' | 'oracle' | 'tidalguardian';
+    | 'murloccamp' | 'swampwell' | 'spawningpool' | 'nagaspring' | 'reptilepool' | 'snaketemple' | 'coralstatue' | 'pyramid' | 'oracle' | 'tidalguardian'
+    // Blightroot
+    | 'blightancient' | 'voidportal' | 'felshrine' | 'hellgate' | 'demonstatue' | 'blightprotector' | 'forgottenone' | 'painwell' | 'corruptioneye';
   wall: number;
   roof: number;
   height: number;
@@ -123,6 +127,8 @@ export interface UnitDef {
   suicide?: { radius: number };
   /** Every attack also strikes up to `multishot - 1` further enemies in range (multi-shot arrows). */
   multishot?: number;
+  /** Its blows weaken the target: it deals `mult` less damage for `duration` seconds. */
+  weaken?: { mult: number; duration: number };
   /** Below `below` of its HP it flies into a rage: attacks `haste` faster (1 = twice as fast). */
   berserk?: { below: number; haste: number };
   /** Share of magic damage it shrugs off (spell resistance). */
@@ -194,10 +200,11 @@ export interface BuildingDef {
  * unit of the most numerous type in range dies (types with more than `dmg` max HP are immune).
  * `charm`: the nearest enemy unit in range with at most `dmg` max HP changes sides for good.
  * `wave`: a wave rolls from the building towards the nearest enemy unit, `range` tiles long and
- * `radius` wide, dealing `dmg` to every enemy ground unit in its path.
+ * `radius` wide, dealing `dmg` to every enemy ground unit in its path. `tentacles`: `count` units of
+ * type `unit` burst from the ground in a ring of `radius` around the nearest enemy and last `duration` s.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles';
   cooldown: number;
   range: number;
   radius: number;
@@ -205,6 +212,9 @@ export interface PowerDef {
   duration?: number;
   slow?: number;
   air?: boolean;
+  /** Tentacles: the unit summoned and how many. */
+  unit?: string;
+  count?: number;
   /** Bombard: what the shell hits is frozen for this many seconds (buildings stop training, shooting and casting). */
   freeze?: number;
 }

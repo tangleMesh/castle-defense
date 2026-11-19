@@ -46,7 +46,8 @@ export function attackStats(e: Entity): AttackStats | null {
 export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number } {
   if (e.kind === 'unit') {
     const u = UNITS[e.type];
-    return { type: u.armorType, value: u.armor + modsOf(sim, e.id).armor };
+    const m = modsOf(sim, e.id);
+    return { type: u.armorType, value: u.armor + m.armor + m.armorMalus };
   }
   // Bulwark Seal: extra armor on all structures of the carrier's team.
   if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
@@ -168,6 +169,7 @@ const anyTarget = (st: AttackStats): AttackStats => ({ ...st, targetsAir: true, 
 export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmgMult: number) {
   const ud = a.kind === 'unit' ? UNITS[a.type] : undefined;
   let mult = dmgMult * bonusMult(sim, a, t);
+  if (a.weaken) mult *= 1 - a.weaken.mult;
   // Charge: the first blow after marching freely hits much harder.
   let charged = false;
   if (ud?.charge && a.charge) { mult *= ud.charge; a.charge = false; charged = true; }
@@ -259,6 +261,7 @@ function explode(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmg: number, r
 /** Lifesteal, poison and thorns after a single-target hit. */
 function onHit(sim: Sim, a: Entity, ud: UnitDef, t: Entity, dealt: number, ranged: 0 | 1) {
   if (ud.lifesteal && dealt > 0 && a.hp > 0) a.hp = Math.min(a.maxHp, a.hp + dealt * ud.lifesteal);
+  if (ud.weaken && t.kind === 'unit' && t.hp > 0) t.weaken = { mult: Math.max(ud.weaken.mult, t.weaken?.mult ?? 0), left: Math.round(ud.weaken.duration * TICK_RATE) };
   if (ud.poison && t.kind === 'unit' && t.hp > 0) {
     t.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: ud.poison.slow, owner: a.owner };
   }
@@ -306,6 +309,7 @@ export function stepCombatUnits(sim: Sim) {
     if (regen > 0) e.hp = Math.min(e.maxHp, e.hp + regen / TICK_RATE);
     // Decay auras (City of Decay) rot enemy units; nobody earns a bounty for what rot kills.
     if (mods.decay > 0) dealDamage(sim, e, mods.decay / TICK_RATE, 'chaos', -1, true);
+    if (e.weaken && --e.weaken.left <= 0) delete e.weaken;
     if (e.poison) {
       dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
       if (--e.poison.left <= 0) delete e.poison;
@@ -338,7 +342,7 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   if (e.hp <= 0) {
     // Killed this tick: its last blow still lands (no movement, no regeneration).
     const st = attackStats(e)!, t = sim.get(e.targetId);
-    if (!e.cd && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg);
+    if (!e.cd && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg * (1 + modsOf(sim, e.id).dmgMalus));
     return;
   }
   const st = attackStats(e)!;
@@ -363,7 +367,7 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   if (target) {
     if (sim.edgeDist(e, target) <= st.range + 0.05) {
       if (!e.cd) {
-        performAttack(sim, e, st, target, mods.dmg);
+        performAttack(sim, e, st, target, mods.dmg * (1 + mods.dmgMalus));
         // Berserkers attack faster once badly hurt.
         const bz = UNITS[e.type].berserk;
         const rage = bz && e.hp < e.maxHp * bz.below ? 1 + bz.haste : 1;

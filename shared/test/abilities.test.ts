@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDINGS, Sim, TICK_RATE, UNITS, computeDamage, type Entity, type PlayerSetup, type SimEvent } from '../src/index';
 import { spawnUnit } from '../src/sim/spawning';
-import { attackStats, canTarget, performAttack } from '../src/sim/combat';
+import { armorOf, attackStats, canTarget, performAttack } from '../src/sim/combat';
 import { computeAuras } from '../src/sim/auras';
 
 const players: PlayerSetup[] = [
@@ -471,7 +471,7 @@ describe('Frostmark mechanics', () => {
     const foe = unit(sim, 1, 'tw_vineling', 51, 20);
     sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
     computeAuras(sim);
-    expect(sim.mods.get(foe.id)?.dmg).toBeCloseTo(1 + UNITS.fm_ancient_wendigo.aura!.value);
+    expect(sim.mods.get(foe.id)?.dmgMalus).toBeCloseTo(UNITS.fm_ancient_wendigo.aura!.value);
   });
 });
 
@@ -589,5 +589,48 @@ describe('Tidecall mechanics', () => {
     expect(waved).toBe(true);
     expect(line.every((u) => u.hp < u.maxHp)).toBe(true);
     expect(off.hp).toBe(off.maxHp);
+  });
+});
+
+describe('Blightroot mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'blightroot' },
+    { userId: 'b', name: 'B', team: 1, faction: 'ironvow' },
+  ];
+  const simB = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 18 });
+
+  it('a corrupted blow weakens the target: it deals less damage for a while', () => {
+    const sim = simB();
+    const ent = unit(sim, 0, 'br_ent', 50, 20), mil = unit(sim, 1, 'iv_militia', 50.6, 20);
+    const dummy = unit(sim, 0, 'br_ent', 51.2, 20);
+    dummy.hp = dummy.maxHp = 1e5;
+    const before = hits(sim, mil, dummy, 1)[0];
+    hits(sim, ent, mil, 1);
+    expect(mil.weaken?.mult).toBeCloseTo(UNITS.br_ent.weaken!.mult);
+    const after = hits(sim, mil, dummy, 1)[0];
+    expect(after).toBeCloseTo(before * (1 - UNITS.br_ent.weaken!.mult), 1);
+  });
+
+  it('the Forgotten One raises a ring of fading tentacles around the nearest enemy', () => {
+    const sim = simB();
+    building(sim, 0, 'br_forgotten_one', 30, 18);
+    const p = BUILDINGS.br_forgotten_one.power!;
+    const foe = unit(sim, 1, 'iv_knight', 36, 19);
+    foe.hp = foe.maxHp = 1e5;
+    for (let i = 0; i < (p.cooldown + 1) * TICK_RATE; i++) { foe.x = 36; foe.y = 19; sim.step(); }
+    const tent = sim.state.entities.filter((e) => e.type === 'br_tentacle');
+    expect(tent).toHaveLength(p.count!);
+    expect(tent.every((t) => t.ttl! > 0 && Math.hypot(t.x - 36, t.y - 19) < p.radius + 0.6)).toBe(true);
+  });
+
+  it('the Eye of Corruption strips armour from every enemy on the battlefield', () => {
+    const sim = simB();
+    building(sim, 0, 'br_eye', 10, 30);
+    const far = unit(sim, 1, 'iv_knight', 100, 5);
+    sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
+    computeAuras(sim);
+    // Stacks with the knight's own armour aura instead of being overwritten by it.
+    expect(sim.mods.get(far.id)?.armorMalus).toBe(BUILDINGS.br_eye.aura!.value);
+    expect(armorOf(sim, far).value).toBe(UNITS.iv_knight.armor + UNITS.iv_knight.aura!.value + BUILDINGS.br_eye.aura!.value);
   });
 });

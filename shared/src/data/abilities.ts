@@ -34,6 +34,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.block) out.push(`Hardened skin: blocks ${u.block} damage of every attack`);
   if (u.berserk) out.push(`Berserk: below ${pct(u.berserk.below)} health it attacks ${pct(u.berserk.haste)} faster`);
   if (u.magicResist) out.push(`Spell resistance: takes ${pct(u.magicResist)} less magic damage`);
+  if (u.weaken) out.push(`Weakening blows: its target deals ${pct(u.weaken.mult)} less damage for ${u.weaken.duration}s`);
   if (u.multishot) out.push(`Multi-shot: every volley strikes ${u.multishot} enemies`);
   if (u.deathBlast) out.push(`Revenge: when it falls it explodes for ${Math.round(u.deathBlast.dmg)} damage within ${u.deathBlast.radius} tiles`);
   if (u.suicide) out.push(`Suicide blast: its first attack explodes, hitting every enemy unit and building within ${u.suicide.radius} tiles (no bounty)`);
@@ -47,6 +48,7 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'tentacles') return `Tentacle prison: every ${p.cooldown}s ${p.count} tentacles burst from the ground around the nearest enemy within ${p.range} tiles (they last ${p.duration}s)`;
   if (p.kind === 'charm') return `Control: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles with at most ${p.dmg} HP joins your side`;
   if (p.kind === 'wave') return `Tsunami: every ${p.cooldown}s a wave rolls ${p.range} tiles towards the enemy, ${p.dmg} damage to every ground unit in its path`;
   if (p.kind === 'chaos') return `Present of chaos: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles suffers the next fate: ${p.dmg} damage, a ${p.duration}s stun, death (up to ${Math.round(p.dmg * 1.5)} HP), or nothing`;
@@ -87,6 +89,7 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.storm) dmg += (u.storm.dmg * Math.min(3, u.storm.jumps) * 0.8) / (u.storm.every * perHit);
   if (u.bash) dmg += Math.min(0.5, u.bash.stun / (u.bash.every * u.cooldown));
   if (u.multishot) dmg += (u.multishot - 1) * 0.45;
+  if (u.weaken) hp *= 1 + u.weaken.mult * 0.4;
   if (u.berserk) dmg += u.berserk.haste * 0.25;
   if (u.magicResist) hp *= 1 + u.magicResist * 0.3;
   if (u.deathBlast) dmg += 0.1;

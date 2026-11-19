@@ -12,6 +12,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Gravewake follows the "undead" race.
 - Doomforge follows the "chaos" race.
 - Tidecall follows the "naga" race.
+- Blightroot follows the "corrupted" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -203,6 +204,21 @@ Like the map's race: chaos damage (full against every armour type), no tower and
 
 Trait: every unit regenerates 3 HP/s. Like the map's race: no tower.
 
+## Blightroot ("corrupted")
+
+| Blightroot | Inspired by | Notes |
+|---|---|---|
+| Corrupted Ancient of Battle → of War → of Annihilation | corrupted ancient of battle → war → annihilation | corrupted ents → treants (cleave, crit) → the annihilator (elite: fan of spikes stuns); their blows weaken targets by 25 / 40 / 60% |
+| Void Portal → Portal of the Abyss | void portal → portal of the abyss | void walkers / keepers: burning magic, −2 / −4 armour aura on enemies |
+| Felhound Shrine | felhound shrine | felhounds with a +18% attack speed aura |
+| Hell's Gate → Hell's Portal | hell's gate → hell's portal | infernal machines / tanks: long-range siege that detonate when destroyed |
+| Nether Ancient → Shadow Ancient | nether ancient → shadow ancient | flying drakes with splashing breath |
+| Demonic Statue | demonic statue | the incubus: long-range chaos splash |
+| Corrupted Protector | corrupted protector | chaos splash tower |
+| Forgotten One | forgotten one | tentacle prison: six tentacles around the nearest enemy |
+| Well of Pain | well of pain | touch of pain: 100 damage every 4 s |
+| Eye of Corruption → All-Seeing Eye | eye of corruption | the special: −5 / −8 armour on every enemy unit on the battlefield |
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -231,6 +247,8 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | power `slay` | kills the nearest enemy unit with at most `dmg` max HP |
 | power `chaos` / `erase` | cycling fates on the nearest enemy / kills the most numerous enemy kind |
 | power `charm` / `wave` | the nearest weak enemy changes sides / a tsunami along a line |
+| `weaken: { mult, duration }` | the target deals less damage for a while |
+| power `tentacles` | summons fading units in a ring around the nearest enemy |
 | power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |

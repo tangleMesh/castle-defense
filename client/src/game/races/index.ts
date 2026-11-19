@@ -6,3 +6,4 @@ import './frostmark';
 import './gravewake';
 import './doomforge';
 import './tidecall';
+import './blightroot';
