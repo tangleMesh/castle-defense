@@ -7,6 +7,10 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.44.0+9 · balance
+
+- **Second 12-faction run.** Final check: Frostmark 67%, Gravewake 63%, Tidecall 60%, Doomforge 36%, Blightroot 38%. The other seven factions are within 44–56%.
+
 ## 0.44.0+8 · balance
 
 - **First balancer run with all twelve factions,** using the 30-minute mode.
