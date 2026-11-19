@@ -336,6 +336,11 @@ export function stepCombatUnits(sim: Sim) {
     // Decay auras (City of Decay) rot enemy units; nobody earns a bounty for what rot kills.
     if (mods.decay > 0) dealDamage(sim, e, mods.decay / TICK_RATE, 'chaos', -1, true);
     if (e.weaken && --e.weaken.left <= 0) delete e.weaken;
+    const md = UNITS[e.type].mines;
+    if (md && !e.stun) {
+      e.mineCd ??= Math.round(md.every * TICK_RATE);
+      if (--e.mineCd <= 0) { e.mineCd = Math.round(md.every * TICK_RATE); layMine(sim, e, md); }
+    }
     // Stealth: fresh assassins start hidden; revealed ones vanish again once the timer runs out,
     // ready for the next strike from the shadows.
     if (UNITS[e.type].stealth) {
@@ -451,4 +456,34 @@ export function stepStructureAttacks(sim: Sim) {
     performAttack(sim, e, st, t, 1);
     e.cd = st.cooldownTicks;
   }
+}
+
+/** Buries a mine where the layer stands; beyond its limit the layer's oldest mine is dropped. */
+function layMine(sim: Sim, e: Entity, md: NonNullable<UnitDef['mines']>) {
+  const mines = (sim.state.mines ??= []);
+  const own = mines.filter((m) => m.layer === e.id);
+  if (own.length >= md.max) mines.splice(mines.indexOf(own[0]), 1);
+  mines.push({ owner: e.owner, team: e.team, layer: e.id, x: e.x, y: e.y, dmg: md.dmg, radius: md.radius, trigger: md.trigger, ticksLeft: Math.round(md.ttl * TICK_RATE) });
+}
+
+/** Mines: an enemy ground unit within the trigger distance sets one off (splash to enemy ground units). */
+export function stepMines(sim: Sim) {
+  const mines = sim.state.mines;
+  if (!mines?.length) return;
+  const keep: typeof mines = [];
+  for (const m of mines) {
+    if (--m.ticksLeft <= 0) continue;
+    let tripped = false;
+    for (const u of sim.hash.query(m.x, m.y, m.trigger + 1)) {
+      if (u.kind !== 'unit' || u.team === m.team || u.hp <= 0 || sim.isAir(u)) continue;
+      if (Math.hypot(u.x - m.x, u.y - m.y) <= m.trigger + sim.radius(u)) { tripped = true; break; }
+    }
+    if (!tripped) { keep.push(m); continue; }
+    for (const u of sim.hash.query(m.x, m.y, m.radius + 1)) {
+      if (u.kind !== 'unit' || u.team === m.team || u.hp <= 0 || sim.isAir(u)) continue;
+      if (Math.hypot(u.x - m.x, u.y - m.y) <= m.radius + sim.radius(u)) dealDamage(sim, u, m.dmg, 'siege', m.owner);
+    }
+    sim.emit({ t: 'mine', x: Math.round(m.x * 100) / 100, y: Math.round(m.y * 100) / 100, r: m.radius });
+  }
+  sim.state.mines = keep;
 }

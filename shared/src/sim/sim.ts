@@ -12,7 +12,7 @@ import { stepPowers } from './powers';
 import { stepEconomy } from './economy';
 import { stepBuildings } from './spawning';
 import { computeAuras, type Mods } from './auras';
-import { dealDamage, stepCombatUnits, stepStructureAttacks } from './combat';
+import { dealDamage, stepCombatUnits, stepMines, stepStructureAttacks } from './combat';
 import { stepBuilders, stepUnitMovementPost } from './movement';
 import { stepStrikes } from './rescue';
 import { stepItems } from './items';
@@ -279,6 +279,7 @@ export class Sim {
     stepEconomy(this);
     stepBuildings(this);
     stepPowers(this);
+    stepMines(this);
     computeAuras(this);
     stepCombatUnits(this);
     stepStructureAttacks(this);

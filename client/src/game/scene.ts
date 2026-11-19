@@ -855,6 +855,18 @@ export class GameScene extends Phaser.Scene {
       g.fillStyle(inRange ? 0xffe060 : 0xff3030, 0.15);
       g.fillEllipse(p.x, p.y, e.w, e.h);
     }
+    // Own buried mines (the enemy's never reach the client): a dark plate with a blinking fuse.
+    const blink = Math.floor(this.time.now / 450) % 2 === 0;
+    for (const [, x, y] of s.latest.mines ?? []) {
+      const c = toScreen(x, y);
+      const e = isoEllipse(0.28);
+      g.fillStyle(0x2a2620, 0.7);
+      g.fillEllipse(c.x, c.y, e.w, e.h);
+      g.lineStyle(1, 0xc0a040, 0.6);
+      g.strokeEllipse(c.x, c.y, e.w, e.h);
+      g.fillStyle(blink ? 0xff5030 : 0x802010, 0.9);
+      g.fillCircle(c.x, c.y - 1, 1.6);
+    }
     // pending strikes (telegraph from snapshots, visible to everyone)
     for (const [p, x, y, left] of s.latest.strikes) {
       const team = s.latest.players[p].team;
@@ -1088,6 +1100,16 @@ export class GameScene extends Phaser.Scene {
           g.strokePath();
         }
         this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
+        return;
+      }
+      case 'mine': {
+        // A mine goes off: a flash, a blast ring and dirt.
+        const p = toScreen(ev.x, ev.y);
+        const e = isoEllipse(ev.r);
+        const ring = this.img(p.x, p.y, 'ringthin').setDepth(7e6).setTint(0xffa040).setDisplaySize(e.w * 0.2, e.h * 0.2);
+        this.tweens.add({ targets: ring, displayWidth: e.w, displayHeight: e.h, alpha: 0, duration: 420, onComplete: () => ring.destroy() });
+        this.puff(p.x, p.y, 0xffc060, 8, 16);
+        this.puff(p.x, p.y, 0x6a5a40, 10, 26);
         return;
       }
       case 'splash': {

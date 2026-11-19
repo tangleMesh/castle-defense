@@ -54,7 +54,7 @@ export const COGSPARK: FactionDef = {
     },
     {
       id: 'cs_mine_factory', name: 'Mine Layer Factory', faction: 'cogspark', cost: 120, hp: 900, armor: 4, buildTime: 9, size: 2, upgradeOnly: true,
-      desc: 'Builds Mine Layers: close-range tanks whose every 4th attack drops a mine that blasts the ground around the target.',
+      desc: 'Builds Mine Layers: close-range tanks that bury a mine every 5 s along their way. Enemies can\'t see mines; a ground unit stepping on one sets it off for 90 damage to every enemy around it.',
       spawn: { unit: 'cs_mine_layer', count: 1, interval: 27 },
       model: { style: 'factory', wall: PLATE, roof: 0x7a6a3a, height: 20 },
     },
@@ -185,7 +185,7 @@ export const COGSPARK: FactionDef = {
       block: 3,
       model: { shape: 'tank', body: PLATE, accent: BRASS, scale: 0.95, variant: 'light' } },
     { id: 'cs_mine_layer', name: 'Mine Layer', hp: 430, armor: 6, armorType: 'heavy', dmg: 30, attackType: 'normal', range: 0.8, cooldown: 1.3, speed: 3.0, radius: 0.4, bounty: 7,
-      block: 3, slam: { every: 4, dmg: 80, radius: 1.4 },
+      block: 3, mines: { every: 5, dmg: 90, radius: 1.5, trigger: 0.6, ttl: 45, max: 4 },
       model: { shape: 'tank', body: 0x7a6a3a, accent: 0xe0c040, scale: 1.05, variant: 'mine' } },
     { id: 'cs_assault_tank', name: 'Assault Tank', hp: 500, armor: 7, armorType: 'heavy', dmg: 42, attackType: 'siege', range: 5.5, cooldown: 1.6, speed: 2.7, radius: 0.42, bounty: 9,
       block: 4, splash: 1.2,

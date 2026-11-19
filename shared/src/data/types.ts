@@ -101,6 +101,12 @@ export interface UnitDef {
    * reveals it for `reveal` seconds, then it vanishes again (its charge re-armed).
    */
   stealth?: { reveal: number };
+  /**
+   * Mine laying (Mine Layer): every `every` seconds it buries a mine where it stands (at most
+   * `max` armed at a time; each lasts `ttl` s). An enemy ground unit stepping within `trigger`
+   * tiles sets it off: `dmg` to every enemy ground unit within `radius`. Enemies can't see mines.
+   */
+  mines?: { every: number; dmg: number; radius: number; trigger: number; ttl: number; max: number };
   /** Attacks poison the target: damage per second for `duration` seconds and a slow. */
   poison?: { dps: number; duration: number; slow: number };
   /** Share of damage dealt that heals the attacker. */

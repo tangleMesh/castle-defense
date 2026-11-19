@@ -21,6 +21,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
     const v = a.stat === 'dmg' || a.stat === 'speed' || a.stat === 'haste' ? `${a.value > 0 ? '+' : ''}${pct(a.value)}` : `${a.value > 0 ? '+' : ''}${num(a.value)}`;
     out.push(`Aura: ${a.target === 'ally' ? 'allies' : 'enemies'} within ${num(a.radius)} tiles get ${v} ${STAT[a.stat]}`);
   }
+  if (u.mines) out.push(`Mines: buries a hidden mine every ${num(u.mines.every)}s (up to ${u.mines.max}, each lasts ${num(u.mines.ttl)}s); an enemy ground unit stepping on one sets it off for ${num(u.mines.dmg)} damage within ${num(u.mines.radius)} tiles`);
   if (u.stealth) out.push(`Stealth: invisible, hunts casters, healers and ranged units behind the front line (anything in the enemy base); a blow reveals it for ${num(u.stealth.reveal)}s`);
   if (u.charge) out.push(`Charge: the first blow after marching deals ${num(u.charge)}× damage`);
   if (u.bonusVs) out.push(`${num(u.bonusVs.mult)}× damage against ${VS[u.bonusVs.vs]}`);
@@ -109,6 +110,8 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.suicide) dmg *= 0.3;
   // Untargetable while it walks in, and it picks its fights.
   if (u.stealth) hp *= 1.4;
+  // A mine every few seconds, most of them going off in a crowd.
+  if (u.mines) dmg += (u.mines.dmg * 1.5) / ((u.mines.every * perHit) / u.cooldown);
   if (u.summon) dmg += 0.15 * u.summon.count * Math.min(1, u.summon.ttl / u.summon.every);
   if (u.evade) hp *= u.evade / (u.evade - 1);
   if (u.rangedResist) hp *= 1 + u.rangedResist * 0.5;

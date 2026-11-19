@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.42.0
+
+- **Cogspark Mine Layers lay real mines.** Every 5 s the tank buries a mine where it stands, whether marching or fighting.
+  - **Hidden:** enemies can't see mines. Your own team sees them as small plates with a blinking fuse.
+  - **Trigger:** the first enemy ground unit that steps on one sets it off for 90 siege damage to every enemy ground unit within 1.5 tiles.
+  - **Limits:** mines last 45 s, and each Mine Layer keeps at most 4 armed. Mines stay after the tank dies.
+  - **Replaces** the old every-4th-attack ground blast.
+
 ## 0.41.0
 
 - **Duskmoon assassins work like the map's: stealth hunters.**

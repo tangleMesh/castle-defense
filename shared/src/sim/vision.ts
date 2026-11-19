@@ -72,7 +72,9 @@ export function visionFromRows(team: Team, ents: EntRow[]): Uint8Array {
  */
 export function filterSnapshot(snap: Snapshot, team: Team): Snapshot {
   // Hidden enemy assassins never reach the client, fog or not.
-  if (!fogActive(snap.phase)) return snap.ents.some((e) => e[4] !== team && e[11] & FX_HIDDEN) ? { ...snap, ents: snap.ents.filter((e) => e[4] === team || !(e[11] & FX_HIDDEN)) } : snap;
+  // Enemy mines never reach the client either.
+  const mines = snap.mines?.filter((m) => m[0] === team);
+  if (!fogActive(snap.phase)) return { ...snap, mines, ents: snap.ents.filter((e) => e[4] === team || !(e[11] & FX_HIDDEN)) };
   const grid = visionFromRows(team, snap.ents);
   const ents = snap.ents.filter((e) => e[4] === team || e[1] === 3 || (!(e[11] & FX_HIDDEN) && entityVisible(grid, e[1], e[2], e[5], e[6])));
   const ids = new Set(ents.map((e) => e[0]));
@@ -83,7 +85,7 @@ export function filterSnapshot(snap: Snapshot, team: Team): Snapshot {
       case 'atk': case 'heal': return ids.has(ev.a) || ids.has(ev.b);
       case 'chain': return ev.ids.some((id) => ids.has(id));
       case 'splash': return seen(ev.x, ev.y);
-      case 'die': return seen(ev.x, ev.y);
+      case 'die': case 'mine': return seen(ev.x, ev.y);
       case 'gold': return playerTeam(ev.p) === team;
       case 'built': return ids.has(ev.id);
       case 'strike': return playerTeam(ev.p) === team || seen(ev.x, ev.y);
@@ -95,6 +97,7 @@ export function filterSnapshot(snap: Snapshot, team: Team): Snapshot {
     ents,
     orders: snap.orders.filter((o) => playerTeam(o[0]) === team),
     strikes: snap.strikes.filter((s) => playerTeam(s[0]) === team || seen(s[1], s[2])),
+    mines,
     ev: snap.ev.filter(evVisible),
   };
 }

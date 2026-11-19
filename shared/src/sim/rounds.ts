@@ -16,6 +16,7 @@ export function startRound(sim: Sim) {
   s.strikes = [];
   s.shells = [];
   s.zones = [];
+  s.mines = [];
   s.phase = 'playing';
   s.phaseTicks = s.countdownTicks ?? 0;
   // The round's clock starts when the countdown ends.

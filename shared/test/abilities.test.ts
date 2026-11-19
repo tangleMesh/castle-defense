@@ -687,3 +687,36 @@ describe('stealth (Duskmoon assassins)', () => {
     expect(snap.ents.some((e) => e[0] === assassin.id)).toBe(false);
   });
 });
+
+describe('mines (Cogspark Mine Layer)', () => {
+  it('buries hidden mines that blow up under enemy ground units', () => {
+    const sim = newSim();
+    const layer = unit(sim, 0, 'cs_mine_layer', 62, 31);
+    layer.hp = layer.maxHp = 1e5;
+    const md = UNITS.cs_mine_layer.mines!;
+    for (let i = 0; i < md.every * TICK_RATE + 1; i++) { layer.x = 62; layer.y = 31; sim.step(); }
+    expect(sim.state.mines?.length).toBe(1);
+    // Own team sees it, the enemy doesn't.
+    expect(filterSnapshot(makeSnapshot(sim, []), 0).mines?.length).toBe(1);
+    expect(filterSnapshot(makeSnapshot(sim, []), 1).mines?.length ?? 0).toBe(0);
+    // Two enemies walk onto it: both take the blast, the mine is gone.
+    const a = unit(sim, 1, 'iv_militia', 62.3, 31), b = unit(sim, 1, 'iv_militia', 63.2, 31);
+    for (const u of [a, b]) u.hp = u.maxHp = 1000;
+    layer.x = 70; // out of the way
+    const events: SimEvent[] = [];
+    events.push(...sim.step());
+    expect(events.some((e) => e.t === 'mine')).toBe(true);
+    expect(a.hp).toBeLessThan(1000);
+    expect(b.hp).toBeLessThan(1000);
+    expect(sim.state.mines?.length).toBe(0);
+  });
+
+  it('keeps at most `max` mines per layer', () => {
+    const sim = newSim();
+    const layer = unit(sim, 0, 'cs_mine_layer', 62, 31);
+    layer.hp = layer.maxHp = 1e5;
+    const md = UNITS.cs_mine_layer.mines!;
+    for (let i = 0; i < (md.max + 2) * md.every * TICK_RATE + 1; i++) { layer.x = 62 + (i % 40) / 20; layer.y = 31; sim.step(); }
+    expect(sim.state.mines?.length).toBe(md.max);
+  });
+});

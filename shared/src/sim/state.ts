@@ -51,6 +51,8 @@ export interface Entity {
   healCd?: number;
   /** Charge ready: the next blow deals the unit's charge multiplier. */
   charge?: boolean;
+  /** Mine layers: ticks until the next mine. */
+  mineCd?: number;
   /** Stealth units: invisible to the enemy right now. */
   hidden?: boolean;
   /** Stealth units: ticks until a revealed one vanishes again. */
@@ -150,6 +152,20 @@ export interface Shell {
   freeze?: number;
 }
 
+/** A buried mine (Mine Layer): explodes when an enemy ground unit steps on it. */
+export interface Mine {
+  owner: number;
+  team: Team;
+  /** The unit that laid it (each layer keeps a limited number armed). */
+  layer: number;
+  x: number;
+  y: number;
+  dmg: number;
+  radius: number;
+  trigger: number;
+  ticksLeft: number;
+}
+
 /** A lingering area effect (Howling Hollow's cyclone): damage per second and a slow for enemies inside. */
 export interface Zone {
   owner: number;
@@ -168,6 +184,8 @@ export type SimEvent =
   | { t: 'atk'; a: number; b: number; r: 0 | 1 }
   | { t: 'chain'; ids: number[] }
   | { t: 'splash'; x: number; y: number; r: number }
+  /** A mine went off. */
+  | { t: 'mine'; x: number; y: number; r: number }
   /** Building `a` fired a shell that lands at x/y after `f` ticks. */
   | { t: 'shell'; a: number; x: number; y: number; f: number; r: number }
   /** A cyclone of radius `r` settles at x/y for `d` ticks. */
@@ -231,6 +249,8 @@ export interface SimState {
   /** Building powers in flight / on the ground (optional: absent in older saves). */
   shells?: Shell[];
   zones?: Zone[];
+  /** Buried mines (absent in games saved before mines existed). */
+  mines?: Mine[];
   /** Players who already finished a building this round, in order (optional: absent in older saves). */
   firstBuilds?: number[];
   /** Place handed out on the latest tick a first-building bonus was paid (same-tick finishers share it). */

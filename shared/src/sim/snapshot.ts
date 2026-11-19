@@ -57,6 +57,8 @@ export interface Snapshot {
   /** Pending build orders: [player, building, tx, ty]. */
   orders: Array<[number, string, number, number]>;
   strikes: Array<[number, number, number, number]>;
+  /** Buried mines: [team, x, y]. Only the own team's reach a client. */
+  mines?: Array<[number, number, number]>;
   ev: SimEvent[];
 }
 
@@ -98,6 +100,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
     ents,
     orders,
     strikes: s.strikes.map((st) => [st.player, r2(st.x), r2(st.y), st.ticksLeft]),
+    mines: (s.mines ?? []).map((m) => [m.team, r2(m.x), r2(m.y)]),
     ev: events,
   };
 }

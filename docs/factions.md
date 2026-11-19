@@ -81,7 +81,7 @@ After translating, building duels (`npm run lab -- duels`) caught the clear outl
 | Cogspark | Inspired by | Notes |
 |---|---|---|
 | Gun Smith → Arsenal | gun smith → arsenal | short-range flamegunners with splash; the sergeant throws grenades every 4th attack |
-| Tank Factory → Mine Layer / Assault Tank / Heavy Tank → Rocket Tank | tank factory and its four upgrades | tank plating blocks a flat part of every hit; mines blast every 4th attack, assault tanks shell with splash, rocket tanks also hit flyers |
+| Tank Factory → Mine Layer / Assault Tank / Heavy Tank → Rocket Tank | tank factory and its four upgrades | tank plating blocks a flat part of every hit; the mine layer buries hidden mines along its way (they blast enemy ground units that step on them), assault tanks shell with splash, rocket tanks also hit flyers |
 | Aircraft Factory → Bomber Factory | aircraft → bomber factory | rotorcopters only shoot flyers; gyrocopters also bomb the ground; both stun every 3rd attack |
 | Golem Factory → Shredder Works / Adamant Forge | golem factory → precious golem factory; lumber mill (shredder) | armoured golems with pulverise and bash; shredders cut whole crowds |
 | Demolition Lab | demolition lab | two Lunatic Goblins at a time that explode on their first attack |
@@ -241,6 +241,7 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | power `hex` / `beam` | stuns the toughest enemy in range / a ray of magic damage on the nearest |
 | building `revive: { every, radius }` | every n-th own unit that falls nearby rises again |
 | power `bombard` with `freeze` | the shell freezes buildings (and briefly units) it hits |
+| unit `mines` | buries a hidden mine every few seconds; an enemy ground unit stepping on it sets it off (splash) |
 | unit `stealth` | invisible until it strikes: enemies can't see or target it; hunts casters, healers, aura carriers and ranged units (anything in the enemy base); hidden again `reveal` s after its last blow |
 | power with `global` | reaches the whole map (nearest valid enemy anywhere): bombards, storms, sudden death, control, chaos, tentacles; beams, hexes, stasis, tsunami and erase stay local |
 | power `hex` with `air` | freezes the toughest flyer and deals damage |
