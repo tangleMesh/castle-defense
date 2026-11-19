@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -11,7 +11,9 @@ export interface UnitModel {
     // Cogspark machines
     | 'goblin' | 'tank' | 'copter' | 'golem' | 'shredder' | 'mech'
     // Duskmoon night elves
-    | 'moonarcher' | 'druid' | 'shade' | 'wraith' | 'glaivecart' | 'faeriedragon';
+    | 'moonarcher' | 'druid' | 'shade' | 'wraith' | 'glaivecart' | 'faeriedragon'
+    // Bloodtusk orcs
+    | 'orc' | 'troll' | 'kodo' | 'wyvern' | 'orccatapult';
   body: number;
   accent: number;
   scale: number;
@@ -26,7 +28,9 @@ export interface BuildingModel {
     // Cogspark
     | 'factory' | 'hangar' | 'lab' | 'generator' | 'tesla' | 'scrapheap' | 'exchange' | 'foundry'
     // Duskmoon
-    | 'moonhall' | 'moonshrine' | 'shadowhouse' | 'ruinhut' | 'glaiveworks' | 'wonderwell' | 'wildstone' | 'moonlantern' | 'moonstone' | 'starfall';
+    | 'moonhall' | 'moonshrine' | 'shadowhouse' | 'ruinhut' | 'glaiveworks' | 'wonderwell' | 'wildstone' | 'moonlantern' | 'moonstone' | 'starfall'
+    // Bloodtusk
+    | 'warhall' | 'trollhut' | 'kodopen' | 'roost' | 'shamantent' | 'orcworks' | 'totempole' | 'serpentrock' | 'speartower' | 'stasistotem';
   wall: number;
   roof: number;
   height: number;
@@ -99,6 +103,10 @@ export interface UnitDef {
   suicide?: { radius: number };
   /** Every attack also strikes up to `multishot - 1` further enemies in range (multi-shot arrows). */
   multishot?: number;
+  /** Below `below` of its HP it flies into a rage: attacks `haste` faster (1 = twice as fast). */
+  berserk?: { below: number; haste: number };
+  /** Share of magic damage it shrugs off (spell resistance). */
+  magicResist?: number;
   /** When it falls (not to a rescue strike), it explodes: `dmg` magic damage to enemies within `radius`. */
   deathBlast?: { dmg: number; radius: number };
   /** Calls `count` units every `every` seconds; they fade after `ttl` seconds. */
@@ -133,7 +141,7 @@ export interface BuildingDef {
   spawn?: { unit: string; count: number; interval: number };
   aura?: AuraDef;
   /** Tower attack. `chain`: the shot bounces between this many enemies (incl. the first). */
-  attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number; chain?: number };
+  attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number; chain?: number; bonusVs?: { vs: ArmorType | 'air' | 'structure'; mult: number } };
   /** Extra share of kill bounties for the owner (0.5 = +50%; stacks up to MAX_BOUNTY_BONUS). */
   bountyBonus?: number;
   /** Structure regeneration in HP per second (set by faction traits). */
@@ -153,10 +161,11 @@ export interface BuildingDef {
  * `range` and deals `dmg` siege damage to structures within `radius` (half to ground units).
  * `cyclone`: a storm settles on the nearest enemy ground unit within `range` for `duration` seconds;
  * enemies inside take `dmg` magic damage per second and are slowed by `slow`. With `air`, the storm
- * targets and hurts flyers only (a meteor shower) instead of ground units.
+ * targets and hurts flyers only (a meteor shower) instead of ground units. `stasis`: every enemy unit
+ * within `range` is stunned for `duration` seconds (dmg and radius unused).
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone';
+  kind: 'bombard' | 'cyclone' | 'stasis';
   cooldown: number;
   range: number;
   radius: number;

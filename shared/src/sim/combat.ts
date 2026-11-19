@@ -93,6 +93,8 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   let dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   const block = attack && target.kind === 'unit' ? (UNITS[target.type].block ?? 0) + modsOf(sim, target.id).block : 0;
   if (block) dmg = Math.max(dmg * 0.25, dmg - block);
+  const mr = type === 'magic' && target.kind === 'unit' ? UNITS[target.type].magicResist : undefined;
+  if (mr) dmg *= 1 - mr;
   target.hp -= dmg;
   if (target.hp <= 0 && target.kind !== 'castle') {
     target.hp = 0;
@@ -130,8 +132,7 @@ export function findTarget(sim: Sim, a: Entity, st: AttackStats, radius: number)
 
 /** Damage multiplier of a unit's `bonusVs` against a target. */
 function bonusMult(sim: Sim, a: Entity, t: Entity): number {
-  if (a.kind !== 'unit') return 1;
-  const b = UNITS[a.type].bonusVs;
+  const b = a.kind === 'unit' ? UNITS[a.type].bonusVs : a.kind === 'building' ? BUILDINGS[a.type].attack?.bonusVs : undefined;
   if (!b) return 1;
   const hit = b.vs === 'air' ? sim.isAir(t) : b.vs === 'structure' ? sim.isStructure(t) : t.kind === 'unit' && UNITS[t.type].armorType === b.vs;
   return hit ? b.mult : 1;
@@ -359,7 +360,10 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
     if (sim.edgeDist(e, target) <= st.range + 0.05) {
       if (!e.cd) {
         performAttack(sim, e, st, target, mods.dmg);
-        e.cd = Math.round(st.cooldownTicks / mods.haste);
+        // Berserkers attack faster once badly hurt.
+        const bz = UNITS[e.type].berserk;
+        const rage = bz && e.hp < e.maxHp * bz.below ? 1 + bz.haste : 1;
+        e.cd = Math.round(st.cooldownTicks / (mods.haste * rage));
       }
     } else {
       const p = sim.isStructure(target) ? nearestPointOn(target, e.x, e.y) : target;

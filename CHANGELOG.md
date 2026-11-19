@@ -7,6 +7,18 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.29.0
+
+- **New faction: Bloodtusk Horde**, after the castle-fight map's orc race.
+  - **Units:** grunts, then veterans, then axemasters, all with critical blows; axe-throwing troll berserkers that attack twice as fast below half health, then trappers whose nets stun; kodo beasts with three rider upgrades (spell-resistant, war drum or shield bearer); wyvern riders; shamans with a damage aura, then spirit walkers that call lightning; catapults with burning shells.
+  - **Buildings:** a ceremonial totem (+20% attack speed), a serpent rock that spits poison, the Spear Tower (triple damage against flyers), and the Stasis Totem special, which freezes every enemy unit around it.
+  - **Look:** green orcs with tusks and topknots, blue trolls with mohawks, shaggy kodos, leathery wyverns and a spiked catapult. Buildings are hide longhouses with spikes and skull banners, stilt huts, palisade pens, a rock roost, painted tepees, a carved totem pole, a stone serpent, a spear tower and a frost-rune totem, all on red earth.
+- **New mechanics:**
+  - berserk (attacks faster when hurt);
+  - magic resistance;
+  - tower bonus damage against a target class;
+  - the stasis power (with an icy shockwave effect).
+
 ## 0.28.0
 
 - **New faction: Duskmoon Covenant**, after the castle-fight map's night elf race. As with the other factions, the map gives the structure and numbers; names, text and look are our own.

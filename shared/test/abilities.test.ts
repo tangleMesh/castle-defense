@@ -318,3 +318,62 @@ describe('Duskmoon mechanics', () => {
     expect(UNITS.iv_militia.evade).toBeUndefined();
   });
 });
+
+describe('Bloodtusk mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'bloodtusk' },
+    { userId: 'b', name: 'B', team: 1, faction: 'thornwild' },
+  ];
+  const simB = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 6 });
+
+  it('berserk: a badly hurt troll attacks twice as fast', () => {
+    const cdOf = (hurt: boolean) => {
+      const sim = simB();
+      const t = unit(sim, 0, 'bt_berserker', 50, 20), f = unit(sim, 1, 'tw_boulder_ram', 52.5, 20);
+      f.hp = f.maxHp = 1e6;
+      if (hurt) t.hp = t.maxHp * 0.3;
+      let longest = 0;
+      for (let i = 0; i < 4 * TICK_RATE; i++) { t.x = 50; t.y = 20; f.x = 52.5; f.y = 20; sim.step(); longest = Math.max(longest, t.cd ?? 0); }
+      return longest;
+    };
+    expect(cdOf(true)).toBe(Math.round(cdOf(false) / 2));
+  });
+
+  it('spell resistance: Spellbreaker Kodos take less magic damage', () => {
+    const sim = simB();
+    const k = unit(sim, 0, 'bt_spellbreaker', 50.6, 20), s = unit(sim, 1, 'tw_storm_shaman', 50, 20);
+    const d = hits(sim, s, k, 1)[0];
+    const sb = UNITS.bt_spellbreaker;
+    expect(d).toBeCloseTo(computeDamage(UNITS.tw_storm_shaman.dmg, 'magic', sb.armorType, sb.armor) * (1 - sb.magicResist!), 1);
+  });
+
+  it('the Spear Tower deals triple damage to flyers', () => {
+    const sim = simB();
+    const tower = building(sim, 0, 'bt_aa_tower', 30, 18);
+    const moth = unit(sim, 1, 'tw_dusk_moth', 33, 19), vine = unit(sim, 1, 'tw_vineling', 33, 19.4);
+    const st = attackStats(tower)!;
+    for (const u of [moth, vine]) u.hp = u.maxHp = 1e5;
+    sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
+    performAttack(sim, tower, st, moth, 1); performAttack(sim, tower, st, vine, 1);
+    const a = BUILDINGS.bt_aa_tower.attack!;
+    expect(1e5 - moth.hp).toBeCloseTo(computeDamage(a.dmg * 3, a.attackType, 'light', 0), 1);
+    expect(1e5 - vine.hp).toBeCloseTo(computeDamage(a.dmg, a.attackType, 'light', 0), 1);
+  });
+
+  it('the Stasis Totem freezes every enemy unit in range', () => {
+    const sim = simB();
+    building(sim, 0, 'bt_stasis_totem', 30, 18);
+    const p = BUILDINGS.bt_stasis_totem.power!;
+    const near = unit(sim, 1, 'tw_vineling', 38, 19), far = unit(sim, 1, 'tw_vineling', 30 + p.range + 4, 19);
+    for (const u of [near, far]) u.hp = u.maxHp = 1e5;
+    let saw = false;
+    for (let i = 0; i < p.cooldown * TICK_RATE + 2; i++) {
+      near.x = 38; near.y = 19; far.x = 30 + p.range + 4; far.y = 19;
+      for (const ev of sim.step()) if (ev.t === 'stasis') saw = true;
+      if (saw) break;
+    }
+    expect(saw).toBe(true);
+    expect(near.stun).toBeGreaterThan(0);
+    expect(far.stun ?? 0).toBe(0);
+  });
+});

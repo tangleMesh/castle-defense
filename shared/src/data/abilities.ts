@@ -32,6 +32,8 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.evade) out.push(`Evasion: every ${nth(u.evade)} attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
   if (u.block) out.push(`Hardened skin: blocks ${u.block} damage of every attack`);
+  if (u.berserk) out.push(`Berserk: below ${pct(u.berserk.below)} health it attacks ${pct(u.berserk.haste)} faster`);
+  if (u.magicResist) out.push(`Spell resistance: takes ${pct(u.magicResist)} less magic damage`);
   if (u.multishot) out.push(`Multi-shot: every volley strikes ${u.multishot} enemies`);
   if (u.deathBlast) out.push(`Revenge: when it falls it explodes for ${Math.round(u.deathBlast.dmg)} damage within ${u.deathBlast.radius} tiles`);
   if (u.suicide) out.push(`Suicide blast: its first attack explodes, hitting every enemy unit and building within ${u.suicide.radius} tiles (no bounty)`);
@@ -45,6 +47,7 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'stasis') return `Stasis: every ${p.cooldown}s all enemy units within ${p.range} tiles are frozen for ${p.duration}s`;
   if (p.kind === 'cyclone' && p.air) return `Meteor shower: every ${p.cooldown}s meteors rain on the nearest enemy flyer within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s to flyers in radius ${p.radius})`;
   if (p.kind === 'bombard') return `Bombard: every ${p.cooldown}s a shell hits the nearest enemy building within ${p.range} tiles (${p.dmg} siege damage in radius ${p.radius}, half to units)`;
   return `Cyclone: every ${p.cooldown}s a storm settles on the nearest enemy within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s and ${pct(p.slow ?? 0)} slow in radius ${p.radius})`;
@@ -53,6 +56,7 @@ export function powerText(b: BuildingDef): string | undefined {
 /** Building abilities besides spawning and auras (tooltips): mending, bouncing tower shots, powers. */
 export function buildingAbilities(b: BuildingDef): string[] {
   const out: string[] = [];
+  if (b.attack?.bonusVs) out.push(`${b.attack.bonusVs.mult}× damage against ${VS[b.attack.bonusVs.vs]}`);
   if (b.attack?.chain) out.push(`Bouncing shot: each shot jumps between ${b.attack.chain} enemies`);
   if (b.mend) out.push(`Mends your team's buildings and castle within ${b.mend.radius} tiles by ${b.mend.hps} HP/s`);
   const p = powerText(b);
@@ -72,6 +76,8 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.storm) dmg += (u.storm.dmg * Math.min(3, u.storm.jumps) * 0.8) / (u.storm.every * perHit);
   if (u.bash) dmg += Math.min(0.5, u.bash.stun / (u.bash.every * u.cooldown));
   if (u.multishot) dmg += (u.multishot - 1) * 0.45;
+  if (u.berserk) dmg += u.berserk.haste * 0.25;
+  if (u.magicResist) hp *= 1 + u.magicResist * 0.3;
   if (u.deathBlast) dmg += 0.1;
   // One blast and the unit is gone.
   if (u.suicide) dmg *= 0.3;

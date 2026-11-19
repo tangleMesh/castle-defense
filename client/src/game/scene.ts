@@ -1117,6 +1117,14 @@ export class GameScene extends Phaser.Scene {
         });
         return;
       }
+      case 'stasis': {
+        // Stasis Totem: a pale shockwave rolls out over the whole range.
+        const c = toScreen(ev.x, ev.y);
+        const e = isoEllipse(ev.r);
+        const ring = this.img(c.x, c.y, 'ringthin').setDisplaySize(e.w * 0.1, e.h * 0.1).setTint(0x9ad8ff).setDepth(-6.9e6).setBlendMode(Phaser.BlendModes.ADD);
+        this.tweens.add({ targets: ring, displayWidth: e.w, displayHeight: e.h, alpha: { from: 1, to: 0 }, duration: 900, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+        return;
+      }
       case 'zone': {
         // Howling Hollow: a whirlwind of leaves and dust spins on the spot for the cyclone's lifetime.
         // Meteor showers (air) burn among the flyers instead.

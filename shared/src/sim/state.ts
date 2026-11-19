@@ -140,6 +140,7 @@ export type SimEvent =
   | { t: 'shell'; a: number; x: number; y: number; f: number; r: number }
   /** A cyclone of radius `r` settles at x/y for `d` ticks. */
   | { t: 'zone'; x: number; y: number; r: number; d: number; air?: 1 }
+  | { t: 'stasis'; x: number; y: number; r: number }
   | { t: 'heal'; a: number; b: number }
   | { t: 'die'; id: number; x: number; y: number; k: EntityKind }
   /** Kill bounty paid to player `p` (last hit). */

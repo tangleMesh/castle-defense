@@ -28,7 +28,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -80,6 +80,20 @@ function cyclone(sim: Sim, e: Entity, p: PowerDef): boolean {
   (sim.state.zones ??= []).push({ owner: e.owner, team: e.team, x: best.x, y: best.y, radius: p.radius, dps: p.dmg, slow: p.slow ?? 0, ticksLeft: ticks, ...(p.air ? { air: true } : {}) });
   sim.emit({ t: 'zone', x: r2(best.x), y: r2(best.y), r: p.radius, d: ticks, ...(p.air ? { air: 1 as const } : {}) });
   return true;
+}
+
+/** Stasis: every enemy unit within range is stunned (only cast when at least one is there). */
+function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  const ticks = Math.round((p.duration ?? 3) * TICK_RATE);
+  let any = false;
+  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
+    u.stun = Math.max(u.stun ?? 0, ticks);
+    any = true;
+  }
+  if (any) sim.emit({ t: 'stasis', x: r2(c.x), y: r2(c.y), r: p.range });
+  return any;
 }
 
 /** Shells land: full siege damage to structures in the blast, half to ground units. */

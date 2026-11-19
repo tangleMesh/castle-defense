@@ -6,6 +6,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Shardbound follows the "elemental" race.
 - Cogspark follows the "mechanical" race.
 - Duskmoon follows the "night elf" race.
+- Bloodtusk follows the "orc" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -103,6 +104,21 @@ Trait: riveted plating, +2 armour on every Cogspark building (the map's power pl
 
 Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are fragile but evasive).
 
+## Bloodtusk ("orc")
+
+| Bloodtusk | Inspired by | Notes |
+|---|---|---|
+| Fighters' Hall → Veterans' Hall → Axemasters' Hall | fighters' hall → advanced → superior | grunts; veterans crit every 4th blow; axemasters crit 2.5× and pulverise every 3rd |
+| Troll Hut → Trappers' Hut → Forest Trappers' Hole | troll hut → trapper's hut → forest trapper's hole | axe-throwing trolls that rage below half health (twice as fast); trappers ensnare (stun), the forest trapper catches groups and regenerates |
+| Kodo Pen → Spellbreaker / War Drum / Shield Bearer Pen | kodo farm and its three rider upgrades | tanky kodos; riders with 60% magic resistance, a +20% damage aura or a +4 armour aura |
+| Wyvern Roost | falcon-clan encampment | wyvern riders with poisoned spears |
+| Shaman Tent → Spirit Lodge | shamanic tent → infostealer's place | casters with a damage aura; spirit walkers call lightning every 4th spell |
+| Orc Siege Works | orcish siege factory | catapults with burning splash shells |
+| Ceremonial Totem | ceremonial totem | +20% attack speed aura |
+| Serpent Rock | serpent rock | spits a poison cloud (damage and slow) every 12 s |
+| Spear Tower | anti-air tower | triple damage against flyers |
+| Stasis Totem → Great Stasis Totem | stasis totem | the special: freezes every enemy unit nearby every 35 / 28 s |
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -118,6 +134,10 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | `block` | flat damage off every attack (at least 25% gets through) |
 | `airOnly` | attacks flyers only |
 | `summon: { unit, count, every, ttl }` | calls helpers that fade after `ttl` s |
+| `berserk: { below, haste }` | attacks `haste` faster below that share of its health |
+| `magicResist` | share of magic damage ignored |
+| building `attack.bonusVs` | tower damage multiplier against a target class |
+| power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |
 | aura `stat: 'block'` | flat damage off every hit on nearby allies |
