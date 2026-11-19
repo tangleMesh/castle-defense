@@ -77,6 +77,13 @@ The game snowballs, so single results are noisy, and small changes can flip a ma
   same number of games (`--games` per step, `--verify-games` per verification). Seeding every pairing equally gave
   1v1 only 20 of 512 games while it counted for a quarter of the result. Cheap 1v1 games now carry the same weight
   as expensive 4v4 ones, which makes verifications both more precise and faster.
+- **About 30 minutes by default.** `npm run balance` plays a random sample of relevant games in every stage and stops tuning when its wall-clock budget (`--minutes`, default 30) is 60% used:
+  - **Units:** one round of 400 building-duel pairings.
+  - **Factions:** three tuning steps of about 16 games per team size, 1v1 to 4v4, each on random line-up pairings. Power steps are capped at ±4%. A final check plays 30 games per team size.
+  - **Bot ladder:** two rounds, the second only while 85% of the budget is left.
+  - **Strategies:** this stage only measures and is left out.
+  - **Noise:** every faction lands in about 30 games per step, so the default run is good for regular upkeep after a feature. Its verification is about ±8% per faction.
+  - **`--full`:** the thorough run with all strategies, about 7 h with a dozen factions. Use it after big redesigns or before a release.
 - **Budgets scale with the factions.** Step and verification games (`--games` 12 / `--verify-games` 30 per faction and team size) and the pairings per step (`--pairings`, 2 per faction) grow with the number of factions. The ladder, the strategy stage and the building duels play a fixed random sample of their grids (which grow with the square of the faction count): the game budgets of the old 4-faction runs.
 - **A sample per step, the full grid only to verify.** Each tuning step plays `--pairings` (default 2 per faction) line-up pairings per
   team size, on fresh seeds, drawn uniformly at random and re-drawn every step, so a step measures the same thing as the

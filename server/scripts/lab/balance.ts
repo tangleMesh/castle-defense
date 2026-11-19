@@ -5,7 +5,13 @@
  *   npm run balance:check               measure only, change nothing; exit 1 if out of band and print the
  *                                       command that re-tunes just the failed stages (run this after a feature)
  *   npm run balance                     tune units, factions and bots; write tuning.ts + docs/balance-report.md
+ *   npm run balance -- --full           the thorough run (~7 h with a dozen factions, all strategies)
  *   npm run balance -- --quick --dry    smoke test (~5 min), writes nothing
+ *
+ * The default run fits about 30 minutes (`--minutes`, a wall-clock budget): a random sample of
+ * relevant games per stage (building duels, line-up pairings of every team size, the ladder), a
+ * few tuning steps and one verification. Its numbers are noisier than a --full run's, so it moves
+ * the knobs in smaller steps and leaves the strategy stage (measure only) to --full.
  *
  * Options: --no-adjudicate (play every game to the end) · --stages units,factions,bots,strategies · --strategy-seeds 4 · --strategy-levels normal,hard · --sizes 1,2,3,4 · --games 48 / --verify-games 120 (non-mirror
  * games per team size, per step / per verification) · --pairings 4 (line-up pairings per team size and step) · --iterations 8 · --tolerance 0.03 (faction win rate 50% ± this) · --reset (start
@@ -39,19 +45,28 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
 const quick = flag('quick');
+const full = flag('full');
+/** Wall-clock budget: tuning steps stop early to leave time for the verification. */
+const minutes = Number(arg('minutes', full ? '600' : quick ? '8' : '30'));
+const tStart = Date.now();
+const elapsed = () => (Date.now() - tStart) / 60_000;
+/** Pick a default by mode: the 30-minute run, --quick or --full. */
+const by = <T,>(normal: T, q: T, f: T): T => (full ? f : quick ? q : normal);
 const check = flag('check');
 const dry = flag('dry') || check;
-const stages = arg('stages', 'units,factions,bots,strategies').split(',');
+const stages = arg('stages', full ? 'units,factions,bots,strategies' : 'units,factions,bots').split(',');
 const sizes = arg('sizes', quick ? '1,2' : '1,2,3,4').split(',').map(Number);
 /** Non-mirror games per team size: per tuning step, and per verification of the full grid. */
 // Scaled with the number of factions (each faction should appear in a similar number of games).
-const stepGames = Number(arg('games', String((quick ? 4 : 12) * Math.max(4, FACTION_IDS.length))));
-const verifyGames = Number(arg('verify-games', String((quick ? 10 : 30) * Math.max(4, FACTION_IDS.length))));
-const iterations = Number(arg('iterations', quick ? '3' : '8'));
+const NF = Math.max(4, FACTION_IDS.length);
+const stepGames = Number(arg('games', String(by(16, 8, 12 * NF))));
+const verifyGames = Number(arg('verify-games', String(by(30, 16, 30 * NF))));
+const iterations = Number(arg('iterations', String(by(3, 2, 8))));
 const tol = Number(arg('tolerance', '0.03'));
 // Line-up pairings per team size in a tuning step: enough that every faction plays in each step.
-const pairingsPerSize = Number(arg('pairings', String(Math.max(4, 2 * FACTION_IDS.length))));
-const botSeeds = Number(arg('bot-seeds', quick ? '2' : '6'));
+// (the 30-minute run: one game per side of each pairing)
+const pairingsPerSize = Number(arg('pairings', String(full ? Math.max(4, 2 * FACTION_IDS.length) : Math.ceil(stepGames / 2))));
+const botSeeds = Number(arg('bot-seeds', String(by(1, 1, 6))));
 const strategySeeds = Number(arg('strategy-seeds', quick ? '2' : '4'));
 const strategyLevels = arg('strategy-levels', 'normal,hard').split(',') as AiLevel[];
 const outFile = arg('out', dry ? '' : 'docs/balance-report.md');
@@ -83,7 +98,8 @@ function sampleJobs<T>(jobs: T[], n: number, seed: number): T[] {
   return a.slice(0, n);
 }
 /** Game budgets of the 4-faction runs these stages were designed with. */
-const LADDER_GAMES_PER_SEED = 32, STRATEGY_GAMES_PER_SEED = 32, DUEL_BUDGET = quick ? 600 : 2000;
+const LADDER_GAMES_PER_SEED = 32, STRATEGY_GAMES_PER_SEED = 32, DUEL_BUDGET = by(400, 300, 2000);
+const unitIterations = by(1, 1, 4);
 
 /** End decided games early (shared/src/lab/match.ts `decided`): the balancer only needs winners. */
 const adjudicate = !flag('no-adjudicate');
@@ -246,7 +262,7 @@ async function stageUnits() {
     const b = BUILDINGS[bid], u = b.spawn && UNITS[b.spawn.unit];
     return !!u && tierOf(b) !== 'special' && !u.heal && !u.structuresOnly && !u.aura && !u.airOnly;
   };
-  for (let k = 1; k <= (quick ? 2 : 4); k++) {
+  for (let k = 1; k <= unitIterations; k++) {
     const scores = await measureDuels();
     const outliers = [...scores].filter(([id, s]) => (s < 0.25 || s > 0.75) && eligible(id));
     const skipped = [...scores].filter(([id, s]) => (s < 0.25 || s > 0.75) && !eligible(id));
@@ -312,7 +328,9 @@ async function stageFactions(): Promise<FactionMeasure> {
     const fit = fitPower(points, FACTION_IDS.length);
     const b = fit.b;
     const before = { ...lp };
-    FACTION_IDS.forEach((f, g) => { lp[f] += clamp(-fit.a[g] / b - strength(f), -0.06, 0.06); });
+    // Smaller steps on the 30-minute run's smaller samples.
+    const cap = full ? 0.06 : 0.04;
+    FACTION_IDS.forEach((f, g) => { lp[f] += clamp(-fit.a[g] / b - strength(f), -cap, cap); });
     setPower();
     return { b, moved: Math.max(...FACTION_IDS.map((f) => Math.abs(lp[f] - before[f]))) };
   };
@@ -327,6 +345,8 @@ async function stageFactions(): Promise<FactionMeasure> {
   out.push('| Step | power | win rate | games | fitted slope |', '|---|---|---|---|---|');
   let verified: FactionMeasure | null = null;
   for (let k = 1; k <= iterations && !check; k++) {
+    // Keep about a third of the budget for the verification and the bot ladder.
+    if (k > 1 && elapsed() > minutes * 0.6) { out.push(`| … | time budget: ${elapsed().toFixed(0)} of ${minutes} min used, on to the verification | | | |`); break; }
     const m = await measureFactions(`factions #${k}`, stepGames, { subset: k });
     record(m);
     const row = `| ${k} | ${powerLine()} | ${factionLine(m)} | ${m.games} |`;
@@ -391,10 +411,10 @@ async function stageBots() {
   const keys = Object.keys(knob);
   const points: FitPoint[] = [];
   let last: Awaited<ReturnType<typeof measureLadder>> = [];
-  const maxIt = check ? 1 : iterations;
+  const maxIt = check ? 1 : Math.min(iterations, full ? iterations : 2);
   for (let k = 1; k <= maxIt; k++) {
     const final = k === maxIt;
-    last = await measureLadder(`ladder #${k}`, botSeeds * (final ? 2 : 1));
+    last = await measureLadder(`ladder #${k}`, botSeeds * (final && full ? 2 : 1));
     out.push(`| ${k} | ${incomeLine()} | ${last.map((s) => `${pct(s.rate.rate)}`).join(' | ')} |`);
     process.stderr.write(`  income ${incomeLine()} → ${last.map((s) => `${s.hi}>${s.lo} ${pct(s.rate.rate)}`).join(' · ')}\n`);
     for (const s of last) {
@@ -402,6 +422,8 @@ async function stageBots() {
       points.push({ group: g, x: kn.sign * Math.log(inc(kn.level)), rate: clamp(s.rate.rate, 0.02, 0.98), n: s.rate.games });
     }
     if (last.every((s) => inBand(s.rate.rate)) || final) break;
+    // Out of time: keep this round's measurement rather than overrun the budget.
+    if (elapsed() > minutes * 0.85) { out.push(`| … | time budget: ${elapsed().toFixed(0)} of ${minutes} min used | | | |`); break; }
     for (const s of last) {
       if (inBand(s.rate.rate)) continue;
       const g = keys.indexOf(`${s.hi}>${s.lo}`), kn = knob[keys[g]];
