@@ -136,9 +136,9 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Ballista Works | high-elf siege factory | long-range bolts with splash |
 | Dragonhawk Portal | dragonhawk portal | armoured flyers with a solar flare every 4th strike |
 | Arcane Tower | arcane tower | magic tower, five targets per volley |
-| City of Magic | city of magic | hexes the toughest enemy (stunned for 5 s) every 10 s |
+| City of Magic | city of magic | every 10 s the toughest enemy anywhere on the map becomes a harmless sheep for 5 s |
 | Obelisk of Light | obelisk of light | light beam, 90 magic damage every 4 s |
-| Golden Shrine of Grace → Radiant Shrine | golden shrine of justice | the special: every 5th / 3rd fallen ally nearby rises again |
+| Golden Shrine of Grace → Radiant Shrine | golden shrine of justice | the special: every 5th / 3rd ally that falls anywhere on the map rises again |
 
 ## Frostmark ("northern")
 

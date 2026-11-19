@@ -193,7 +193,9 @@ describe('building powers', () => {
     expect(far.hp).toBeLessThan(far.maxHp);
     // Tower-like and self-centred powers keep their range.
     for (const b of Object.values(BUILDINGS)) {
-      if (b.power && ['beam', 'hex', 'stasis', 'wave', 'erase'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
+      // The City of Magic's sheep hex is map-wide on request; the flyer-freezing mushroom stays local.
+      if (b.power && ['beam', 'stasis', 'wave', 'erase'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
+      if (b.power?.kind === 'hex') expect(!!b.power.global, b.id).toBe(b.id === 'su_city_of_magic');
       if (b.power && ['bombard', 'cyclone', 'slay', 'charm', 'chaos', 'tentacles'].includes(b.power.kind)) expect(b.power.global, b.id).toBe(true);
     }
   });
@@ -718,5 +720,31 @@ describe('mines (Cogspark Mine Layer)', () => {
     const md = UNITS.cs_mine_layer.mines!;
     for (let i = 0; i < (md.max + 2) * md.every * TICK_RATE + 1; i++) { layer.x = 62 + (i % 40) / 20; layer.y = 31; sim.step(); }
     expect(sim.state.mines?.length).toBe(md.max);
+  });
+});
+
+describe('Sunspire map-wide specials', () => {
+  it('the City of Magic turns the toughest enemy anywhere into a sheep', () => {
+    const sim = newSim();
+    building(sim, 0, 'su_city_of_magic', 6, 30);
+    const foe = unit(sim, 1, 'iv_militia', 100, 30);
+    const big = unit(sim, 1, 'iv_shieldbearer', 101, 31);
+    for (let i = 0; i < (BUILDINGS.su_city_of_magic.power!.cooldown + 1) * TICK_RATE && !big.sheep; i++) { foe.x = 100; big.x = 101; big.y = 31; sim.step(); }
+    expect(big.sheep).toBeGreaterThan(0);
+    expect(foe.sheep).toBeUndefined();
+    const row = makeSnapshot(sim, []).ents.find((e) => e[0] === big.id)!;
+    expect(row[11] & 8).toBe(8);
+  });
+
+  it('the Golden Shrine raises fallen units anywhere on the map', () => {
+    const sim = newSim();
+    building(sim, 0, 'su_golden_shrine', 6, 30);
+    let revived = 0;
+    for (let k = 0; k < 5; k++) {
+      const u = unit(sim, 0, 'iv_militia', 100, 20 + k);
+      u.hp = 0;
+      revived += sim.step().filter((e) => e.t === 'revive').length;
+    }
+    expect(revived).toBe(1);
   });
 });

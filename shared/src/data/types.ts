@@ -188,7 +188,7 @@ export interface BuildingDef {
   /** Additional income multiplier (0.15 = +15%). */
   incomeBonus?: number;
   /** Every `every`-th own unit that falls within `radius` tiles rises again on the spot (not summons). */
-  revive?: { every: number; radius: number };
+  revive?: { every: number; radius: number; global?: boolean };
   /** Mends own-team buildings (and the castle) within `radius` tiles by `hps` HP per second (not itself). */
   mend?: { hps: number; radius: number };
   /** A power the building casts on its own every `cooldown` seconds. */

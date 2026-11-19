@@ -19,6 +19,8 @@ export const FX_POISON = 1;
 export const FX_STUN = 2;
 /** Stealth unit currently hidden: the enemy never receives it, its own team draws it faded. */
 export const FX_HIDDEN = 4;
+/** Hexed into a sheep. */
+export const FX_SHEEP = 8;
 
 export interface SnapshotPlayer {
   i: number;
@@ -76,7 +78,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
     }
     // Builders use the spawn column for the building they repair.
     const spawn = e.kind === 'building' && !e.buildLeft ? e.spawnTimer ?? 0 : e.kind === 'builder' ? e.repairId ?? 0 : 0;
-    ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), Math.round(e.maxHp), extra, spawn, (e.poison ? FX_POISON : 0) | (e.stun ? FX_STUN : 0) | (e.hidden ? FX_HIDDEN : 0)]);
+    ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), Math.round(e.maxHp), extra, spawn, (e.poison ? FX_POISON : 0) | (e.stun ? FX_STUN : 0) | (e.hidden ? FX_HIDDEN : 0) | (e.sheep ? FX_SHEEP : 0)]);
     if (e.kind === 'builder') for (const o of e.orders ?? []) orders.push([e.owner, o.building, o.tx, o.ty]);
   }
   return {

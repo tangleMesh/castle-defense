@@ -107,15 +107,17 @@ function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
 function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestHp = -1, bestD = Infinity;
-  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+  for (const u of around(sim, c, reach(p))) {
     if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || (u.stun ?? 0) > 0 || (p.air && !sim.isAir(u))) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
-    if (d > p.range) continue;
+    if (d > reach(p)) continue;
     if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
   }
   if (!best) return false;
   const ticks = Math.round((p.duration ?? 5) * TICK_RATE);
   best.stun = ticks;
+  // The City of Magic's hex turns its victim into a sheep (the frost blast just freezes flyers).
+  if (!p.air) best.sheep = ticks;
   sim.emit({ t: 'hex', id: best.id, d: ticks });
   if (p.dmg) dealDamage(sim, best, p.dmg, 'magic', e.owner);
   return true;
@@ -207,7 +209,7 @@ function charm(sim: Sim, e: Entity, p: PowerDef): boolean {
   }
   if (!best) return false;
   best.owner = e.owner; best.team = e.team;
-  delete best.targetId; delete best.poison; delete best.stun;
+  delete best.targetId; delete best.poison; delete best.stun; delete best.sheep;
   sim.emit({ t: 'charm', id: best.id });
   return true;
 }

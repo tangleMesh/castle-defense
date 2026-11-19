@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, FX_POISON, FX_STUN, FX_HIDDEN, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, inRescueArea, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
+  BUILDINGS, FX_POISON, FX_STUN, FX_HIDDEN, FX_SHEEP, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, inRescueArea, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -491,7 +491,9 @@ export class GameScene extends Phaser.Scene {
       const lungeOff = v.lunge > 0 ? Math.sin((v.lunge / 160) * Math.PI) * 5 * v.facing : 0;
       v.sprite.setPosition(p.x + lungeOff, p.y - (v.air ? AIR_LIFT : 0) + bob).setDepth(d + (v.air ? 5000 : 0));
       // Animation: walk cycle while moving (flyers always flap), attack pose while striking.
-      const base = v.kind === KIND_UNIT ? `u_${v.type}` : this.builderKey(v.owner);
+      // Hexed units stand there as sheep.
+      const sheep = v.kind === KIND_UNIT && ((v.fx ?? 0) & FX_SHEEP) !== 0;
+      const base = sheep ? 'sheep' : v.kind === KIND_UNIT ? `u_${v.type}` : this.builderKey(v.owner);
       const step = Math.floor(time / (v.air ? 90 : 120) + v.id * 0.37) % 4;
       const frame = v.atk > 0 ? '_a' : v.moving || v.air ? WALK[step] : '';
       if (v.sprite.texture.key !== base + frame) v.sprite.setTexture(base + frame);
@@ -501,6 +503,7 @@ export class GameScene extends Phaser.Scene {
       if (v.kind === KIND_UNIT) v.sprite.setScale(sc(UNIT_SCALE), sc(UNIT_SCALE * breathe));
       else v.sprite.setScale(sc(1.1), sc(1.1 * breathe));
       if (v.flash > 0) v.sprite.setTint(0xffaaaa);
+      else if ((v.fx ?? 0) & FX_SHEEP) v.sprite.clearTint();
       else if ((v.fx ?? 0) & FX_STUN) v.sprite.setTint(0xb8c0ff);
       else if ((v.fx ?? 0) & FX_POISON) v.sprite.setTint(0xa8f080);
       else v.sprite.clearTint();

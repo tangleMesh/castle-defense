@@ -4,7 +4,7 @@ export * from './map/map';
 export * from './protocol';
 export * from './sim/state';
 export { Sim, type CreateOptions } from './sim/sim';
-export { makeSnapshot, KIND_CODES, FX_POISON, FX_STUN, FX_HIDDEN, type Snapshot, type EntRow, type SnapshotPlayer } from './sim/snapshot';
+export { makeSnapshot, KIND_CODES, FX_POISON, FX_STUN, FX_HIDDEN, FX_SHEEP, type Snapshot, type EntRow, type SnapshotPlayer } from './sim/snapshot';
 export { basicPlacementError, placementError, nearCastle } from './sim/placement';
 export { incomeFor } from './sim/economy';
 export { ROCK_GRID, isFullyConnected, computeFlowField, buildBlockedGrid } from './sim/grid';

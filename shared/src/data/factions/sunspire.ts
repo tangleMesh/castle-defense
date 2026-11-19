@@ -100,8 +100,8 @@ export const SUNSPIRE: FactionDef = {
     },
     {
       id: 'su_city_of_magic', name: 'City of Magic', faction: 'sunspire', cost: 170, hp: 700, armor: 2, buildTime: 11, size: 2,
-      desc: 'Every 10 s the toughest enemy unit within 12 tiles is turned into a harmless sheep for 5 s.',
-      power: { kind: 'hex', cooldown: 10, range: 12, radius: 0, dmg: 0, duration: 5 },
+      desc: 'Every 10 s the toughest enemy unit anywhere on the map is turned into a harmless sheep for 5 s.',
+      power: { kind: 'hex', global: true, cooldown: 10, range: 12, radius: 0, dmg: 0, duration: 5 },
       model: { style: 'magiccity', wall: MARBLE, roof: AZURE, height: 30 },
     },
     {
@@ -113,15 +113,15 @@ export const SUNSPIRE: FactionDef = {
     // ---------------------------------------------------------------- special
     {
       id: 'su_golden_shrine', name: 'Golden Shrine of Grace', faction: 'sunspire', cost: 400, hp: 1800, armor: 6, buildTime: 20, size: 2, special: true, sapphires: 1,
-      desc: 'SPECIAL: costs a sapphire. Every 5th own unit that falls within 14 tiles rises again on the spot. Upgrades into the Radiant Shrine.',
-      revive: { every: 5, radius: 14 },
+      desc: 'SPECIAL: costs a sapphire. Every 5th unit of your team that falls anywhere on the map rises again on the spot. Upgrades into the Radiant Shrine.',
+      revive: { every: 5, radius: 14, global: true },
       upgrades: ['su_golden_shrine_2'],
       model: { style: 'goldshrine', wall: MARBLE, roof: GOLD, height: 46 },
     },
     {
       id: 'su_golden_shrine_2', name: 'Radiant Shrine', faction: 'sunspire', cost: 350, hp: 2400, armor: 7, buildTime: 15, size: 2, special: true, upgradeOnly: true,
-      desc: 'Every 3rd own unit that falls within 18 tiles rises again.',
-      revive: { every: 3, radius: 18 },
+      desc: 'Every 3rd unit of your team that falls anywhere on the map rises again.',
+      revive: { every: 3, radius: 18, global: true },
       model: { style: 'goldshrine', wall: 0xf8f0e0, roof: 0xf0d060, height: 54 },
     },
   ],

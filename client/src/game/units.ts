@@ -1145,3 +1145,17 @@ function goliath(c: Ctx, cx: number, fy: number, S: SFn, body: number, accent: n
   c.restore();
   if (pose.attack) glow(c, cx + S(8) + Math.cos(ang) * S(18), fy - S(28) + bob + Math.sin(ang) * S(18), S(5), 0xffc050, 0.9);
 }
+
+/** A hexed unit (City of Magic): a fluffy, harmless sheep standing on the unit's spot. */
+export function paintSheep(c: Ctx, frame: Frame = '') {
+  const cx = UNIT_CANVAS.w / 2, fy = UNIT_CANVAS.footY;
+  const step = frame === '_w1' || frame === '_w3' ? 1.5 : 0;
+  // legs
+  for (const [dx, ph] of [[-7, 0], [-3, 1], [4, 0], [8, 1]] as const) limb(c, cx + dx, fy - 9, cx + dx + (ph ? step : -step), fy, 2.4, 0x2a2420);
+  // fleece: a cluster of puffs
+  for (const [dx, dy, r] of [[-7, -15, 6], [0, -17, 7], [7, -15, 6], [-3, -11, 6], [4, -11, 6], [0, -13, 7]] as const) blob(c, cx + dx, fy + dy, r, r * 0.85, 0xf2efe6);
+  // head and ear
+  blob(c, cx + 12, fy - 17, 4.2, 3.6, 0x3a302a);
+  blob(c, cx + 10, fy - 20, 2, 1.2, 0x2a2420);
+  c.fillStyle = css(0xffffff); c.beginPath(); c.arc(cx + 13.5, fy - 18, 0.9, 0, TAU); c.fill();
+}

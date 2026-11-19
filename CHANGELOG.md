@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.43.0
+
+- **City of Magic works like a real polymorph, map-wide:**
+  - Every 10 s the toughest enemy unit anywhere on the map turns into a harmless sheep for 5 s.
+  - Before, its 12-tile range rarely reached anything, and the victim only got a pink puff and a freeze.
+  - Sheep get their own sprite.
+- **Golden Shrine of Grace and Radiant Shrine are map-wide:** every 5th / 3rd unit of your team that falls anywhere rises again.
+
 ## 0.42.2
 
 - **Bloodtusk kodos weaker:**

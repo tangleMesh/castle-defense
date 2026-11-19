@@ -390,7 +390,7 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   const mods = modsOf(sim, e.id);
   if ((e.cd ?? 0) > 0) e.cd!--;
   // Stunned: no moving, attacking or healing.
-  if (e.stun) { e.stun--; return; }
+  if (e.stun) { e.stun--; if (e.sheep && --e.sheep <= 0) delete e.sheep; return; }
   tryHeal(sim, e);
 
   let target = sim.get(e.targetId);

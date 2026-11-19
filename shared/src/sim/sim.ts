@@ -155,7 +155,9 @@ export class Sim {
         for (const b of shrines) {
           if (b.team !== e.team) continue;
           const d = distToRect(footprint(b), e.x, e.y);
-          if (d <= BUILDINGS[b.type].revive!.radius && d < bestD) { best = b; bestD = d; }
+          const rv = BUILDINGS[b.type].revive!;
+          // Map-wide shrines catch every fallen unit of the team (the nearest shrine counts it).
+          if ((rv.global || d <= rv.radius) && d < bestD) { best = b; bestD = d; }
         }
         if (!best) continue;
         best.revives = (best.revives ?? 0) + 1;

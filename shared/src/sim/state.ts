@@ -53,6 +53,8 @@ export interface Entity {
   charge?: boolean;
   /** Mine layers: ticks until the next mine. */
   mineCd?: number;
+  /** Hexed (City of Magic): a harmless sheep for this many more ticks (it is stunned as well). */
+  sheep?: number;
   /** Stealth units: invisible to the enemy right now. */
   hidden?: boolean;
   /** Stealth units: ticks until a revealed one vanishes again. */
