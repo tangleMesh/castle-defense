@@ -3,7 +3,7 @@ import { MAP, rectCenter } from '../map/map';
 import { FACTION_IDS } from '../data';
 import { nextRandom } from './rng';
 import type { Sim } from './sim';
-import type { Team } from './state';
+import { matchStats, type Team } from './state';
 
 /** Wipe the battlefield and start a fresh round: castles, new builders, gold, rescue strikes. */
 export function startRound(sim: Sim) {
@@ -44,6 +44,11 @@ export function startRound(sim: Sim) {
       x: c.x + dir * 3.5, y: c.y + dir * (slot - 1.5), hp: 1, maxHp: 1, orders: [],
     });
     p.builderId = builder.id;
+    // Every round's scoreboard starts from zero; the match totals keep the earlier rounds.
+    if (s.round > 1) {
+      p.past = matchStats(p);
+      p.kills = 0; p.strikes = 0; p.goldEarned = 0; p.lost = 0; p.castleDmg = 0;
+    }
     p.gold = START_GOLD;
     p.rescueUsed = false;
     p.items = [];

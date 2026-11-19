@@ -47,3 +47,17 @@ describe('faction draws', () => {
     }
   });
 });
+
+describe('round statistics', () => {
+  it('reset every round while the match totals keep the earlier rounds', async () => {
+    const { Sim, matchStats } = await import('../src/index');
+    const sim = Sim.create({ countdownTicks: 0, bestOf: 3, seed: 1, players: [
+      { userId: 'a', name: 'a', team: 0, faction: 'ironvow' }, { userId: 'b', name: 'b', team: 1, faction: 'thornwild' }] });
+    const p = sim.state.players[0];
+    p.kills = 7; p.goldEarned = 300; p.strikes = 1; p.lost = 2; p.castleDmg = 50;
+    startRound(sim);
+    expect([p.kills, p.goldEarned, p.strikes, p.lost, p.castleDmg]).toEqual([0, 0, 0, 0, 0]);
+    p.kills = 3;
+    expect(matchStats(p)).toEqual({ kills: 10, strikes: 1, goldEarned: 300, lost: 2, castleDmg: 50 });
+  });
+});

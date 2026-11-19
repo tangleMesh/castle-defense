@@ -6,7 +6,7 @@ import { AI_INCOME, AiPlayer, makeBotId, type AiLevel, type Profile } from '../a
 import { TICK_RATE } from '../constants';
 import { BUILDINGS, type FactionId } from '../data';
 import { Sim } from '../sim/sim';
-import type { PlayerCommand, Team } from '../sim/state';
+import { matchStats, type PlayerCommand, type Team } from '../sim/state';
 
 export interface LabPlayer {
   faction: FactionId;
@@ -101,7 +101,7 @@ export function playMatch(m: LabMatch): LabResult {
       const ps = s.players[i];
       return {
         faction: p.faction, level: p.level, profile: p.profile, tag: p.tag, team: p.team,
-        kills: ps.kills, lost: ps.lost ?? 0, goldEarned: ps.goldEarned, castleDmg: ps.castleDmg ?? 0,
+        ...((t) => ({ kills: t.kills, lost: t.lost, goldEarned: t.goldEarned, castleDmg: t.castleDmg }))(matchStats(ps)),
         buildings: s.entities.filter((e) => e.kind === 'building' && e.owner === i && BUILDINGS[e.type]).length,
         avgFloat: samples ? float[i] / samples : 0,
       };

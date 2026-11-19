@@ -315,7 +315,7 @@ export class Hud {
         h('span', { class: 'dim' }, `Round ${snap.round} · best of ${snap.bestOf} · score ${snap.score[0]} : ${snap.score[1]} · ${mins} min played`),
       ),
       h('div', { class: 'sb-scroll' }, h('table', null, h('thead', null, head), h('tbody', null, ...teamBlock(0), ...teamBlock(1)))),
-      h('div', { class: 'sb-foot dim' }, 'Release Tab to close · Enemy gold, army and buildings are hidden by the fog of war'),
+      h('div', { class: 'sb-foot dim' }, 'Release Tab to close · Stats count this round only (match totals go to your profile) · Enemy gold, army and buildings are hidden by the fog of war'),
     );
   }
 

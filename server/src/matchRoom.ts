@@ -1,5 +1,5 @@
 import {
-  AiPlayer, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot,
+  AiPlayer, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats,
   type ClientMessage, type MatchInitPlayer, type PlayerCommand, type ServerMessage, type Sim, type SimEvent,
 } from '@bc/shared';
 import type { Conn } from './conn';
@@ -258,10 +258,11 @@ export class MatchRoom {
       while (this.saving) await new Promise((r) => setTimeout(r, 10));
       await db.matches.insert({
         _id: this.id,
-        players: s.players.map((p) => ({
-          userId: p.userId, name: p.name, team: p.team, faction: p.faction,
-          kills: p.kills, strikes: p.strikes, goldEarned: p.goldEarned,
-        })),
+        // Whole-match totals (the in-game scoreboard shows the current round only).
+        players: s.players.map((p) => {
+          const t = matchStats(p);
+          return { userId: p.userId, name: p.name, team: p.team, faction: p.faction, kills: t.kills, strikes: t.strikes, goldEarned: t.goldEarned };
+        }),
         bestOf: s.bestOf,
         rounds: s.rounds.map((r) => ({ winner: r.winner, durationTicks: r.ticks })),
         score: [s.score[0], s.score[1]],
@@ -274,8 +275,8 @@ export class MatchRoom {
         wins: p.team === winner ? 1 : 0,
         losses: p.team === winner ? 0 : 1,
         roundsWon: s.score[p.team],
-        unitsKilled: p.kills,
-        rescueStrikesUsed: p.strikes,
+        unitsKilled: matchStats(p).kills,
+        rescueStrikesUsed: matchStats(p).strikes,
       })));
       await db.savedGames.finish(this.id);
     } catch (err) {

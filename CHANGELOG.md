@@ -7,6 +7,11 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.39.1
+
+- **Stats reset every round.** The in-game scoreboard and overview (kills, units lost, gold earned, castle damage, rescue strikes) count the current round only.
+- **Match totals are kept.** Match history and profile stats still add up all rounds of the match.
+
 ## 0.39.0
 
 - **In-game chat with team and all channels:**

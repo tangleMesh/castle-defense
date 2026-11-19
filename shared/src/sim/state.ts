@@ -88,7 +88,7 @@ export interface PlayerState {
   rescueUsed: boolean;
   builderId: number;
   connected: boolean;
-  // per-match statistics
+  // Statistics of the current round (reset when a round starts; earlier rounds sit in `past`).
   kills: number;
   strikes: number;
   goldEarned: number;
@@ -96,12 +96,34 @@ export interface PlayerState {
   lost?: number;
   /** Damage dealt to the enemy castle. */
   castleDmg?: number;
+  /** Statistics of the finished rounds of this match (absent before the second round). */
+  past?: RoundStats;
   /** Builder items carried this round (optional: absent in games saved by older versions). */
   items?: string[];
   /** Sapphires (rare resource for special buildings and elite upgrades); absent in old saves = START_SAPPHIRES. */
   sapphires?: number;
   /** Income multiplier (handicap); absent = 1. */
   incomeMult?: number;
+}
+
+export interface RoundStats {
+  kills: number;
+  strikes: number;
+  goldEarned: number;
+  lost: number;
+  castleDmg: number;
+}
+
+/** A player's statistics over the whole match: the finished rounds plus the current one. */
+export function matchStats(p: PlayerState): RoundStats {
+  const a = p.past;
+  return {
+    kills: (a?.kills ?? 0) + p.kills,
+    strikes: (a?.strikes ?? 0) + p.strikes,
+    goldEarned: (a?.goldEarned ?? 0) + p.goldEarned,
+    lost: (a?.lost ?? 0) + (p.lost ?? 0),
+    castleDmg: (a?.castleDmg ?? 0) + (p.castleDmg ?? 0),
+  };
 }
 
 export interface PendingStrike {
