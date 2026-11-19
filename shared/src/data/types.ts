@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake' | 'doomforge';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -19,7 +19,9 @@ export interface UnitModel {
     // Frostmark northerners
     | 'frostbeast' | 'magnataur' | 'wendigo' | 'yeti' | 'icetroll' | 'icequeen' | 'drake'
     // Gravewake undead
-    | 'zombie' | 'necromancer' | 'lich' | 'skeleton' | 'vampire' | 'bat' | 'banshee' | 'fleshgolem' | 'bonewyrm';
+    | 'zombie' | 'necromancer' | 'lich' | 'skeleton' | 'vampire' | 'bat' | 'banshee' | 'fleshgolem' | 'bonewyrm'
+    // Doomforge demons
+    | 'demon' | 'satyr' | 'quilldemon' | 'twin' | 'succubus' | 'fiend' | 'reddragon' | 'infernal';
   body: number;
   accent: number;
   scale: number;
@@ -42,7 +44,9 @@ export interface BuildingModel {
     // Frostmark
     | 'snowrocks' | 'icecave' | 'igloo' | 'icehut' | 'icepalace' | 'icenest' | 'icetower' | 'frostshroom' | 'frostlauncher' | 'worldfreezer'
     // Gravewake
-    | 'haycart' | 'plaguebarn' | 'bonetemple' | 'crypt' | 'graveyard' | 'hauntedmine' | 'slaughterhouse' | 'dragongrave' | 'skullpile' | 'soulturret' | 'deathpit' | 'necropolis';
+    | 'haycart' | 'plaguebarn' | 'bonetemple' | 'crypt' | 'graveyard' | 'hauntedmine' | 'slaughterhouse' | 'dragongrave' | 'skullpile' | 'soulturret' | 'deathpit' | 'necropolis'
+    // Doomforge
+    | 'chaoscitadel' | 'demoncage' | 'greedaltar' | 'bloodfountain' | 'dragonnest' | 'demongate' | 'magicruin' | 'volcano' | 'destructionshrine' | 'eraser';
   wall: number;
   roof: number;
   height: number;
@@ -180,10 +184,13 @@ export interface BuildingDef {
  * unit in range is turned into a harmless critter (stunned) for `duration` seconds. `beam`: a ray of
  * light hits the nearest enemy unit in range for `dmg` magic damage. A hex with `air` freezes the toughest
  * flyer instead and also deals `dmg` magic damage. `slay`: the nearest enemy unit in range with at most
- * `dmg` max HP dies at once (champions and elites are too strong to slay).
+ * `dmg` max HP dies at once (champions and elites are too strong to slay). `chaos`: the nearest enemy
+ * unit suffers one of four fates in turn: `dmg` magic damage, a `duration` stun with a third of the
+ * damage, death (if its max HP is at most 1.5 × dmg, else the damage), or nothing. `erase`: every enemy
+ * unit of the most numerous type in range dies (types with more than `dmg` max HP are immune).
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase';
   cooldown: number;
   range: number;
   radius: number;

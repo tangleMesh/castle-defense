@@ -28,7 +28,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -142,6 +142,50 @@ function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
   sim.emit({ t: 'slay', a: e.id, b: best.id });
   best.hp = 0;
   rewardKill(sim, best, e.owner);
+  return true;
+}
+
+function nearestEnemyUnit(sim: Sim, e: Entity, range: number): Entity | undefined {
+  const c = centre(e);
+  let best: Entity | undefined, bestD = Infinity;
+  for (const u of sim.hash.query(c.x, c.y, range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit') continue;
+    const d = Math.hypot(u.x - c.x, u.y - c.y);
+    if (d <= range && d < bestD) { best = u; bestD = d; }
+  }
+  return best;
+}
+
+/**
+ * Present of chaos: the nearest enemy unit suffers the next of four fates (the building counts its
+ * casts, so it is deterministic and mirror matches stay mirrored): a blast, a stun, death, nothing.
+ */
+function chaos(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const t = nearestEnemyUnit(sim, e, p.range);
+  if (!t) return false;
+  const fate = (e.revives = (e.revives ?? 0) + 1) % 4;
+  if (fate === 1) { sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, p.dmg, 'magic', e.owner); }
+  else if (fate === 2) { t.stun = Math.max(t.stun ?? 0, Math.round((p.duration ?? 4) * TICK_RATE)); sim.emit({ t: 'hex', id: t.id, d: t.stun }); dealDamage(sim, t, p.dmg / 3, 'magic', e.owner); }
+  else if (fate === 3) {
+    sim.emit({ t: 'slay', a: e.id, b: t.id });
+    if (t.maxHp <= p.dmg * 1.5) { t.hp = 0; rewardKill(sim, t, e.owner); } else dealDamage(sim, t, p.dmg, 'magic', e.owner);
+  }
+  return true;
+}
+
+/** Erase: every enemy unit of the most numerous type in range dies (strong types are immune). */
+function erase(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  const count = new Map<string, Entity[]>();
+  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
+    const list = count.get(u.type) ?? [];
+    list.push(u); count.set(u.type, list);
+  }
+  let best: Entity[] = [], bestType = '';
+  for (const [type, list] of count) if (list.length > best.length || (list.length === best.length && type < bestType)) { best = list; bestType = type; }
+  if (!best.length) return false;
+  for (const u of best) { sim.emit({ t: 'slay', a: e.id, b: u.id }); u.hp = 0; rewardKill(sim, u, e.owner); }
   return true;
 }
 

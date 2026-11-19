@@ -10,6 +10,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Sunspire follows the "elf" race (the high elves of the Elven Union).
 - Frostmark follows the "northern" race.
 - Gravewake follows the "undead" race.
+- Doomforge follows the "chaos" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -167,6 +168,23 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Death Pit | death pit | slays the nearest enemy unit with up to 800 HP every 15 s |
 | City of Decay → Necropolis | city of decay | the special: every enemy unit on the battlefield rots, 6 / 10 HP/s |
 
+## Doomforge ("chaos")
+
+| Doomforge | Inspired by | Notes |
+|---|---|---|
+| Chaos Citadel → Greater Chaos Citadel | chaos citadel → greater | chaos warriors (cleave) → champions (cleave, crit, +20% damage roar) |
+| Lesser Demon Cage → Greater Demon Cage → Serenity | lesser → greater demon cage → serenity | satyrs → quill demons (bounce, thorns) → the twins (elite pair: crits, stuns, evasion, magic resistance) |
+| Altar of Greed | altar of greed | succubi whose curse weakens enemies (−20% damage) |
+| Fountain of Blood | fountain of blood | blood fiends with lifesteal |
+| Dragon Nest | dragon nest | red dragons: flying, splash |
+| Demon Gate | demon gate | infernals: tough, hit air, immolation (12 HP/s to enemies nearby) |
+| Magic Tower Ruin | magic tower ruin | present of chaos: a blast, a stun, death or nothing, in turn |
+| Volcano | volcano | eruption under the nearest enemies |
+| Shrine of Destruction | shrine of destruction | Hell's Fist cripples the nearest enemy building for 20 s |
+| Eraser → Eraser II → Eraser III | eraser | the special: kills every enemy unit of the most numerous kind (up to 1000 HP) |
+
+Like the map's race: chaos damage (full against every armour type), no tower and no siege unit.
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -193,6 +211,7 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | aura with a negative value on `enemy` | weakens enemies (less damage / armour) |
 | aura `regen` with a negative value on `enemy` | decay: enemies lose HP every second (no bounty) |
 | power `slay` | kills the nearest enemy unit with at most `dmg` max HP |
+| power `chaos` / `erase` | cycling fates on the nearest enemy / kills the most numerous enemy kind |
 | power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |

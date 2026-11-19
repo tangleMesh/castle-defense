@@ -506,3 +506,48 @@ describe('Gravewake mechanics', () => {
     expect(champ.hp).toBeGreaterThan(0);
   });
 });
+
+describe('Doomforge mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'doomforge' },
+    { userId: 'b', name: 'B', team: 1, faction: 'thornwild' },
+  ];
+  const simD = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 14 });
+
+  it('the Eraser wipes out the most numerous enemy kind in range, strong kinds are immune', () => {
+    const sim = simD();
+    building(sim, 0, 'df_eraser', 30, 18);
+    const vines = [0, 1, 2].map((i) => unit(sim, 1, 'tw_vineling', 36 + i, 19));
+    const archers = [0, 1].map((i) => unit(sim, 1, 'tw_thorn_archer', 36 + i, 21));
+    const treant = unit(sim, 1, 'tw_ancient_treant', 38, 23);
+    const all = [...vines, ...archers, treant];
+    const at = all.map((u) => [u.x, u.y]);
+    let erased = false;
+    for (let i = 0; i < (BUILDINGS.df_eraser.power!.cooldown + 1) * TICK_RATE && !erased; i++) {
+      all.forEach((u, k) => { if (u.hp > 0) { u.x = at[k][0]; u.y = at[k][1]; } });
+      erased = sim.step().some((e) => e.t === 'slay');
+    }
+    expect(vines.every((v) => v.hp === 0)).toBe(true);
+    expect(archers.every((a) => a.hp > 0)).toBe(true);
+    expect(treant.hp).toBeGreaterThan(0);
+  });
+
+  it('a present of chaos cycles its fates on the nearest enemy', () => {
+    const sim = simD();
+    const ruin = building(sim, 0, 'df_magic_ruin', 30, 18);
+    const p = BUILDINGS.df_magic_ruin.power!;
+    const fates: string[] = [];
+    for (let n = 0; n < 4; n++) {
+      const foe = unit(sim, 1, 'tw_gnasher', 34, 19);
+      foe.hp = foe.maxHp = 500;
+      ruin.abilityCd = 1;
+      const before = foe.hp;
+      const ev = sim.step();
+      fates.push(foe.hp === 0 ? 'death' : foe.stun ? 'stun' : foe.hp < before ? 'blast' : 'nothing');
+      expect(ev.length).toBeGreaterThanOrEqual(0);
+      sim.removeNow(foe);
+    }
+    expect(fates).toEqual(['blast', 'stun', 'death', 'nothing']);
+    void p;
+  });
+});

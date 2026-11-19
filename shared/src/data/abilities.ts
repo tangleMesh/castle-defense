@@ -47,6 +47,8 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'chaos') return `Present of chaos: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles suffers the next fate: ${p.dmg} damage, a ${p.duration}s stun, death (up to ${Math.round(p.dmg * 1.5)} HP), or nothing`;
+  if (p.kind === 'erase') return `Erase: every ${p.cooldown}s every enemy unit of the most numerous type within ${p.range} tiles dies (types with more than ${p.dmg} HP are immune)`;
   if (p.kind === 'slay') return `Sudden death: every ${p.cooldown}s the nearest enemy unit within ${p.range} tiles with at most ${p.dmg} HP dies at once`;
   if (p.kind === 'hex' && p.air) return `Freezing blast: every ${p.cooldown}s the toughest enemy flyer within ${p.range} tiles is frozen for ${p.duration}s and takes ${p.dmg} magic damage`;
   if (p.kind === 'hex') return `Hex: every ${p.cooldown}s the toughest enemy unit within ${p.range} tiles is turned into a harmless critter for ${p.duration}s`;

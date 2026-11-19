@@ -8,6 +8,7 @@ import { BLOODTUSK } from './factions/bloodtusk';
 import { SUNSPIRE } from './factions/sunspire';
 import { FROSTMARK } from './factions/frostmark';
 import { GRAVEWAKE } from './factions/gravewake';
+import { DOOMFORGE } from './factions/doomforge';
 import { TUNING } from './tuning';
 import type { Tuning } from './types';
 
@@ -16,7 +17,7 @@ export * from './combat';
 export * from './items';
 export * from './abilities';
 
-export const FACTIONS: Record<FactionId, FactionDef> = { ironvow: IRONVOW, thornwild: THORNWILD, shardbound: SHARDBOUND, cogspark: COGSPARK, duskmoon: DUSKMOON, bloodtusk: BLOODTUSK, sunspire: SUNSPIRE, frostmark: FROSTMARK, gravewake: GRAVEWAKE };
+export const FACTIONS: Record<FactionId, FactionDef> = { ironvow: IRONVOW, thornwild: THORNWILD, shardbound: SHARDBOUND, cogspark: COGSPARK, duskmoon: DUSKMOON, bloodtusk: BLOODTUSK, sunspire: SUNSPIRE, frostmark: FROSTMARK, gravewake: GRAVEWAKE, doomforge: DOOMFORGE };
 export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
 
 export const BUILDINGS: Record<string, BuildingDef> = {};

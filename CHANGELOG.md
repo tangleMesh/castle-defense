@@ -7,6 +7,17 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.33.0
+
+- **New faction: Doomforge Pact**, after the castle-fight map's chaos race.
+  - **Chaos damage:** nearly every demon attacks with it, which hits every armour type fully. Like the map's race, the Pact has no tower and no siege unit.
+  - **Units:** chaos warriors, then champions with a damage roar; satyrs, then quill demons, then the Twins (elite); succubi whose curse weakens enemies; blood fiends with lifesteal; red dragons; infernals that burn everything around them.
+  - **Buildings:** the Magic Tower Ruin, whose present of chaos is in turn a blast, a stun, death or nothing; a volcano; the Shrine of Destruction, which cripples enemy buildings; and the Eraser special, which wipes out every enemy unit of the most numerous kind.
+  - **Look:** horned red demons, goat-legged satyrs, a quill beast, the laughing-and-weeping twins, a winged succubus, blood fiends, a red dragon and a fel-burning infernal. Buildings are spiked obsidian citadels, brass demon cages, a golden altar, a fountain of blood, a lava crag nest, a fel-green demon gate, a shattered magic tower, a volcano, a stone fist and the void-eyed Eraser monolith, all on cracked obsidian with lava veins.
+- **New mechanics:**
+  - the cycling chaos power;
+  - the erase power.
+
 ## 0.32.0
 
 - **New faction: Gravewake Legion**, after the castle-fight map's undead race.
