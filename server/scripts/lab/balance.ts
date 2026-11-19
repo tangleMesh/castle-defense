@@ -70,6 +70,22 @@ const botSeeds = Number(arg('bot-seeds', String(by(1, 1, 6))));
 const strategySeeds = Number(arg('strategy-seeds', quick ? '2' : '4'));
 const strategyLevels = arg('strategy-levels', 'normal,hard').split(',') as AiLevel[];
 const outFile = arg('out', dry ? '' : 'docs/balance-report.md');
+/**
+ * Faction measurements carried from run to run (same game version only): repeated 30-minute
+ * runs then fit on the evidence of all of them, like one long run. x is absolute (log power plus
+ * EARLY_WEIGHT × log early) so it survives the tuning moving between runs.
+ */
+const gameVersion = JSON.parse(readFileSync('package.json', 'utf8')).version as string;
+const POINTS_FILE = arg('points', 'docs/balance-points.json');
+const POINTS_PER_FACTION = 40;
+type StoredPoint = { faction: string; x: number; rate: number; n: number };
+function loadPoints(version: string): StoredPoint[] {
+  if (flag('fresh')) return [];
+  try {
+    const d = JSON.parse(readFileSync(POINTS_FILE, 'utf8')) as { version: string; points: StoredPoint[] };
+    return d.version === version ? d.points : [];
+  } catch { return []; }
+}
 const LADDER_TARGET = 0.8, LADDER_BAND: [number, number] = [0.7, 0.9];
 
 const tuning: Tuning = structuredClone(flag('reset') ? NEUTRAL_TUNING : COMMITTED_TUNING);
@@ -319,10 +335,23 @@ async function stageFactions(): Promise<FactionMeasure> {
   // Every measurement so far feeds a logistic fit of win rate against power (shared/src/lab/fit.ts);
   // each step jumps to the fit's 50% point (at most ±6% power per step).
   const points: FitPoint[] = [];
+  // Earlier runs' measurements of this game version, moved into this run's frame.
+  const absOf = (f: string) => lp[f] + EARLY_WEIGHT * le[f];
+  const abs0 = Object.fromEntries(FACTION_IDS.map((f) => [f, lp0[f] + EARLY_WEIGHT * le0[f]]));
+  const stored = loadPoints(gameVersion);
+  for (const p of stored) {
+    const g = FACTION_IDS.indexOf(p.faction as FactionId);
+    if (g >= 0) points.push({ group: g, x: p.x - abs0[p.faction], rate: p.rate, n: p.n });
+  }
+  if (stored.length) out.push(`Carried over ${stored.length} measurements from earlier runs of version ${gameVersion} (${POINTS_FILE}).`, '');
+  const fresh: StoredPoint[] = [];
   const record = (m: FactionMeasure) => FACTION_IDS.forEach((f, g) => {
     // Effective sample size of the size-averaged rate (from its standard error).
     const n = m.se[f] > 0 ? 0.25 / m.se[f] ** 2 : 0;
-    if (n) points.push({ group: g, x: strength(f), rate: clamp(m.overall[f], 0.02, 0.98), n });
+    if (!n) return;
+    const rate = clamp(m.overall[f], 0.02, 0.98);
+    points.push({ group: g, x: strength(f), rate, n });
+    fresh.push({ faction: f, x: absOf(f), rate, n });
   });
   const step = () => {
     const fit = fitPower(points, FACTION_IDS.length);
@@ -374,6 +403,7 @@ async function stageFactions(): Promise<FactionMeasure> {
   }
   if (!verified) {
     verified = await measureFactions('factions verify', verifyGames, { mirrors: true });
+    record(verified);
     if (!check) out.push(`| final | ${powerLine()} | ${factionLine(verified)} | ${verified.games} | |`);
   }
   out.push('', `Power now: ${powerLine()}`, '', '### Faction win rate per team size (verification run)', '', sizeTable(verified), '',
@@ -392,6 +422,12 @@ async function stageFactions(): Promise<FactionMeasure> {
   }
   const side = verified.all.side;
   if (side.ci[0] > 0.5 || side.ci[1] < 0.5) design.push(`left side wins ${pct(side.rate)} (CI ${pct(side.ci[0])}–${pct(side.ci[1])}): the map or the simulation favours one side`);
+  // Keep the newest measurements per faction for the next run.
+  if (!dry) {
+    const all = [...stored, ...fresh];
+    const keep = FACTION_IDS.flatMap((f) => all.filter((p) => p.faction === f).slice(-POINTS_PER_FACTION));
+    writeFileSync(POINTS_FILE, JSON.stringify({ version: gameVersion, points: keep.map((p) => ({ ...p, x: r3(p.x * 1000) / 1000, rate: r3(p.rate), n: Math.round(p.n) })) }, null, 0) + '\n');
+  }
   return verified;
 }
 
@@ -485,7 +521,6 @@ async function stageStrategies() {
 
 // ------------------------------------------------------------------ output
 
-const gameVersion = JSON.parse(readFileSync('package.json', 'utf8')).version as string;
 
 function writeTuning(fm: FactionMeasure | null, revision: number) {
   const units = Object.entries(tuning.units).filter(([, u]) => (u.hp ?? 1) !== 1 || (u.dmg ?? 1) !== 1).sort(([a], [b]) => a.localeCompare(b));

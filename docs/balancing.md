@@ -83,6 +83,7 @@ The game snowballs, so single results are noisy, and small changes can flip a ma
   - **Bot ladder:** two rounds, the second only while 85% of the budget is left.
   - **Strategies:** this stage only measures and is left out.
   - **Noise:** every faction lands in about 30 games per step, so the default run is good for regular upkeep after a feature. Its verification is about ±8% per faction.
+  - **Measurements carry over:** every run stores its faction measurements in `docs/balance-points.json`. The next run of the same game version adds them to its own fit, so repeated 30-minute runs build up the evidence of one long run. `--fresh` ignores them; a new game version starts over.
   - **`--full`:** the thorough run with all strategies, about 7 h with a dozen factions. Use it after big redesigns or before a release.
 - **Budgets scale with the factions.** Step and verification games (`--games` 12 / `--verify-games` 30 per faction and team size) and the pairings per step (`--pairings`, 2 per faction) grow with the number of factions. The ladder, the strategy stage and the building duels play a fixed random sample of their grids (which grow with the square of the faction count): the game budgets of the old 4-faction runs.
 - **A sample per step, the full grid only to verify.** Each tuning step plays `--pairings` (default 2 per faction) line-up pairings per
