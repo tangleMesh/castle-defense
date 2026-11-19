@@ -118,6 +118,8 @@ export interface Shell {
   radius: number;
   dmg: number;
   ticksLeft: number;
+  /** Ticks everything hit is frozen for (frost bolts). */
+  freeze?: number;
 }
 
 /** A lingering area effect (Howling Hollow's cyclone): damage per second and a slow for enemies inside. */

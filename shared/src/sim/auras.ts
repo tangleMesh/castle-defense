@@ -80,8 +80,9 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
   if ((aura.target === 'ally') !== (u.team === src.team)) return;
   const m = modFor(sim, u);
   switch (aura.stat) {
-    case 'dmg': m.dmg = Math.max(m.dmg, 1 + aura.value); break;
-    case 'armor': m.armor = Math.max(m.armor, aura.value); break;
+    // Weakening auras on enemies (negative values) take the strongest malus instead.
+    case 'dmg': m.dmg = aura.value < 0 ? Math.min(m.dmg, 1 + aura.value) : Math.max(m.dmg, 1 + aura.value); break;
+    case 'armor': m.armor = aura.value < 0 ? Math.min(m.armor, aura.value) : Math.max(m.armor, aura.value); break;
     case 'regen': m.regen = Math.max(m.regen, aura.value); break;
     case 'speed': m.speed = aura.value < 0 ? Math.min(m.speed, 1 + aura.value) : Math.max(m.speed, 1 + aura.value); break;
     case 'haste': m.haste = Math.max(m.haste, 1 + aura.value); break;

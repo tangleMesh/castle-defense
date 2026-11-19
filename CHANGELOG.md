@@ -7,6 +7,17 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.31.0
+
+- **New faction: Frostmark Clans**, after the castle-fight map's northern race.
+  - **Units:** frost wolves, then polar bears, then magnataurs, which cleave, crit and stomp; wendigos, whose ancient form howls nearby enemies 25% weaker; ice-hurling yetis; ice trolls with frost armour for allies; the Ice Queen with frost novas; azure drakes with chilling breath.
+  - **Buildings:** an icy splash tower; the Chilling Mushroom, which freezes the toughest flyer; frost launchers whose bolts freeze enemy buildings, so they stop training, shooting and casting for a while; and the World Freezer special, which calls long blizzards.
+  - **Look:** white wolves and bears, a tusked magnataur, shaggy wendigos, yetis, blue ice trolls, a crowned ice queen and drakes. Buildings are snow-capped rocks, a glacier cave, igloos, fur huts, a crystal palace, a frozen crag, an ice tower, glowing mushrooms, trebuchets and a crown of ice, all on packed snow.
+- **New mechanics:**
+  - frozen buildings;
+  - an anti-air freezing blast;
+  - auras that weaken enemies.
+
 ## 0.30.0
 
 - **New faction: Sunspire Concord**, after the castle-fight map's elf race (the high elves of the Elven Union).

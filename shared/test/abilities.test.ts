@@ -434,3 +434,43 @@ describe('Sunspire mechanics', () => {
     expect(raised).toEqual([0, 0, 0, 0, 1, 1, 1, 1, 1, 2]);
   });
 });
+
+describe('Frostmark mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'frostmark' },
+    { userId: 'b', name: 'B', team: 1, faction: 'thornwild' },
+  ];
+  const simF = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 10 });
+
+  it('a frost bolt freezes the building it hits: no training while frozen', () => {
+    const sim = simF();
+    building(sim, 0, 'fm_frost_launcher', 30, 18);
+    const target = building(sim, 1, 'tw_burrow', 50, 18);
+    const p = BUILDINGS.fm_frost_launcher.power!;
+    for (let i = 0; i < (p.cooldown + 2) * TICK_RATE && !target.stun; i++) sim.step();
+    expect(target.stun).toBeGreaterThan(0);
+    const timer = target.spawnTimer;
+    sim.step(); sim.step();
+    expect(target.spawnTimer).toBe(timer);
+  });
+
+  it('the Chilling Mushroom freezes flyers only', () => {
+    const sim = simF();
+    building(sim, 0, 'fm_frost_mushroom', 30, 18);
+    const moth = unit(sim, 1, 'tw_dusk_moth', 35, 19), stag = unit(sim, 1, 'tw_boulder_ram', 34, 19);
+    for (const u of [moth, stag]) u.hp = u.maxHp = 1e5;
+    for (let i = 0; i < (BUILDINGS.fm_frost_mushroom.power!.cooldown + 1) * TICK_RATE && !moth.stun; i++) { moth.x = 35; moth.y = 19; stag.x = 34; stag.y = 19; sim.step(); }
+    expect(moth.stun).toBeGreaterThan(0);
+    expect(moth.hp).toBeLessThan(moth.maxHp);
+    expect(stag.stun ?? 0).toBe(0);
+  });
+
+  it("an Ancient Wendigo's howl makes nearby enemies deal less damage", () => {
+    const sim = simF();
+    unit(sim, 0, 'fm_ancient_wendigo', 50, 20);
+    const foe = unit(sim, 1, 'tw_vineling', 51, 20);
+    sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
+    computeAuras(sim);
+    expect(sim.mods.get(foe.id)?.dmg).toBeCloseTo(1 + UNITS.fm_ancient_wendigo.aura!.value);
+  });
+});

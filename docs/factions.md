@@ -8,6 +8,7 @@ All four factions follow the structure and numbers of races of a classic Warcraf
 - Duskmoon follows the "night elf" race.
 - Bloodtusk follows the "orc" race.
 - Sunspire follows the "elf" race (the high elves of the Elven Union).
+- Frostmark follows the "northern" race.
 
 We took their tech trees, stat ratios and signature mechanics. Names, look and theme are our own; no text or art was copied.
 
@@ -135,6 +136,21 @@ Trait: every Duskmoon unit dodges every 8th blow (the map's night elves are frag
 | Obelisk of Light | obelisk of light | light beam, 90 magic damage every 4 s |
 | Golden Shrine of Grace → Radiant Shrine | golden shrine of justice | the special: every 5th / 3rd fallen ally nearby rises again |
 
+## Frostmark ("northern")
+
+| Frostmark | Inspired by | Notes |
+|---|---|---|
+| Snowy Rocks → Icy Rocks → Glacier | snowy rocks → icy rocks → glacier | frost wolves → polar bears (cleave) → magnataurs (cleave, triple crit, stomp) |
+| Ice Claws → Frost Claws | ice claws → frost claws | wendigos that pulverise; the ancient one howls enemies weaker (−25% damage aura) |
+| Igloo → Great Igloo | igloo → modern igloo | rime throwers (fast chilling ice shards) → raging throwers (3 targets) |
+| Ice Troll Hut → Voodoo Lounge | ice troll hut → voodoo lounge | chilling casters that give nearby allies frost armour (+3 / +5) |
+| Crystal Palace | crystal palace | the ice queen: chilling magic and a frost nova every 4th spell |
+| Azure Nest | azure nest | armoured flying drakes with splashing, chilling breath |
+| Icy Tower | icy tower | splash tower |
+| Chilling Mushroom | chilling mushroom | freezes the toughest enemy flyer (4 s, 110 damage) every 6 s |
+| Frost Launcher → Greater Frost Launcher | frost launcher → greater | frost bolts freeze enemy buildings: no training, shooting or casting |
+| World Freezer → Eternal Winter | world freezer | the special: a long blizzard (damage and 50% slow) on the enemy army |
+
 ## Ability reference
 
 All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`). They are handled in `shared/src/sim/combat.ts` and `shared/src/sim/powers.ts`, tested in `shared/test/abilities.test.ts`, and described in tooltips by `unitAbilities` / `powerText`.
@@ -156,6 +172,9 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | building `attack.multishot` | tower volleys strike several enemies |
 | power `hex` / `beam` | stuns the toughest enemy in range / a ray of magic damage on the nearest |
 | building `revive: { every, radius }` | every n-th own unit that falls nearby rises again |
+| power `bombard` with `freeze` | the shell freezes buildings (and briefly units) it hits |
+| power `hex` with `air` | freezes the toughest flyer and deals damage |
+| aura with a negative value on `enemy` | weakens enemies (less damage / armour) |
 | power `stasis` | stuns every enemy unit in range |
 | `multishot: n` | every attack also strikes n − 1 further enemies in range |
 | `deathBlast: { dmg, radius }` | explodes when it falls (not when smitten by a rescue strike) |

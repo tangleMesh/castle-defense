@@ -1,7 +1,7 @@
 /** `chaos` (castles only) deals full damage to every armour type. */
 export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
-export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire';
+export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark';
 
 /** Visual description used by the client to generate procedural sprites. */
 export interface UnitModel {
@@ -15,7 +15,9 @@ export interface UnitModel {
     // Bloodtusk orcs
     | 'orc' | 'troll' | 'kodo' | 'wyvern' | 'orccatapult'
     // Sunspire high elves
-    | 'highelf' | 'blademaster' | 'sorceress' | 'ballista' | 'dragonhawk';
+    | 'highelf' | 'blademaster' | 'sorceress' | 'ballista' | 'dragonhawk'
+    // Frostmark northerners
+    | 'frostbeast' | 'magnataur' | 'wendigo' | 'yeti' | 'icetroll' | 'icequeen' | 'drake';
   body: number;
   accent: number;
   scale: number;
@@ -34,7 +36,9 @@ export interface BuildingModel {
     // Bloodtusk
     | 'warhall' | 'trollhut' | 'kodopen' | 'roost' | 'shamantent' | 'orcworks' | 'totempole' | 'serpentrock' | 'speartower' | 'stasistotem'
     // Sunspire
-    | 'elfrange' | 'honorhall' | 'wizardspire' | 'academy' | 'elfsiege' | 'hawkportal' | 'arcanetower' | 'magiccity' | 'lightobelisk' | 'goldshrine';
+    | 'elfrange' | 'honorhall' | 'wizardspire' | 'academy' | 'elfsiege' | 'hawkportal' | 'arcanetower' | 'magiccity' | 'lightobelisk' | 'goldshrine'
+    // Frostmark
+    | 'snowrocks' | 'icecave' | 'igloo' | 'icehut' | 'icepalace' | 'icenest' | 'icetower' | 'frostshroom' | 'frostlauncher' | 'worldfreezer';
   wall: number;
   roof: number;
   height: number;
@@ -170,7 +174,8 @@ export interface BuildingDef {
  * targets and hurts flyers only (a meteor shower) instead of ground units. `stasis`: every enemy unit
  * within `range` is stunned for `duration` seconds (dmg and radius unused). `hex`: the toughest enemy
  * unit in range is turned into a harmless critter (stunned) for `duration` seconds. `beam`: a ray of
- * light hits the nearest enemy unit in range for `dmg` magic damage.
+ * light hits the nearest enemy unit in range for `dmg` magic damage. A hex with `air` freezes the toughest
+ * flyer instead and also deals `dmg` magic damage.
  */
 export interface PowerDef {
   kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam';
@@ -181,6 +186,8 @@ export interface PowerDef {
   duration?: number;
   slow?: number;
   air?: boolean;
+  /** Bombard: what the shell hits is frozen for this many seconds (buildings stop training, shooting and casting). */
+  freeze?: number;
 }
 
 export interface FactionDef {

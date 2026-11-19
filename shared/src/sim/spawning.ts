@@ -56,6 +56,8 @@ export function stepBuildings(sim: Sim) {
       }
       continue;
     }
+    // Frozen (frost bolt): no training, regrowth, shooting or casting until it thaws.
+    if (e.stun) { e.stun--; continue; }
     // Living structures (Thornwild) slowly regrow damage.
     if (def.regen && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + def.regen / TICK_RATE);
     if (!def.spawn) continue;

@@ -20,7 +20,7 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 export function stepPowers(sim: Sim) {
   const s = sim.state;
   for (const e of s.entities) {
-    if (e.kind !== 'building' || e.hp <= 0 || e.buildLeft) continue;
+    if (e.kind !== 'building' || e.hp <= 0 || e.buildLeft || e.stun) continue;
     const def = BUILDINGS[e.type];
     if (def.mend) mend(sim, e, def.mend.hps, def.mend.radius);
     const p = def.power;
@@ -62,7 +62,7 @@ function bombard(sim: Sim, e: Entity, p: PowerDef): boolean {
   }
   if (!best) return false;
   const at = centre(best);
-  (sim.state.shells ??= []).push({ owner: e.owner, team: e.team, x: at.x, y: at.y, radius: p.radius, dmg: p.dmg, ticksLeft: SHELL_FLIGHT_TICKS });
+  (sim.state.shells ??= []).push({ owner: e.owner, team: e.team, x: at.x, y: at.y, radius: p.radius, dmg: p.dmg, ticksLeft: SHELL_FLIGHT_TICKS, ...(p.freeze ? { freeze: Math.round(p.freeze * TICK_RATE) } : {}) });
   sim.emit({ t: 'shell', a: e.id, x: r2(at.x), y: r2(at.y), f: SHELL_FLIGHT_TICKS, r: p.radius });
   return true;
 }
@@ -101,7 +101,7 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestHp = -1, bestD = Infinity;
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || (u.stun ?? 0) > 0) continue;
+    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || (u.stun ?? 0) > 0 || (p.air && !sim.isAir(u))) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d > p.range) continue;
     if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
@@ -110,6 +110,7 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   const ticks = Math.round((p.duration ?? 5) * TICK_RATE);
   best.stun = ticks;
   sim.emit({ t: 'hex', id: best.id, d: ticks });
+  if (p.dmg) dealDamage(sim, best, p.dmg, 'magic', e.owner);
   return true;
 }
 
@@ -136,11 +137,15 @@ function stepShells(sim: Sim) {
     if (--sh.ticksLeft > 0) continue;
     for (const b of sim.structures()) {
       if (b.team === sh.team || b.hp <= 0) continue;
-      if (distToRect(footprint(b), sh.x, sh.y) <= sh.radius) dealDamage(sim, b, sh.dmg, 'siege', sh.owner);
+      if (distToRect(footprint(b), sh.x, sh.y) > sh.radius) continue;
+      dealDamage(sim, b, sh.dmg, 'siege', sh.owner);
+      if (sh.freeze && b.kind === 'building') b.stun = Math.max(b.stun ?? 0, sh.freeze);
     }
     for (const u of sim.hash.query(sh.x, sh.y, sh.radius + 1)) {
       if (u.team === sh.team || u.hp <= 0 || sim.isAir(u)) continue;
-      if (Math.hypot(u.x - sh.x, u.y - sh.y) - sim.radius(u) <= sh.radius) dealDamage(sim, u, sh.dmg * 0.5, 'siege', sh.owner);
+      if (Math.hypot(u.x - sh.x, u.y - sh.y) - sim.radius(u) > sh.radius) continue;
+      dealDamage(sim, u, sh.dmg * 0.5, 'siege', sh.owner);
+      if (sh.freeze) u.stun = Math.max(u.stun ?? 0, Math.round(sh.freeze / 3));
     }
     sim.emit({ t: 'splash', x: r2(sh.x), y: r2(sh.y), r: sh.radius });
   }

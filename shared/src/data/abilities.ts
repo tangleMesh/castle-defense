@@ -47,10 +47,12 @@ const nth = (n: number) => (n === 1 ? '' : n === 2 ? '2nd' : n === 3 ? '3rd' : `
 export function powerText(b: BuildingDef): string | undefined {
   const p = b.power;
   if (!p) return undefined;
+  if (p.kind === 'hex' && p.air) return `Freezing blast: every ${p.cooldown}s the toughest enemy flyer within ${p.range} tiles is frozen for ${p.duration}s and takes ${p.dmg} magic damage`;
   if (p.kind === 'hex') return `Hex: every ${p.cooldown}s the toughest enemy unit within ${p.range} tiles is turned into a harmless critter for ${p.duration}s`;
   if (p.kind === 'beam') return `Light beam: every ${p.cooldown}s a ray hits the nearest enemy unit within ${p.range} tiles for ${p.dmg} magic damage`;
   if (p.kind === 'stasis') return `Stasis: every ${p.cooldown}s all enemy units within ${p.range} tiles are frozen for ${p.duration}s`;
   if (p.kind === 'cyclone' && p.air) return `Meteor shower: every ${p.cooldown}s meteors rain on the nearest enemy flyer within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s to flyers in radius ${p.radius})`;
+  if (p.kind === 'bombard' && p.freeze) return `Frost bolt: every ${p.cooldown}s a bolt hits the nearest enemy building within ${p.range} tiles (${p.dmg} damage in radius ${p.radius}) and freezes it for ${p.freeze}s: no training, shooting or casting`;
   if (p.kind === 'bombard') return `Bombard: every ${p.cooldown}s a shell hits the nearest enemy building within ${p.range} tiles (${p.dmg} siege damage in radius ${p.radius}, half to units)`;
   return `Cyclone: every ${p.cooldown}s a storm settles on the nearest enemy within ${p.range} tiles for ${p.duration}s (${p.dmg} damage/s and ${pct(p.slow ?? 0)} slow in radius ${p.radius})`;
 }

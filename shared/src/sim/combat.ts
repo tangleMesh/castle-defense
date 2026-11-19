@@ -380,7 +380,7 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
 /** Towers and attacking aura buildings shoot the nearest enemy unit. */
 export function stepStructureAttacks(sim: Sim) {
   for (const e of fairOrder(sim)) {
-    if (!sim.isStructure(e) || e.hp <= 0 || e.buildLeft) continue;
+    if (!sim.isStructure(e) || e.hp <= 0 || e.buildLeft || e.stun) continue;
     const st = attackStats(e);
     if (!st) continue;
     if ((e.cd ?? 0) > 0) { e.cd!--; continue; }
