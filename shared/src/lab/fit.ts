@@ -47,13 +47,16 @@ export function fitLogistic(points: FitPoint[], groups: number, prior: { b0: num
 }
 
 /**
- * The balancer's faction-power fit: a shared slope with prior 30 ± 15. A flat or inverted fitted
- * slope is noise (many factions, few games each); the intercepts fitted with it would point the
- * wrong way (a losing faction weakened further), so the fit is redone with the slope held at 30.
+ * The balancer's faction-power fit: a shared slope with prior 12 ± 8 (measured with a dozen
+ * factions: −7% power took Sunspire from ~71% to ~58%, about 10 per unit of log power). A flat,
+ * inverted or exploding fitted slope is noise (many factions, small power changes, few games
+ * each): its intercepts would point the wrong way (a losing faction weakened further) or freeze
+ * every faction at its starting power, so the fit is redone with the slope held at 12.
  */
+export const FIT_SLOPE = 12;
 export function fitPower(points: FitPoint[], groups: number): Fit {
-  const fit = fitLogistic(points, groups, { b0: 30, bSd: 15 });
-  return fit.b >= 12 ? fit : fitLogistic(points, groups, { b0: 30, bSd: 0.5 });
+  const fit = fitLogistic(points, groups, { b0: FIT_SLOPE, bSd: 8 });
+  return fit.b >= 5 && fit.b <= 40 ? fit : fitLogistic(points, groups, { b0: FIT_SLOPE, bSd: 0.5 });
 }
 
 /** Knob value at which `group` is predicted to win `target`. */

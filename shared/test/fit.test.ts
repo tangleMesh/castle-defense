@@ -34,9 +34,20 @@ describe('fitPower', () => {
       { group: 0, x: 0.04, rate: 0.64, n: 60 }, { group: 1, x: 0.01, rate: 0.49, n: 60 }, { group: 2, x: -0.05, rate: 0.34, n: 60 }, { group: 3, x: -0.01, rate: 0.56, n: 60 },
     ];
     const f = fitPower(pts, 4);
-    expect(f.b).toBeGreaterThan(10);
+    expect(f.b).toBeGreaterThan(4);
     // The loser's target power lies above where it was last measured, the winner's below.
     expect(-f.a[2] / f.b).toBeGreaterThan(-0.05);
     expect(-f.a[1] / f.b).toBeLessThan(0.01);
+  });
+
+  it('holds the slope when barely moved knobs make it explode', () => {
+    // Twelve factions whose power hardly changed between two samples: a free fit can find a huge
+    // slope, which would put every faction's target right at its last power.
+    const pts: FitPoint[] = [];
+    for (let g = 0; g < 12; g++) for (const [x, d] of [[0, 0], [0.002, 0.05]]) pts.push({ group: g, x: x * (g % 2 ? 1 : -1), rate: 0.3 + g * 0.04 + d * (g % 2 ? 1 : -1), n: 40 });
+    const f = fitPower(pts, 12);
+    expect(f.b).toBeLessThanOrEqual(40);
+    // The strongest faction (group 11, ~74%) is pushed well down.
+    expect(-f.a[11] / f.b).toBeLessThan(-0.03);
   });
 });
