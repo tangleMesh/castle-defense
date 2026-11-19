@@ -2,7 +2,7 @@ import { BUILDINGS } from '../data';
 import { CASTLE_SIZE } from '../constants';
 import { MAP, type Rect } from '../map/map';
 import type { Phase, SimEvent, Team } from './state';
-import type { EntRow, Snapshot } from './snapshot';
+import { FX_HIDDEN, type EntRow, type Snapshot } from './snapshot';
 
 /**
  * Fog of war. A team always sees its own base area (its half up to the end of its build zone).
@@ -71,9 +71,10 @@ export function visionFromRows(team: Team, ents: EntRow[]): Uint8Array {
  * its vision are removed. Castles always stay (their HP is shown in the top bar anyway).
  */
 export function filterSnapshot(snap: Snapshot, team: Team): Snapshot {
-  if (!fogActive(snap.phase)) return snap;
+  // Hidden enemy assassins never reach the client, fog or not.
+  if (!fogActive(snap.phase)) return snap.ents.some((e) => e[4] !== team && e[11] & FX_HIDDEN) ? { ...snap, ents: snap.ents.filter((e) => e[4] === team || !(e[11] & FX_HIDDEN)) } : snap;
   const grid = visionFromRows(team, snap.ents);
-  const ents = snap.ents.filter((e) => e[4] === team || e[1] === 3 || entityVisible(grid, e[1], e[2], e[5], e[6]));
+  const ents = snap.ents.filter((e) => e[4] === team || e[1] === 3 || (!(e[11] & FX_HIDDEN) && entityVisible(grid, e[1], e[2], e[5], e[6])));
   const ids = new Set(ents.map((e) => e[0]));
   const playerTeam = (p: number) => snap.players[p]?.team;
   const seen = (x: number, y: number) => tileVisible(grid, x, y);

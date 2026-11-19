@@ -99,7 +99,7 @@ Trait: riveted plating, +2 armour on every Cogspark building (the map's power pl
 |---|---|---|
 | Hunters' Hall → Rangers' Hall → Amazons' Hall | hunter's hall → ranger's → amazon's hall | archers; rangers and amazons hit 3 / 5 enemies per volley (multi-shot) |
 | Moon Shrine → Moon Altar | moon shrine → moon altar | druids whose bolts entangle (damage over time, 40–50% slow); the sage's roots grip groups |
-| House of Shadows → Guild of Shadows | house → guild of shadows | assassins: evasion and a 3× / 4× backstab (first blow) |
+| House of Shadows → Guild of Shadows | house → guild of shadows | invisible assassins hunt casters and back-liners: evasion and a 3× / 4× backstab from the shadows, hidden again 4 / 3 s after their last blow |
 | Pillaged Hut → Scorched Mansion | pillaged hut → scorched mansion | avenging spirits: armour-piercing, evasive, lifesteal; the avatar explodes when it falls |
 | Glaive Works | night elf siege factory | glaive thrower: 9-tile siege, the glaive bounces between 4 enemies |
 | Fountain of Wonders | fountain of wonders | faerie dragons: magic flyers that heal allies |
@@ -241,6 +241,7 @@ All of these are fields on `UnitDef` / `BuildingDef` (`shared/src/data/types.ts`
 | power `hex` / `beam` | stuns the toughest enemy in range / a ray of magic damage on the nearest |
 | building `revive: { every, radius }` | every n-th own unit that falls nearby rises again |
 | power `bombard` with `freeze` | the shell freezes buildings (and briefly units) it hits |
+| unit `stealth` | invisible until it strikes: enemies can't see or target it; hunts casters, healers, aura carriers and ranged units (anything in the enemy base); hidden again `reveal` s after its last blow |
 | power with `global` | reaches the whole map (nearest valid enemy anywhere): bombards, storms, sudden death, control, chaos, tentacles; beams, hexes, stasis, tsunami and erase stay local |
 | power `hex` with `air` | freezes the toughest flyer and deals damage |
 | aura with a negative value on `enemy` | weakens enemies (less damage / armour) |

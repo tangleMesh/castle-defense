@@ -9,7 +9,7 @@ export const KIND_CODES: EntityKind[] = ['unit', 'building', 'builder', 'castle'
  * Compact entity row: [id, kind, type, owner, team, x, y, hp, maxHp, extra, spawn].
  * extra = construction progress 0..100 for structures (‑progress while upgrading), else 0.
  * spawn = ticks until the next unit for finished spawn buildings, else 0.
- * fx = status bit flags (FX_POISON, FX_STUN).
+ * fx = status bit flags (FX_POISON, FX_STUN, FX_HIDDEN).
  */
 export type EntRow = [number, number, string, number, number, number, number, number, number, number, number, number];
 
@@ -17,6 +17,8 @@ export type EntRow = [number, number, string, number, number, number, number, nu
 export const FX_POISON = 1;
 /** EntRow fx flag: the unit is stunned. */
 export const FX_STUN = 2;
+/** Stealth unit currently hidden: the enemy never receives it, its own team draws it faded. */
+export const FX_HIDDEN = 4;
 
 export interface SnapshotPlayer {
   i: number;
@@ -72,7 +74,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
     }
     // Builders use the spawn column for the building they repair.
     const spawn = e.kind === 'building' && !e.buildLeft ? e.spawnTimer ?? 0 : e.kind === 'builder' ? e.repairId ?? 0 : 0;
-    ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), Math.round(e.maxHp), extra, spawn, (e.poison ? FX_POISON : 0) | (e.stun ? FX_STUN : 0)]);
+    ents.push([e.id, KIND_CODES.indexOf(e.kind), e.type, e.owner, e.team, r2(e.x), r2(e.y), Math.ceil(e.hp), Math.round(e.maxHp), extra, spawn, (e.poison ? FX_POISON : 0) | (e.stun ? FX_STUN : 0) | (e.hidden ? FX_HIDDEN : 0)]);
     if (e.kind === 'builder') for (const o of e.orders ?? []) orders.push([e.owner, o.building, o.tx, o.ty]);
   }
   return {

@@ -5,7 +5,7 @@ import type { Entity } from './state';
 import { modsOf } from './auras';
 import { followFlow, moveToward, nearestPointOn } from './movement';
 import { footprint } from './grid';
-import { distToRect } from '../map/map';
+import { MAP, distToRect, inRect } from '../map/map';
 import { summonUnits } from './spawning';
 
 export interface AttackStats {
@@ -57,6 +57,8 @@ export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number }
 
 export function canTarget(sim: Sim, a: Entity, st: AttackStats, t: Entity | undefined): t is Entity {
   if (!t || t.hp <= 0 || t.team === a.team || t.kind === 'builder') return false;
+  // Hidden assassins can't be targeted.
+  if (t.hidden) return false;
   if (st.structuresOnly && !sim.isStructure(t)) return false;
   if (sim.isAir(t) ? !st.targetsAir : st.airOnly) return false;
   return true;
@@ -131,6 +133,28 @@ export function findTarget(sim: Sim, a: Entity, st: AttackStats, radius: number)
   return best;
 }
 
+/** How far a hidden assassin looks for prey. */
+const HUNT_RADIUS = 8;
+
+/** Assassins' prey: casters, healers, aura carriers, summoners and ranged units (the back line). */
+function isPrey(t: Entity): boolean {
+  if (t.kind !== 'unit') return false;
+  const u = UNITS[t.type];
+  return u.attackType === 'magic' || !!u.heal || !!u.aura || !!u.summon || u.range >= 2.5;
+}
+
+/** The toughest prey within `radius` (ties: nearest, then entity order). */
+function huntTarget(sim: Sim, a: Entity, st: AttackStats, radius: number): Entity | undefined {
+  let best: Entity | undefined, bestHp = -1, bestD = Infinity;
+  for (const u of sim.hash.query(a.x, a.y, radius + 1.5)) {
+    if (!canTarget(sim, a, st, u) || !isPrey(u)) continue;
+    const d = sim.edgeDist(a, u);
+    if (d > radius) continue;
+    if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
+  }
+  return best;
+}
+
 /** Damage multiplier of a unit's `bonusVs` against a target. */
 function bonusMult(sim: Sim, a: Entity, t: Entity): number {
   const b = a.kind === 'unit' ? UNITS[a.type].bonusVs : a.kind === 'building' ? BUILDINGS[a.type].attack?.bonusVs : undefined;
@@ -168,6 +192,8 @@ const anyTarget = (st: AttackStats): AttackStats => ({ ...st, targetsAir: true, 
 
 export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmgMult: number) {
   const ud = a.kind === 'unit' ? UNITS[a.type] : undefined;
+  // Striking reveals a stealth unit for a while (every blow restarts the timer).
+  if (ud?.stealth) { a.hidden = false; a.revealLeft = Math.round(ud.stealth.reveal * TICK_RATE); }
   let mult = dmgMult * bonusMult(sim, a, t);
   if (a.weaken) mult *= 1 - a.weaken.mult;
   // Charge: the first blow after marching freely hits much harder.
@@ -310,6 +336,15 @@ export function stepCombatUnits(sim: Sim) {
     // Decay auras (City of Decay) rot enemy units; nobody earns a bounty for what rot kills.
     if (mods.decay > 0) dealDamage(sim, e, mods.decay / TICK_RATE, 'chaos', -1, true);
     if (e.weaken && --e.weaken.left <= 0) delete e.weaken;
+    // Stealth: fresh assassins start hidden; revealed ones vanish again once the timer runs out,
+    // ready for the next strike from the shadows.
+    if (UNITS[e.type].stealth) {
+      if (e.hidden === undefined) e.hidden = true;
+      else if (!e.hidden && e.revealLeft !== undefined && --e.revealLeft <= 0) {
+        e.hidden = true; delete e.revealLeft; delete e.targetId;
+        if (UNITS[e.type].charge) e.charge = true;
+      }
+    }
     if (e.poison) {
       dealDamage(sim, e, e.poison.dps / TICK_RATE, 'chaos', e.poison.owner, true);
       if (--e.poison.left <= 0) delete e.poison;
@@ -355,7 +390,15 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
 
   let target = sim.get(e.targetId);
   const rescan = (tick + e.id) % 5 === 0;
-  if (!canTarget(sim, e, st, target) || sim.edgeDist(e, target) > st.aggro + 3) {
+  if (UNITS[e.type].stealth) {
+    // Assassins (hidden or just revealed) only fight their prey: the toughest caster or
+    // back-liner in reach. They walk past the front line and, after a kill, walk on until they
+    // vanish again. Inside the enemy build zone anything goes.
+    const deep = inRect(MAP.zones[1 - e.team], e.x, e.y);
+    if (!canTarget(sim, e, st, target) || (!deep && !isPrey(target)) || rescan) {
+      target = huntTarget(sim, e, st, Math.max(st.aggro, HUNT_RADIUS)) ?? (deep ? findTarget(sim, e, st, st.aggro) : undefined);
+    }
+  } else if (!canTarget(sim, e, st, target) || sim.edgeDist(e, target) > st.aggro + 3) {
     target = findTarget(sim, e, st, st.aggro);
   } else if (rescan && sim.isStructure(target) && !st.structuresOnly) {
     // Prefer fighting units over hitting buildings.

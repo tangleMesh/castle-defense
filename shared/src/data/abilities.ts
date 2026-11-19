@@ -21,6 +21,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
     const v = a.stat === 'dmg' || a.stat === 'speed' || a.stat === 'haste' ? `${a.value > 0 ? '+' : ''}${pct(a.value)}` : `${a.value > 0 ? '+' : ''}${num(a.value)}`;
     out.push(`Aura: ${a.target === 'ally' ? 'allies' : 'enemies'} within ${num(a.radius)} tiles get ${v} ${STAT[a.stat]}`);
   }
+  if (u.stealth) out.push(`Stealth: invisible, hunts casters, healers and ranged units behind the front line (anything in the enemy base); a blow reveals it for ${num(u.stealth.reveal)}s`);
   if (u.charge) out.push(`Charge: the first blow after marching deals ${num(u.charge)}× damage`);
   if (u.bonusVs) out.push(`${num(u.bonusVs.mult)}× damage against ${VS[u.bonusVs.vs]}`);
   if (u.ignoreArmor) out.push('Armour-piercing: ignores armour');
@@ -106,6 +107,8 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.deathBlast) dmg += 0.1;
   // One blast and the unit is gone.
   if (u.suicide) dmg *= 0.3;
+  // Untargetable while it walks in, and it picks its fights.
+  if (u.stealth) hp *= 1.4;
   if (u.summon) dmg += 0.15 * u.summon.count * Math.min(1, u.summon.ttl / u.summon.every);
   if (u.evade) hp *= u.evade / (u.evade - 1);
   if (u.rangedResist) hp *= 1 + u.rangedResist * 0.5;

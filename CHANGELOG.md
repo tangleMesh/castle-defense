@@ -7,6 +7,17 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.41.0
+
+- **Duskmoon assassins work like the map's: stealth hunters.**
+  - **Invisible from spawn:** while hidden, enemies don't see them at all. Units, towers and targeted spells can't pick them, but area damage still hurts.
+  - **Slip through the front line:** while hidden they pass through enemy bodies.
+  - **Hunt the back line:** they ignore frontline fighters and go for the toughest caster, healer, aura carrier, summoner or ranged unit within 8 tiles. Inside the enemy build zone they attack anything.
+  - **Strike from the shadows:** the hit reveals them and deals ×3 damage (Royal Assassins ×4).
+  - **Vanish again:** they stay visible for 4 s after their last blow (Royal 3 s), then disappear with their backstab ready.
+  - **Your own hidden assassins** shimmer faintly on your screen.
+- **The balancer doesn't auto-tune stealth units from building duels,** which can't measure what they're for.
+
 ## 0.40.0
 
 - **Special buildings reach the whole map.** Their powers used to stop at the edge of their own build zone, so bombards could never reach an enemy building. They now hit the nearest valid enemy anywhere on the map, which is the most advanced attacker:

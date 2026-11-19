@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  BUILDINGS, FX_POISON, FX_STUN, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, inRescueArea, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
+  BUILDINGS, FX_POISON, FX_STUN, FX_HIDDEN, builderBounds, CASTLE_CLEARANCE, TICK_RATE, CASTLE_SIZE, MAP, RESCUE_RADIUS, inRescueArea, ROCK_GRID, UNITS, entityVisible, fogActive, inRect, itemEffect, rectCenter,
   visionFromRows, type EntRow, type SimEvent, type Team,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, WORLD, depthAt, isoEllipse, toScreen, toTile } from './iso';
@@ -504,6 +504,10 @@ export class GameScene extends Phaser.Scene {
       else if ((v.fx ?? 0) & FX_STUN) v.sprite.setTint(0xb8c0ff);
       else if ((v.fx ?? 0) & FX_POISON) v.sprite.setTint(0xa8f080);
       else v.sprite.clearTint();
+      // Own hidden assassins shimmer faintly (the enemy doesn't receive them at all).
+      const hidden = ((v.fx ?? 0) & FX_HIDDEN) !== 0;
+      v.sprite.setAlpha(hidden ? 0.35 + 0.1 * Math.sin(time / 180 + v.id) : 1);
+      v.shadow?.setAlpha(hidden ? 0.3 : 1);
       v.shadow?.setPosition(p.x, p.y).setDepth(d - 0.5);
       v.ring?.setPosition(p.x, p.y).setDepth(d - 0.4);
       return;

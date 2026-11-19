@@ -51,6 +51,10 @@ export interface Entity {
   healCd?: number;
   /** Charge ready: the next blow deals the unit's charge multiplier. */
   charge?: boolean;
+  /** Stealth units: invisible to the enemy right now. */
+  hidden?: boolean;
+  /** Stealth units: ticks until a revealed one vanishes again. */
+  revealLeft?: number;
   /** Active poison: damage per second, ticks left, slow and the player credited for kills. */
   poison?: { dps: number; left: number; slow: number; owner: number };
   /** Killed by a rescue strike: nothing bursts out of it (no Sproutlings from a smitten Vineling). */

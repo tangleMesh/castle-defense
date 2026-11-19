@@ -260,7 +260,7 @@ async function stageUnits() {
   // Units whose value doesn't show in a straight fight are left alone.
   const eligible = (bid: string) => {
     const b = BUILDINGS[bid], u = b.spawn && UNITS[b.spawn.unit];
-    return !!u && tierOf(b) !== 'special' && !u.heal && !u.structuresOnly && !u.aura && !u.airOnly;
+    return !!u && tierOf(b) !== 'special' && !u.heal && !u.structuresOnly && !u.aura && !u.airOnly && !u.stealth;
   };
   for (let k = 1; k <= unitIterations; k++) {
     const scores = await measureDuels();

@@ -3,7 +3,7 @@
  * anti-air, attack-speed auras, summons, the Siege Battery's shells and the Howling Hollow's cyclone.
  */
 import { describe, expect, it } from 'vitest';
-import { BUILDINGS, Sim, TICK_RATE, UNITS, computeDamage, type Entity, type PlayerSetup, type SimEvent } from '../src/index';
+import { BUILDINGS, Sim, TICK_RATE, UNITS, computeDamage, filterSnapshot, makeSnapshot, type Entity, type PlayerSetup, type SimEvent } from '../src/index';
 import { spawnUnit } from '../src/sim/spawning';
 import { armorOf, attackStats, canTarget, performAttack } from '../src/sim/combat';
 import { computeAuras } from '../src/sim/auras';
@@ -649,5 +649,41 @@ describe('Blightroot mechanics', () => {
     // Stacks with the knight's own armour aura instead of being overwritten by it.
     expect(sim.mods.get(far.id)?.armorMalus).toBe(BUILDINGS.br_eye.aura!.value);
     expect(armorOf(sim, far).value).toBe(UNITS.iv_knight.armor + UNITS.iv_knight.aura!.value + BUILDINGS.br_eye.aura!.value);
+  });
+});
+
+describe('stealth (Duskmoon assassins)', () => {
+  it('stays hidden past the front line, kills a caster from the shadows, then vanishes again', () => {
+    const sim = newSim();
+    const assassin = unit(sim, 0, 'dm_assassin', 62, 31);
+    // Front-line brute right in front of it, a caster further back.
+    const brute = unit(sim, 1, 'iv_militia', 63.2, 31);
+    const caster = unit(sim, 1, 'dm_druid', 67, 31);
+    for (const u of [brute, caster, assassin]) u.hp = u.maxHp = 5000;
+    const tower = building(sim, 1, 'iv_bastion_tower', 64, 33);
+    let revealedAt = -1;
+    for (let i = 0; i < 8 * TICK_RATE; i++) {
+      brute.x = 63.2; brute.y = 31; caster.x = 67; caster.y = 31;
+      sim.step();
+      if (i === 0) {
+        expect(assassin.hidden).toBe(true);
+      }
+      if (assassin.hidden) {
+        // Nobody can pick it while it's hidden, and it never stabs the brute.
+        expect(brute.targetId).not.toBe(assassin.id);
+        expect(tower.targetId).not.toBe(assassin.id);
+      }
+      if (!assassin.hidden && revealedAt < 0) revealedAt = i;
+    }
+    expect(revealedAt).toBeGreaterThan(0);
+    expect(caster.hp).toBeLessThan(5000);
+    expect(brute.hp).toBe(5000);
+    // Revealed: the enemy sees it in the snapshot; hidden again after its reveal time without blows.
+    caster.hp = 0;
+    sim.step();
+    for (let i = 0; i < (UNITS.dm_assassin.stealth!.reveal + 1) * TICK_RATE && !assassin.hidden; i++) { brute.x = 63.2; brute.y = 31; assassin.x = 62; sim.step(); }
+    expect(assassin.hidden).toBe(true);
+    const snap = filterSnapshot(makeSnapshot(sim, []), 1);
+    expect(snap.ents.some((e) => e[0] === assassin.id)).toBe(false);
   });
 });

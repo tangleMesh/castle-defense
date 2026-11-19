@@ -78,7 +78,7 @@ function cyclone(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of around(sim, c, reach(p))) {
-    if (u.team === e.team || u.hp <= 0 || sim.isAir(u) !== !!p.air) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || sim.isAir(u) !== !!p.air) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
@@ -95,7 +95,7 @@ function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
   const ticks = Math.round((p.duration ?? 3) * TICK_RATE);
   let any = false;
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
     u.stun = Math.max(u.stun ?? 0, ticks);
     any = true;
   }
@@ -108,7 +108,7 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestHp = -1, bestD = Infinity;
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || (u.stun ?? 0) > 0 || (p.air && !sim.isAir(u))) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || (u.stun ?? 0) > 0 || (p.air && !sim.isAir(u))) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d > p.range) continue;
     if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
@@ -126,7 +126,7 @@ function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit') continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit') continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= p.range && d < bestD) { best = u; bestD = d; }
   }
@@ -141,7 +141,7 @@ function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of around(sim, c, reach(p))) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
@@ -156,7 +156,7 @@ function nearestEnemyUnit(sim: Sim, e: Entity, range: number): Entity | undefine
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of around(sim, c, range)) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit') continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit') continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= range && d < bestD) { best = u; bestD = d; }
   }
@@ -185,7 +185,7 @@ function erase(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   const count = new Map<string, Entity[]>();
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
     const list = count.get(u.type) ?? [];
     list.push(u); count.set(u.type, list);
   }
@@ -201,7 +201,7 @@ function charm(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of around(sim, c, reach(p))) {
-    if (u.team === e.team || u.hp <= 0 || u.kind !== 'unit' || u.maxHp > p.dmg || u.ttl !== undefined) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || u.ttl !== undefined) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
@@ -221,7 +221,7 @@ function wave(sim: Sim, e: Entity, p: PowerDef): boolean {
   const ux = dx / len, uy = dy / len;
   const ex = c.x + ux * p.range, ey = c.y + uy * p.range;
   for (const u of sim.state.entities) {
-    if (u.kind !== 'unit' || u.team === e.team || u.hp <= 0 || sim.isAir(u)) continue;
+    if (u.kind !== 'unit' || u.team === e.team || u.hp <= 0 || u.hidden || sim.isAir(u)) continue;
     const along = (u.x - c.x) * ux + (u.y - c.y) * uy;
     if (along < 0 || along > p.range) continue;
     const off = Math.abs((u.x - c.x) * uy - (u.y - c.y) * ux);

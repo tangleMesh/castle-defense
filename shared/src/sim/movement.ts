@@ -152,6 +152,8 @@ export function stepUnitMovementPost(sim: Sim) {
     for (const b of sim.hash.query(a.x, a.y, ra + 0.9)) {
       if (b.id <= a.id) continue;
       if (airA !== !!UNITS[b.type].air) continue;
+      // Hidden assassins slip through enemy ranks (Wind Walk).
+      if (a.team !== b.team && (a.hidden || b.hidden)) continue;
       const rb = UNITS[b.type].radius;
       let dx = b.x - a.x, dy = b.y - a.y;
       let d = Math.hypot(dx, dy);

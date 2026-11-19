@@ -94,6 +94,13 @@ export interface UnitDef {
   ignoreArmor?: boolean;
   /** The first blow after marching freely deals this damage multiplier. */
   charge?: number;
+  /**
+   * Stealth (assassins): spawns invisible. Hidden, enemies can't see or target it (area damage
+   * still hurts), and it slips past the front line to hunt casters, healers, aura carriers and
+   * ranged units (the toughest in reach); inside the enemy build zone anything goes. A blow
+   * reveals it for `reveal` seconds, then it vanishes again (its charge re-armed).
+   */
+  stealth?: { reveal: number };
   /** Attacks poison the target: damage per second for `duration` seconds and a slow. */
   poison?: { dps: number; duration: number; slow: number };
   /** Share of damage dealt that heals the attacker. */
