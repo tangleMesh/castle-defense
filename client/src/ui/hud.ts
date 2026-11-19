@@ -665,7 +665,7 @@ export class Hud {
       ));
       this.updateSpawnBar();
     } else if (kind === 2) {
-      this.info.append(portrait('builder'), h('div', { class: 'istats' },
+      this.info.append(portrait(this.scene.builderKey(owner)), h('div', { class: 'istats' },
         h('div', { class: 'info-title' }, 'Builder'), h('div', { class: 'dim' }, ownerName),
         h('div', { class: 'desc' }, 'Invulnerable worker. Right-click to move, choose a building from the command card to construct it. Hold Shift to queue.'),
         this.itemLine(owner),

@@ -26,6 +26,10 @@ export type BuildingPainter = (ctx: Ctx, def: BuildingDef, site: BuildingSite) =
 /** Ground under a faction's buildings (plinth / earth patch). */
 export type PlinthPainter = (ctx: Ctx, ox: number, oy: number, s: number, seed: number) => void;
 
+/** Each faction's builder (worker) sprite, side-on like units. */
+export type BuilderPainter = (c: Ctx, cx: number, fy: number, S: (v: number) => number, pose: UnitPose) => void;
+
 export const UNIT_PAINTERS: Record<string, UnitPainter> = {};
+export const BUILDER_PAINTERS: Record<string, BuilderPainter> = {};
 export const BUILDING_PAINTERS: Record<string, BuildingPainter> = {};
 export const PLINTHS: Record<string, PlinthPainter> = {};

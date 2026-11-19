@@ -1,4 +1,5 @@
 import { AI_LEVELS, AI_LEVEL_NAMES, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
+import { builderPortrait } from './portraits';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
 import type { Socket } from '../net/socket';
 import { TEAM_CSS, TEAM_NAMES } from '../game/iso';
@@ -185,17 +186,22 @@ export class LobbyView {
       ) : null,
       !locked && me && !random ? h('div', null,
         h('h3', null, 'Your faction'),
+        // A compact picker: each faction's builder and name; the chosen one's details below.
         h('div', { class: 'factions' }, FACTION_IDS.map((id: FactionId) => {
           const f = FACTIONS[id];
           return h('button', {
-            class: `faction ${me.faction === id ? 'selected' : ''}`, style: `--fc:${css(f.color)}`,
+            class: `faction ${me.faction === id ? 'selected' : ''}`, style: `--fc:${css(f.color)}`, title: f.desc,
             onclick: () => this.socket.send({ type: 'lobby.setFaction', faction: id }),
-          }, h('b', null, f.name), h('span', null, f.desc),
+          }, h('img', { src: builderPortrait(id), alt: '' }), h('b', null, f.name.split(' ')[0]));
+        })),
+        ((f) => h('div', { class: 'faction-detail', style: `--fc:${css(f.color)}` },
+          h('img', { src: builderPortrait(f.id), alt: '' }),
+          h('div', null,
+            h('b', null, f.name), h('span', null, f.desc),
             h('ul', { class: 'traits' }, f.traits.map((t) => {
               const [head, ...rest] = t.split(': ');
               return h('li', null, rest.length ? h('b', null, `${head}: `) : null, rest.length ? rest.join(': ') : head);
-            })));
-        })),
+            })))))(FACTIONS[me.faction as FactionId]),
       ) : null,
       h('div', { class: 'room-actions' },
         me ? h('button', { class: `btn ${me.ready ? 'ghost' : ''}`, onclick: () => this.socket.send({ type: 'lobby.ready', ready: !me.ready }) }, me.ready ? 'Not ready' : 'Ready') : null,

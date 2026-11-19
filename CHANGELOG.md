@@ -7,6 +7,26 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.36.0
+
+- **Every faction has its own builder**, in its race's style:
+  - Ironvow: a mason
+  - Thornwild: a treeling gardener
+  - Shardbound: a floating crystal apprentice
+  - Cogspark: a goblin tinker
+  - Duskmoon: a moon wisp
+  - Bloodtusk: an orc peon
+  - Sunspire: an elf artisan
+  - Frostmark: a fur-clad dwarf
+  - Gravewake: a hooded acolyte
+  - Doomforge: an imp
+  - Tidecall: a murloc thrall
+  - Blightroot: a blighted cultist
+- **Each builder raises its tool while working.**
+- **Leaner faction picker in the lobby:**
+  - Each faction shows only a builder portrait and its name.
+  - The selected faction's description and traits appear in a details panel below the picker.
+
 ## 0.35.1
 
 - **Frostmark and Gravewake tuning after building duels.**

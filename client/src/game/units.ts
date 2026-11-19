@@ -1,7 +1,7 @@
 import type { UnitDef } from '@bc/shared';
 import { css, grad, lit, mix, radial, shade, softEllipse, type Ctx } from './paint';
 import { foliage } from './structures';
-import { UNIT_PAINTERS } from './painters';
+import { BUILDER_PAINTERS, UNIT_PAINTERS } from './painters';
 
 /**
  * Painted unit sprites, side-on (facing right; the scene mirrors them), with walk and attack
@@ -525,9 +525,12 @@ function champion(c: Ctx, cx: number, fy: number, S: (v: number) => number, body
   c.beginPath(); c.ellipse(cx + S(0.6), fy - S(31) - S(4), S(4.5), S(1.4), 0, 0, Math.PI * 2); c.stroke();
 }
 
-export function paintBuilder(c: Ctx, frame: Frame) {
+/** The builder of `faction` (each race has its own worker; the plain one is the fallback). */
+export function paintBuilder(c: Ctx, frame: Frame, faction?: string) {
   const cx = UNIT_CANVAS.w / 2, fy = UNIT_CANVAS.footY;
   const pose = poseOf(frame);
+  const own = faction ? BUILDER_PAINTERS[faction] : undefined;
+  if (own) { own(c, cx, fy, (v) => v * 1.05, pose); return; }
   const S = (v: number) => v * 1.05;
   humanoid(c, cx, fy, S, {
     h: 24, body: 0x8a6a40, accent: 0x6a4a2a, helmet: 'cap', armor: 'leather', attackArm: 'raise',

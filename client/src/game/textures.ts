@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BUILDINGS, CASTLE_SIZE, UNITS } from '@bc/shared';
+import { BUILDINGS, CASTLE_SIZE, FACTION_IDS, UNITS } from '@bc/shared';
 import { SK, TX, TY } from './iso';
 import { blurred, grad, paper, radial, softEllipse, rng as prng } from './paint';
 import { UNIT_CANVAS, UNIT_FRAMES, outline, paintBuilder, paintUnit } from './units';
@@ -261,6 +261,7 @@ function genUnits(scene: Phaser.Scene) {
   };
   for (const u of Object.values(UNITS)) for (const f of UNIT_FRAMES) add(`u_${u.id}${f}`, (c) => paintUnit(c, u, f));
   for (const f of UNIT_FRAMES) add(`builder${f}`, (c) => paintBuilder(c, f));
+  for (const id of FACTION_IDS) for (const f of UNIT_FRAMES) add(`builder_${id}${f}`, (c) => paintBuilder(c, f, id));
 }
 
 // ------------------------------------------------------------------ misc / fx

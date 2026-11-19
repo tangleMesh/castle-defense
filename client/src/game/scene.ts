@@ -366,6 +366,12 @@ export class GameScene extends Phaser.Scene {
 
   flashError: (msg: string) => void = () => {};
 
+  /** Texture key of a player's builder: every faction has its own worker. */
+  builderKey(owner: number): string {
+    const f = this.session.latest?.players[owner]?.faction;
+    return f && this.textures.exists(`builder_${f}`) ? `builder_${f}` : 'builder';
+  }
+
   private ghostTile(size: number) {
     return { tx: Math.round(this.hoverTile.x - size / 2), ty: Math.round(this.hoverTile.y - size / 2) };
   }
@@ -409,7 +415,7 @@ export class GameScene extends Phaser.Scene {
       v.air = !!u?.air;
       v.shadow = this.img(0, 0, 'shadow').setScale(sc((u?.radius ?? 0.3) * 2.2));
       v.ring = this.img(0, 0, 'ring').setTint(TEAM_COLORS[team]).setAlpha(0.55).setScale(sc((u?.radius ?? 0.32) * 1.6));
-      v.sprite = this.img(0, 0, u ? `u_${type}` : 'builder').setOrigin(0.5, UNIT_TEX.footY / UNIT_TEX.h);
+      v.sprite = this.img(0, 0, u ? `u_${type}` : this.builderKey(owner)).setOrigin(0.5, UNIT_TEX.footY / UNIT_TEX.h);
       if (kind === KIND_BUILDER) {
         v.ring.setScale(sc(0.6)).setAlpha(0.9);
         v.sprite.setScale(sc(1.1));
@@ -485,7 +491,7 @@ export class GameScene extends Phaser.Scene {
       const lungeOff = v.lunge > 0 ? Math.sin((v.lunge / 160) * Math.PI) * 5 * v.facing : 0;
       v.sprite.setPosition(p.x + lungeOff, p.y - (v.air ? AIR_LIFT : 0) + bob).setDepth(d + (v.air ? 5000 : 0));
       // Animation: walk cycle while moving (flyers always flap), attack pose while striking.
-      const base = v.kind === KIND_UNIT ? `u_${v.type}` : 'builder';
+      const base = v.kind === KIND_UNIT ? `u_${v.type}` : this.builderKey(v.owner);
       const step = Math.floor(time / (v.air ? 90 : 120) + v.id * 0.37) % 4;
       const frame = v.atk > 0 ? '_a' : v.moving || v.air ? WALK[step] : '';
       if (v.sprite.texture.key !== base + frame) v.sprite.setTexture(base + frame);
