@@ -70,7 +70,8 @@ describe.each(FACTION_IDS)('faction %s', (id) => {
       expect(() => unitAbilities(u, UNITS)).not.toThrow();
     }
     for (const b of own) {
-      expect(b.cost, b.id).toBeGreaterThan(0);
+      // The map's codex branches are free upgrades.
+      expect(b.cost, b.id).toBeGreaterThanOrEqual(b.upgradeOnly ? 0 : 1);
       expect(b.hp, b.id).toBeGreaterThan(0);
       expect(b.size, b.id).toBe(2);
       if (b.spawn) { expect(b.spawn.interval, b.id).toBeGreaterThanOrEqual(5); expect(b.spawn.count, b.id).toBeGreaterThanOrEqual(1); }

@@ -61,6 +61,8 @@ export interface Entity {
   rampageLeft?: number;
   /** Ensnared flyer: ticks it stays bound to the ground (ground units can hit it). */
   netted?: number;
+  /** A mirror image: deals 60% damage, takes double. */
+  illusion?: boolean;
   /** Its revenge has struck already. */
   revenged?: boolean;
   /** Already risen as a vampire (one raise per corpse). */
@@ -71,7 +73,7 @@ export interface Entity {
   /** Ensnaring units: ticks until the next ensnare. */
   ensnareCd?: number;
   /** Tribal Blessing: permanent bonuses of this unit. */
-  blessed?: { dmg: number; haste: number; armor: number; perk?: 'crit' | 'evade' | 'demolish' | 'ward' };
+  blessed?: { dmg: number; haste: number; armor: number; perk?: 'crit' | 'evade' | 'demolish' | 'ward' | 'forge' };
   /** Armour type of this one unit (chaos spawns roll their own). */
   armorType?: ArmorType;
   /** Stoneskin Scroll: extra armor for a while. */

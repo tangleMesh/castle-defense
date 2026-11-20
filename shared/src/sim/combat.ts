@@ -98,6 +98,7 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   let dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   const block = attack && target.kind === 'unit' ? (UNITS[target.type].block ?? 0) + modsOf(sim, target.id).block : 0;
   if (block) dmg = Math.max(dmg * 0.25, dmg - block);
+  if (target.illusion) dmg *= 2;
   // Resistance of the wilderness: a 40% chance to shrug off 40 of an attack.
   const ward = target.blessed?.perk === 'ward';
   if (ward && attack && chanceRoll(sim.state, target, 43) < 0.4) dmg = Math.max(0, dmg - 40);
@@ -223,6 +224,7 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (ud?.stealth) { a.hidden = false; a.revealLeft = Math.round(ud.stealth.reveal * TICK_RATE); }
   let mult = dmgMult * bonusMult(sim, a, t);
   if (a.weaken) mult *= 1 - a.weaken.mult;
+  if (a.illusion) mult *= 0.6;
   // Charge: the first blow after marching freely hits much harder.
   let charged = false;
   if (ud?.charge && a.charge) { mult *= ud.charge; a.charge = false; charged = true; }
@@ -238,7 +240,9 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
     if (a.incTarget === t.id) a.incStack = (a.incStack ?? 0) + 1; else { a.incTarget = t.id; a.incStack = 0; }
     burn = ud.incinerate.step * (a.incStack ?? 0);
   }
-  const raw = (st.dmg + burn + (a.blessed?.dmg ?? 0)) * mult;
+  // Power of earth: a healthy earth elemental hits harder.
+  const earth = ud?.earthPower ? ud.earthPower * Math.max(0, a.hp / a.maxHp) : 0;
+  const raw = (st.dmg + burn + earth + (a.blessed?.dmg ?? 0)) * mult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
   if (ud?.suicide) { explode(sim, a, st, t, raw, ud.suicide.radius); return; }
   if (st.chain > 1) {
@@ -267,6 +271,21 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
     // Revenge: the fallen avatar strikes back at its killer.
     const rv = UNITS[t.type]?.revenge;
     if (rv && a.kind === 'unit' && a.hp > 0 && !t.revenged) { t.revenged = true; dealDamage(sim, a, rv, 'chaos', t.owner); }
+  }
+  // Lightning shield: a melee attacker may be stunned.
+  const sh = t.kind === 'unit' ? UNITS[t.type]?.shockShield : undefined;
+  if (sh && !ranged && a.kind === 'unit' && a.hp > 0 && !isImmune(a) && roll(11) < sh.chance) a.stun = Math.max(a.stun ?? 0, Math.round(sh.stun * TICK_RATE));
+  // Illusion: now and then a mirror image steps out.
+  if (ud?.illusion && !a.illusion && a.hp > 0 && roll(12) < ud.illusion.chance) {
+    const img = sim.add({ kind: 'unit', type: a.type, owner: a.owner, team: a.team, x: a.x, y: a.y + 0.3, hp: a.hp, maxHp: a.maxHp, cd: 0, healCd: 0 });
+    img.illusion = true; img.ttl = Math.round(ud.illusion.ttl * TICK_RATE);
+  }
+  // Forged weapon (Obelisk of Elements): 50% splash around the target.
+  if (a.blessed?.perk === 'forge') {
+    for (const u of sim.hash.query(t.x, t.y, 3.5)) {
+      if (u === t || u.team === a.team || u.hp <= 0 || u.kind !== 'unit' || Math.hypot(u.x - t.x, u.y - t.y) > 2.5) continue;
+      dealDamage(sim, u, raw * 0.5, st.attackType, a.owner, false, true);
+    }
   }
   // Vampires: a living unit they kill rises as one of theirs.
   if (ud?.raiseOnKill && t.kind === 'unit' && t.hp <= 0 && t.ttl === undefined && !t.smitten && !t.raised) {

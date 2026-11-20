@@ -28,8 +28,9 @@ export function stepPowers(sim: Sim) {
     if (!p) continue;
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
-    if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : p.kind === 'moonshine' ? moonshine(sim, e, p) : cyclone(sim, e, p);
+    e.abilityCd -= 1 + manaBoost(sim, e);
+    if (e.abilityCd > 0) continue;
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : p.kind === 'moonshine' ? moonshine(sim, e, p) : p.kind === 'enchant' ? enchant(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -151,6 +152,33 @@ function moonshine(sim: Sim, e: Entity, p: PowerDef): boolean {
     u.stone = { armor: Math.max(u.stone?.armor ?? 0, p.armor ?? 0), left: Math.round((p.duration ?? 6) * TICK_RATE) };
   }
   sim.emit({ t: 'splash', x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100, r: p.radius });
+  return true;
+}
+
+/** Mana transfusion: the team's mana generators speed up its power buildings (half for other factions). */
+function manaBoost(sim: Sim, e: Entity): number {
+  let n = 0, per = 0;
+  for (const b of sim.state.entities) {
+    if (b.kind !== 'building' || b.team !== e.team || b.hp <= 0 || b.buildLeft) continue;
+    const m = BUILDINGS[b.type].manaBoost;
+    if (m && n < 3) { n++; per = m; }
+  }
+  if (!n) return 0;
+  const own = BUILDINGS[e.type].faction === 'shardbound';
+  return n * per * (own ? 1 : 0.5);
+}
+
+/** Enchantment: a random own unit (one without it first) gets a forged weapon, a rock shield, haste or rejuvenation. */
+function enchant(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const all = sim.state.entities.filter((u) => u.kind === 'unit' && u.team === e.team && u.hp > 0 && u.ttl === undefined);
+  const fresh = all.filter((u) => !u.blessed);
+  const pool = fresh.length ? fresh : all;
+  if (!pool.length) return false;
+  const u = pool[Math.floor(nextRandom(sim.state) * pool.length)];
+  const k = Math.floor(nextRandom(sim.state) * 4);
+  if (k === 3) u.hp = Math.min(u.maxHp, u.hp + 450);
+  else u.blessed = k === 0 ? { dmg: 0, haste: 0, armor: 0, perk: 'forge' } : k === 1 ? { dmg: 0, haste: 0, armor: 15 } : { dmg: 0, haste: 0.75, armor: 0 };
+  sim.emit({ t: 'revive', id: u.id });
   return true;
 }
 

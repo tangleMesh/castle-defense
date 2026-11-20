@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.9
+
+- **Shardbound copied exactly from the map's Elemental race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's. The Water Spring costs only 30 gold, as in the map.
+  - **Water elementals:** liquid body (50 / 60 / 70% of attacks pass through) and matching spell resistance. The greatest have a 20% chance per hit to create a mirror image (60% damage, takes double).
+  - **Wind elementals** fly; their gale slows the attacks of enemy flyers (20% / 35%). Greater ones splash and explode for 225 when they fall.
+  - **Fire:** Greater Fire Elementals breathe fire (20%, 100) and split off a Fire Elemental every 15 attacks.
+  - **Lightning elementals** hit 3 / 5 targets; their shield stuns melee attackers (15% / 30%).
+  - **Earth elementals** (hero armour) deal up to +50 / +100 when healthy and pulverize.
+  - **Specials:**
+    - Codex of Conjuration: monsoon; upgrades for free into Elemental Rain (blizzard) or Meteor Shower (air).
+    - Obelisk of Elements: one of four enchantments every 10 s.
+    - Mana Generator: ability buildings recharge 15% faster.
+    - Linker (new, legendary): a fallen unit's life heals the team.
+    - Master of Elements: legendary.
+  - **Removed:** the Elemental Nexus and its Primal Avatars, the Cinders and the Mana Well income bonus (none of them are in the map).
+
 ## 0.46.8
 
 - **Duskmoon copied exactly from the map's Night Elf race:**

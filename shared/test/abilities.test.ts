@@ -807,3 +807,40 @@ describe('multi-target reach', () => {
     expect(line[0].hp).toBeLessThan(1e5);
   });
 });
+
+describe('Shardbound mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'shardbound' },
+    { userId: 'b', name: 'B', team: 1, faction: 'gravewake' },
+  ];
+  const simE = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 6 });
+
+  it('power of earth: a healthy earth elemental hits harder than a wounded one', () => {
+    const sim = simE();
+    const e = unit(sim, 0, 'sb_stone', 60, 20);
+    const t = unit(sim, 1, 'gw_zombie', 60.6, 20);
+    t.hp = t.maxHp = 1e6;
+    const saved = UNITS.sb_stone.slam;
+    delete UNITS.sb_stone.slam;
+    try {
+      sim.hash.rebuild(sim.state.entities.filter((x) => x.kind === 'unit'));
+      performAttack(sim, e, attackStats(e)!, t, 1);
+      const full = 1e6 - t.hp;
+      t.hp = 1e6; e.hp = 1;
+      performAttack(sim, e, attackStats(e)!, t, 1);
+      expect(full).toBeGreaterThan(1e6 - t.hp);
+    } finally { UNITS.sb_stone.slam = saved; }
+  });
+
+  it('the Linker heals the team when one of its units dies', () => {
+    const sim = simE();
+    building(sim, 0, 'sb_linker', 20, 18);
+    const hurt = unit(sim, 0, 'sb_tide', 40, 20);
+    hurt.hp = 100;
+    const dying = unit(sim, 0, 'sb_tide', 42, 20);
+    dying.hp = 0;
+    sim.removeDead();
+    expect(hurt.hp).toBeCloseTo(100 + UNITS.sb_tide.hp * BUILDINGS.sb_linker.link!, 0);
+  });
+});
+

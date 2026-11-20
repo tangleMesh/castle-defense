@@ -154,6 +154,14 @@ export class Sim {
       this.emit({ t: 'splash', x: round2(e.x), y: round2(e.y), r: b.radius });
     }
     // Reviving shrines (Golden Shrine): every n-th own unit that falls nearby rises again.
+    // Link (Linker): a fallen unit's life power heals the rest of its team.
+    for (const e of fallen) {
+      const linker = this.state.entities.find((b) => b.kind === 'building' && b.team === e.team && b.hp > 0 && !b.buildLeft && BUILDINGS[b.type].link);
+      if (!linker) continue;
+      const mates = this.state.entities.filter((u) => u.kind === 'unit' && u.team === e.team && u.hp > 0 && u.hp < u.maxHp);
+      const share = (e.maxHp * BUILDINGS[linker.type].link!) / Math.max(1, mates.length);
+      for (const u of mates) u.hp = Math.min(u.maxHp, u.hp + share);
+    }
     if (fallen.length) {
       const shrines = this.state.entities.filter((b) => b.kind === 'building' && b.hp > 0 && !b.buildLeft && BUILDINGS[b.type].revive);
       for (const e of fallen) {

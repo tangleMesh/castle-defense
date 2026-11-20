@@ -43,6 +43,9 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.cleave) out.push(`Cleaving attack: each hit deals ${pct(u.cleave.pct)} of its damage to all enemies within ${num(u.cleave.radius)} tiles of the target`);
   if (u.rampage) out.push(`Berserk: after a kill it attacks ${pct(u.rampage.haste)} faster for ${num(u.rampage.duration)}s (and takes ${pct(u.rampage.vuln)} more damage)`);
   if (u.ensnare) out.push(`Ensnare: every ${num(u.ensnare.every)}s it binds ${u.ensnare.count > 1 ? `up to ${u.ensnare.count} enemy flyers` : 'an enemy flyer'} to the ground for ${num(u.ensnare.duration)}s, so melee units can hit ${u.ensnare.count > 1 ? 'them' : 'it'}`);
+  if (u.earthPower) out.push(`Power of earth: up to +${num(u.earthPower)} damage per hit, scaled by its remaining HP`);
+  if (u.shockShield) out.push(`Lightning shield: ${pct(u.shockShield.chance)} chance to stun a melee attacker for ${num(u.shockShield.stun)}s`);
+  if (u.illusion) out.push(`Illusion: ${pct(u.illusion.chance)} chance per hit to create a mirror image (60% damage, takes double, ${num(u.illusion.ttl)}s)`);
   if (u.killHeal) out.push(`Heal on kill: every kill heals ${pct(u.killHeal)} of its HP`);
   if (u.revenge) out.push(`Revenge: when it falls it deals ${num(u.revenge)} chaos damage to its killer`);
   if (u.raiseOnKill) out.push(`Raise: every living unit it kills rises as a ${units[u.raiseOnKill]?.name ?? u.raiseOnKill} on its side`);
@@ -73,6 +76,7 @@ export function powerText(b: BuildingDef): string | undefined {
   // Global powers reach the whole map.
   const within = p.global ? 'anywhere on the map' : `within ${num(p.range)} tiles`;
   if (p.kind === 'bless' && p.ward) return `Resistance of the wilderness: every ${num(p.cooldown)}s a random unit of yours (one without it first) permanently gains 50% spell resistance and a 40% chance to take 40 less damage from an attack`;
+  if (p.kind === 'enchant') return `Enchantment: every ${num(p.cooldown)}s a random unit of yours (one without it first) gets a forged weapon (50% splash), a rock shield (+15 armor), haste (+75% attack speed) or rejuvenation (+450 HP)`;
   if (p.kind === 'moonshine') return `Moonshine blessing: every ${num(p.cooldown)}s everything within ${num(p.radius)} tiles of a random wounded unit of yours heals ${num(p.dmg)} HP and gains +${num(p.armor)} armor for ${num(p.duration)}s`;
   if (p.kind === 'bless') return `Tribal blessing: every ${num(p.cooldown)}s a random unit of yours permanently gains +${num(p.dmg)} damage, +${num(p.hp)} HP, +${num(p.armor)} armor and ${pct(p.haste ?? 0)} attack speed, plus a 25% critical strike, 30% evasion or 1.5× damage against buildings`;
   if (p.kind === 'tentacles') return `Tentacle prison: every ${num(p.cooldown)}s ${p.count} tentacles burst from the ground around the nearest enemy ${within} (they last ${num(p.duration)}s)`;
@@ -96,6 +100,8 @@ export function buildingAbilities(b: BuildingDef): string[] {
   const out: string[] = [];
   if (b.attack?.bonusVs) out.push(`${num(b.attack.bonusVs.mult)}× damage against ${VS[b.attack.bonusVs.vs]}`);
   if (b.attack?.multishot) out.push(`Multi-shot: each volley strikes ${b.attack.multishot} enemies`);
+  if (b.link) out.push(`Link: whenever a unit of your team dies, ${pct(b.link)} of its life heals your wounded units`);
+  if (b.manaBoost) out.push(`Mana transfusion: your team's ability buildings recharge ${pct(b.manaBoost)} faster (half for non-elemental buildings; up to 3 generators)`);
   if (b.revive?.chance !== undefined) out.push(`Grace: every own unit that falls ${b.revive.global ? 'anywhere on the map' : `within ${num(b.revive.radius)} tiles`} has a ${pct(b.revive.chance)} chance to rise again (a second shrine stacks once; not legendaries)`);
   else if (b.revive) out.push(`Grace: every ${nth(b.revive.every ?? 1)} own unit that falls ${b.revive.global ? 'anywhere on the map' : `within ${num(b.revive.radius)} tiles`} rises again`);
   if (b.attack?.chain) out.push(`Bouncing shot: each shot jumps between ${b.attack.chain} enemies`);

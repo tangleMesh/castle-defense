@@ -87,6 +87,7 @@ function modFor(sim: Sim, u: Entity): Mods {
 /** Same-stat auras do not stack: the strongest one applies. */
 function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
   if ((aura.target === 'ally') !== (u.team === src.team)) return;
+  if (aura.air && !(u.kind === 'unit' && UNITS[u.type]?.air)) return;
   const m = modFor(sim, u);
   switch (aura.stat) {
     // Weakening auras on enemies (negative values) take the strongest malus instead.

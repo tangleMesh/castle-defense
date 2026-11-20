@@ -136,6 +136,12 @@ export interface UnitDef {
   rampage?: { haste: number; duration: number; vuln: number };
   /** Ensnare: every `every` s it binds up to `count` enemy flyers to the ground for `duration` s (melee can hit them). */
   ensnare?: { every: number; duration: number; count: number };
+  /** Power of earth: extra damage per hit, scaled by its remaining HP share. */
+  earthPower?: number;
+  /** Lightning shield: chance that a melee attacker is stunned for `stun` s. */
+  shockShield?: { chance: number; stun: number };
+  /** Illusion: chance per hit to create a copy of itself (60% damage, takes double damage, fades after `ttl` s). */
+  illusion?: { chance: number; ttl: number };
   /** Heal this share of its max HP for every kill. */
   killHeal?: number;
   /** Revenge: when killed by an attack, it deals this much chaos damage to its killer (not buildings). */
@@ -184,6 +190,8 @@ export interface AuraDef {
   value: number;
   radius: number;
   target: 'ally' | 'enemy';
+  /** Only flyers are affected (the wind elementals' gale). */
+  air?: boolean;
 }
 
 export interface BuildingDef {
@@ -228,6 +236,10 @@ export interface BuildingDef {
   incomeBonus?: number;
   /** Every `every`-th own unit that falls within `radius` tiles rises again on the spot (not summons). */
   /** Revive fallen own units: every n-th (`every`) or with a real `chance` (the map's Golden Shrine: 20%, stacks once, never legendaries). */
+  /** Link (the map's Linker): when an own unit dies this share of its max HP heals the team's other units. */
+  link?: number;
+  /** Mana transfusion: own power buildings recharge this much faster (half for other factions' buildings of the team; max 3 count). */
+  manaBoost?: number;
   revive?: { every?: number; chance?: number; radius: number; global?: boolean };
   /** Mends own-team buildings (and the castle) within `radius` tiles by `hps` HP per second (not itself). */
   mend?: { hps: number; radius: number };
@@ -257,7 +269,7 @@ export interface BuildingDef {
  * type `unit` burst from the ground in a ring of `radius` around the nearest enemy and last `duration` s.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine' | 'enchant';
   cooldown: number;
   range: number;
   radius: number;
