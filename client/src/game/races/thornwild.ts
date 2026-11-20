@@ -16,26 +16,27 @@ UNIT_PAINTERS.spider = (c, u, cx, fy, S, pose) => {
   const k = (n: number) => S(n * size);
   softEllipse(c, cx, fy, k(12), k(3), 0x000000, 0.28);
   const by = fy - k(7) - (pose.moving ? Math.abs(Math.sin(sw * 2)) * S(0.6) : 0);
-  // legs: four pairs, alternate pairs lift while walking
-  for (let i = 0; i < 4; i++) {
-    for (const side of [-1, 1]) {
-      const ph = sw + i * 1.3 + (side > 0 ? Math.PI : 0);
-      const lift = pose.moving ? Math.max(0, Math.sin(ph)) * k(2) : 0;
-      const hx = cx + k(-3 + i * 2.4), hy = by + k(1);
-      const kx = hx + k(-4 + i * 2.6) * 1.1, ky = by - k(4 + (side > 0 ? 0.6 : 0)) - lift;
-      const fx = hx + k(-7 + i * 4.6), fy2 = fy - lift * 0.4;
-      const col = side > 0 ? shade(m.body, 0.75) : m.body;
-      limb(c, hx, hy, kx, ky, k(1.1), col, 0.9);
-      limb(c, kx, ky, fx, fy2, k(0.9), col, 0.8);
-    }
-  }
+  // legs: four pairs, alternate pairs lift while walking; the far side behind the body, the near side in front
+  const leg = (i: number, side: number) => {
+    const ph = sw + i * 1.3 + (side > 0 ? Math.PI : 0);
+    const lift = pose.moving ? Math.max(0, Math.sin(ph)) * k(2) : 0;
+    const hx = cx + k(-1 + i * 1.4), hy = by + k(0.5);
+    const spread = (i - 1.5) * 5.5 + (side > 0 ? 1.2 : -1.2);
+    const kx = hx + k(spread * 0.55), ky = by - k(5 + (side > 0 ? 0.8 : 0)) - lift;
+    const fx = hx + k(spread * 1.25), fy2 = fy - lift * 0.4;
+    const col = side < 0 ? shade(m.body, 0.7) : lit(m.body, 1.1);
+    limb(c, hx, hy, kx, ky, k(1.1), col, 0.9);
+    limb(c, kx, ky, fx, fy2, k(0.9), col, 0.8);
+  };
+  for (let i = 0; i < 4; i++) leg(i, -1);
   // abdomen with markings, then the head
-  blob(c, cx - k(5), by - k(1), k(7), k(5.5), m.body);
+  blob(c, cx - k(5.5), by - k(2.5), k(6.5), k(5), m.body);
   c.fillStyle = css(m.accent, 0.85);
-  if (v === 'giant' || v === 'brood') { for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(cx - k(5), by - k(4) + k(i * 2.4), k(4 - i), k(0.7), 0, 0, TAU); c.fill(); } }
-  else { c.beginPath(); c.ellipse(cx - k(5), by - k(2), k(2.4), k(1.6), 0, 0, TAU); c.fill(); }
+  if (v === 'giant' || v === 'brood') { for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(cx - k(5.5), by - k(5.5) + k(i * 2.4), k(4 - i), k(0.7), 0, 0, TAU); c.fill(); } }
+  else { c.beginPath(); c.ellipse(cx - k(5.5), by - k(3.5), k(2.4), k(1.6), 0, 0, TAU); c.fill(); }
   if (v === 'brood') glow(c, cx - k(9), by + k(1), k(4), 0xd0f0a0, 0.35);
   blob(c, cx + k(4), by + k(0.5), k(3.6), k(3), shade(m.body, 1.1));
+  for (let i = 0; i < 4; i++) leg(i, 1);
   // eyes and fangs
   c.fillStyle = css(0xff3a2a);
   for (const [ex, ey] of [[5.5, -0.6], [6.6, 0.2], [4.6, 0]]) { c.beginPath(); c.arc(cx + k(ex), by + k(ey), k(0.55), 0, TAU); c.fill(); }
