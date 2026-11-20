@@ -43,6 +43,8 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.cleave) out.push(`Cleaving attack: each hit deals ${pct(u.cleave.pct)} of its damage to all enemies within ${num(u.cleave.radius)} tiles of the target`);
   if (u.rampage) out.push(`Berserk: after a kill it attacks ${pct(u.rampage.haste)} faster for ${num(u.rampage.duration)}s (and takes ${pct(u.rampage.vuln)} more damage)`);
   if (u.ensnare) out.push(`Ensnare: every ${num(u.ensnare.every)}s it binds ${u.ensnare.count > 1 ? `up to ${u.ensnare.count} enemy flyers` : 'an enemy flyer'} to the ground for ${num(u.ensnare.duration)}s, so melee units can hit ${u.ensnare.count > 1 ? 'them' : 'it'}`);
+  if (u.overtake) out.push(`Overtake: ${pct(u.overtake)} chance per hit to take control of the target for good`);
+  if (u.incinerate) out.push(`Incinerate: each hit on the same target deals ${num(u.incinerate.step)} more; a target killed explodes for ${num(u.incinerate.blast)} spell damage within ${num(u.incinerate.radius)} tiles`);
   if (u.chaosSpawn) out.push('Chaos-born: each one comes with a random armour type and a random perk (critical strike, evasion or demolish)');
   if (u.immune) out.push('Immune: stuns, slows, hexes, freezes and control have no effect');
   if (u.evade) out.push(`Evasion: ${pct(u.evade)} chance that an attack against it misses`);

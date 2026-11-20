@@ -179,7 +179,8 @@ describe('building powers', () => {
     for (const b of Object.values(BUILDINGS)) {
       // The City of Magic's sheep hex is map-wide on request; the flyer-freezing mushroom stays local.
       // Map-wide where the map says so: the Stasis Totem freezes every enemy unit.
-      if (b.power && ['beam', 'wave'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
+      // The tsunami rolls out from its building.
+      if (b.power?.kind === 'wave') expect(b.power.global, b.id).toBeFalsy();
       if (b.power?.kind === 'hex') expect(!!b.power.global, b.id).toBe(b.id === 'su_city_of_magic');
       if (b.power && ['bombard', 'cyclone', 'slay', 'charm', 'chaos', 'tentacles'].includes(b.power.kind)) expect(b.power.global, b.id).toBe(true);
     }

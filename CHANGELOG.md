@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.4
+
+- **Blightroot Coven copied exactly from the map's Corrupted race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Weakening blows:** ents −27%, treants −55%, and the legendary Annihilator −100% (its target deals no damage for 20 s). The Annihilator is also immune, cleaves, crits and impales.
+  - **Void walkers and keepers incinerate:** each hit on the same target deals 7 more, and a target they kill explodes. Their auras take 2 / 4 armour from nearby enemies.
+  - **Other units:**
+    - Felhounds give +18% attack speed to allies within 9 tiles.
+    - Infernal machines and tanks detonate when destroyed.
+    - Drakes' bolts splash.
+    - The Incubus has a 10% chance per hit to take control of its target.
+  - **Specials:**
+    - Tentacles (6, around any enemy).
+    - Well of Pain: 200 spell damage every 4 s, map-wide.
+    - Eye of Corruption (legendary): −6 armour for every enemy unit; its upgrade is gone (the map has none).
+    - Corrupted Protector tower with chaos splash.
+
 ## 0.46.3
 
 - **Doomforge Pact copied exactly from the map's Chaos race:**

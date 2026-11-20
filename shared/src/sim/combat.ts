@@ -228,7 +228,13 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (a.blessed?.perk === 'demolish' && sim.isStructure(t)) mult *= 1.5;
   const crit = (!!ud?.crit && roll(1) < ud.crit.chance) || (a.blessed?.perk === 'crit' && roll(6) < 0.25);
   if (crit) mult *= ud?.crit && roll(1) < ud.crit.chance ? ud.crit.mult : 2;
-  const raw = (st.dmg + (a.blessed?.dmg ?? 0)) * mult;
+  // Incinerate: consecutive hits on the same target grow hotter.
+  let burn = 0;
+  if (ud?.incinerate) {
+    if (a.incTarget === t.id) a.incStack = (a.incStack ?? 0) + 1; else { a.incTarget = t.id; a.incStack = 0; }
+    burn = ud.incinerate.step * (a.incStack ?? 0);
+  }
+  const raw = (st.dmg + burn + (a.blessed?.dmg ?? 0)) * mult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
   if (ud?.suicide) { explode(sim, a, st, t, raw, ud.suicide.radius); return; }
   if (st.chain > 1) {
@@ -245,6 +251,23 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   // Shield wall: ranged attacks lose part of their force.
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
+  // Incinerate: a target killed by the flames explodes.
+  if (ud?.incinerate && t.hp <= 0 && t.kind === 'unit') {
+    const inc = ud.incinerate;
+    for (const o of sim.hash.query(t.x, t.y, inc.radius + 1)) {
+      if (o.kind !== 'unit' || o.team === a.team || o.hp <= 0) continue;
+      const d = Math.hypot(o.x - t.x, o.y - t.y);
+      if (d <= inc.radius) dealDamage(sim, o, inc.blast, 'spells', a.owner);
+      else if (d <= inc.radius * 1.33) dealDamage(sim, o, inc.blast / 2, 'spells', a.owner);
+    }
+    sim.emit({ t: 'splash', x: Math.round(t.x * 100) / 100, y: Math.round(t.y * 100) / 100, r: inc.radius });
+  }
+  // Overtake: now and then the target defects for good.
+  if (ud?.overtake && t.kind === 'unit' && t.hp > 0 && !isImmune(t) && t.ttl === undefined && roll(8) < ud.overtake) {
+    t.owner = a.owner; t.team = a.team;
+    delete t.targetId; delete t.poison; delete t.stun; delete t.sheep;
+    sim.emit({ t: 'charm', id: t.id });
+  }
   // Berserk: a kill sends it into a rampage.
   if (ud?.rampage && t.hp <= 0 && t.kind === 'unit') a.rampageLeft = Math.round(ud.rampage.duration * TICK_RATE);
   // Ensnare: bind enemy flyers to the ground (the target first, then the nearest others).

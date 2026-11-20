@@ -136,6 +136,10 @@ export interface UnitDef {
   rampage?: { haste: number; duration: number; vuln: number };
   /** Ensnare: every `every` s it binds up to `count` enemy flyers to the ground for `duration` s (melee can hit them). */
   ensnare?: { every: number; duration: number; count: number };
+  /** Overtake: chance per hit to take control of the target unit for good (not immune ones or summons). */
+  overtake?: number;
+  /** Incinerate: each consecutive hit on the same target deals `step` more; a target killed explodes for `blast` spell damage within `radius`. */
+  incinerate?: { step: number; blast: number; radius: number };
   /** Chaos spawn (the map's Blood Fiend): every one is trained with a random armour type and a random perk (crit, evasion or demolish). */
   chaosSpawn?: boolean;
   /** Immune (map legendaries): stuns, slows, hexes, freezes, weakening and control don't affect it. */

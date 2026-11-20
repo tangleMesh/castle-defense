@@ -61,6 +61,9 @@ export interface Entity {
   rampageLeft?: number;
   /** Ensnared flyer: ticks it stays bound to the ground (ground units can hit it). */
   netted?: number;
+  /** Incinerate: the current target and how many hits in a row it took. */
+  incTarget?: number;
+  incStack?: number;
   /** Ensnaring units: ticks until the next ensnare. */
   ensnareCd?: number;
   /** Tribal Blessing: permanent bonuses of this unit. */
