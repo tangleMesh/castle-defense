@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDINGS, Sim, TICK_RATE, UNITS, computeDamage, filterSnapshot, makeSnapshot, type Entity, type PlayerSetup, type SimEvent } from '../src/index';
 import { spawnUnit } from '../src/sim/spawning';
-import { armorOf, attackStats, canTarget, performAttack } from '../src/sim/combat';
+import { armorOf, attackStats, canTarget, dealDamage, performAttack } from '../src/sim/combat';
 import { computeAuras } from '../src/sim/auras';
 
 const players: PlayerSetup[] = [
@@ -286,41 +286,41 @@ describe('Duskmoon mechanics', () => {
     expect(foes.filter((f) => f.hp < f.maxHp)).toHaveLength(3);
   });
 
-  it('an Avatar of Vengeance explodes when it falls, not when smitten', () => {
+  it('an Avatar of Vengeance takes revenge on its killer', () => {
     const sim = simD();
     const v = unit(sim, 0, 'dm_vengeance', 60, 20);
-    const near = unit(sim, 1, 'iv_militia', 61, 20), far = unit(sim, 1, 'iv_militia', 66, 20);
-    near.hp = near.maxHp = far.hp = far.maxHp = 1e5;
-    v.hp = 0;
-    sim.removeDead();
-    expect(near.hp).toBeLessThan(near.maxHp);
-    expect(far.hp).toBe(far.maxHp);
-    const sim2 = simD();
-    const v2 = unit(sim2, 0, 'dm_vengeance', 60, 20), n2 = unit(sim2, 1, 'iv_militia', 61, 20);
-    n2.hp = n2.maxHp = 1e5;
-    v2.hp = 0; v2.smitten = true;
-    sim2.removeDead();
-    expect(n2.hp).toBe(n2.maxHp);
+    const k = unit(sim, 1, 'gw_zombie', 60.6, 20);
+    k.hp = k.maxHp = 1e5;
+    v.hp = 1;
+    delete UNITS.dm_vengeance.evade;
+    try {
+      sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
+      performAttack(sim, k, attackStats(k)!, v, 1);
+    } finally { UNITS.dm_vengeance.evade = 0.4; }
+    expect(v.hp).toBe(0);
+    expect(k.hp).toBeLessThan(k.maxHp - 250);
   });
 
-  it('the Obelisk of the Wild blocks a flat part of every hit on nearby allies', () => {
+  it('the Obelisk of Wilderness wards a unit: half spell damage', () => {
     const sim = simD();
     building(sim, 0, 'dm_wild_obelisk', 30, 18);
-    const t = unit(sim, 0, 'dm_assassin', 32, 19), a = unit(sim, 1, 'iv_halberdier', 32.6, 19);
-    delete UNITS.dm_assassin.evade;
-    try {
-      sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit' && e.hp > 0));
-      computeAuras(sim);
-      const d = hits(sim, a, t, 1)[0];
-      const raw = computeDamage(UNITS.iv_halberdier.dmg, 'normal', 'medium', UNITS.dm_assassin.armor);
-      expect(d).toBeCloseTo(raw - BUILDINGS.dm_wild_obelisk.aura!.value, 1);
-    } finally { UNITS.dm_assassin.evade = 0.167; }
+    const u = unit(sim, 0, 'dm_huntress', 32, 19);
+    u.hp = u.maxHp = 1e5;
+    for (let i = 0; i < (BUILDINGS.dm_wild_obelisk.power!.cooldown + 1) * TICK_RATE && !u.blessed; i++) { u.x = 32; u.y = 19; sim.step(); }
+    expect(u.blessed?.perk).toBe('ward');
+    const plain = unit(sim, 0, 'dm_huntress', 34, 19);
+    plain.hp = plain.maxHp = 1e5;
+    expect(dealDamage(sim, u, 100, 'spells', 1)).toBeCloseTo(dealDamage(sim, plain, 100, 'spells', 1) / 2, 3);
   });
 
-  it('Moonlit grace: Duskmoon units without their own evasion dodge 12.5% of blows', () => {
-    expect(UNITS.dm_huntress.evade).toBe(0.125);
-    expect(UNITS.dm_assassin.evade).toBeCloseTo(1 / 6, 2);
-    expect(Object.values(UNITS).filter((u) => u.id.startsWith('iv_')).every((u) => !u.evade || u.evade < 0.5)).toBe(true);
+  it('the Silver Glade heals and armours the wounded', () => {
+    const sim = simD();
+    building(sim, 0, 'dm_silver_glade', 30, 18);
+    const u = unit(sim, 0, 'dm_huntress', 60, 19);
+    u.maxHp = 1000; u.hp = 500;
+    for (let i = 0; i < (BUILDINGS.dm_silver_glade.power!.cooldown + 1) * TICK_RATE && u.hp < 600; i++) { u.x = 60; u.y = 19; sim.step(); }
+    expect(u.hp).toBeGreaterThanOrEqual(600);
+    expect(u.stone?.armor).toBe(6);
   });
 });
 

@@ -136,6 +136,10 @@ export interface UnitDef {
   rampage?: { haste: number; duration: number; vuln: number };
   /** Ensnare: every `every` s it binds up to `count` enemy flyers to the ground for `duration` s (melee can hit them). */
   ensnare?: { every: number; duration: number; count: number };
+  /** Heal this share of its max HP for every kill. */
+  killHeal?: number;
+  /** Revenge: when killed by an attack, it deals this much chaos damage to its killer (not buildings). */
+  revenge?: number;
   /** Raise on kill (vampires): every living unit it kills rises as this unit on its side. */
   raiseOnKill?: string;
   /** Soul steal (Lich King): chance per hit to kill the target outright and heal `heal` of its remaining HP. */
@@ -253,7 +257,7 @@ export interface BuildingDef {
  * type `unit` burst from the ground in a ring of `radius` around the nearest enemy and last `duration` s.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine';
   cooldown: number;
   range: number;
   radius: number;
@@ -274,6 +278,8 @@ export interface PowerDef {
   hp?: number;
   armor?: number;
   haste?: number;
+  /** Bless with the resistance of the wilderness instead: 50% spell resistance and a 40% chance to take 40 less from an attack. */
+  ward?: boolean;
   /** Bombard: what the shell hits is frozen for this many seconds (buildings stop training, shooting and casting). */
   freeze?: number;
 }

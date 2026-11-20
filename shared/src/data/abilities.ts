@@ -43,6 +43,8 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.cleave) out.push(`Cleaving attack: each hit deals ${pct(u.cleave.pct)} of its damage to all enemies within ${num(u.cleave.radius)} tiles of the target`);
   if (u.rampage) out.push(`Berserk: after a kill it attacks ${pct(u.rampage.haste)} faster for ${num(u.rampage.duration)}s (and takes ${pct(u.rampage.vuln)} more damage)`);
   if (u.ensnare) out.push(`Ensnare: every ${num(u.ensnare.every)}s it binds ${u.ensnare.count > 1 ? `up to ${u.ensnare.count} enemy flyers` : 'an enemy flyer'} to the ground for ${num(u.ensnare.duration)}s, so melee units can hit ${u.ensnare.count > 1 ? 'them' : 'it'}`);
+  if (u.killHeal) out.push(`Heal on kill: every kill heals ${pct(u.killHeal)} of its HP`);
+  if (u.revenge) out.push(`Revenge: when it falls it deals ${num(u.revenge)} chaos damage to its killer`);
   if (u.raiseOnKill) out.push(`Raise: every living unit it kills rises as a ${units[u.raiseOnKill]?.name ?? u.raiseOnKill} on its side`);
   if (u.soulSteal) out.push(`Soul steal: ${pct(u.soulSteal.chance)} chance per hit to kill the target outright and heal ${pct(u.soulSteal.heal)} of its HP`);
   if (u.overtake) out.push(`Overtake: ${pct(u.overtake)} chance per hit to take control of the target for good`);
@@ -70,6 +72,8 @@ export function powerText(b: BuildingDef): string | undefined {
   if (!p) return undefined;
   // Global powers reach the whole map.
   const within = p.global ? 'anywhere on the map' : `within ${num(p.range)} tiles`;
+  if (p.kind === 'bless' && p.ward) return `Resistance of the wilderness: every ${num(p.cooldown)}s a random unit of yours (one without it first) permanently gains 50% spell resistance and a 40% chance to take 40 less damage from an attack`;
+  if (p.kind === 'moonshine') return `Moonshine blessing: every ${num(p.cooldown)}s everything within ${num(p.radius)} tiles of a random wounded unit of yours heals ${num(p.dmg)} HP and gains +${num(p.armor)} armor for ${num(p.duration)}s`;
   if (p.kind === 'bless') return `Tribal blessing: every ${num(p.cooldown)}s a random unit of yours permanently gains +${num(p.dmg)} damage, +${num(p.hp)} HP, +${num(p.armor)} armor and ${pct(p.haste ?? 0)} attack speed, plus a 25% critical strike, 30% evasion or 1.5× damage against buildings`;
   if (p.kind === 'tentacles') return `Tentacle prison: every ${num(p.cooldown)}s ${p.count} tentacles burst from the ground around the nearest enemy ${within} (they last ${num(p.duration)}s)`;
   if (p.kind === 'charm') return `Control: every ${num(p.cooldown)}s the nearest enemy unit ${within} with at most ${num(p.dmg)} HP joins your side`;

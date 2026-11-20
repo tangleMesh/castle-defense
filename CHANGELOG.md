@@ -7,6 +7,20 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.8
+
+- **Duskmoon copied exactly from the map's Night Elf race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's. The faction-wide 12.5% evasion is gone (the map has no such trait).
+  - **Archers:** huntresses 8% evade; rangers shoot 3 targets (15% evade); the Amazon (legendary) shoots 7 targets and is immune, with 70% spell resistance and 25% evade.
+  - **Druids** entangle ground units in place (5 s, 15 per second); Sage Druids entangle 3 units (6 s, 35 per second).
+  - **Assassins:** stealth backstabs for 150 / 300 extra.
+  - **Avenging Spirits** (30% evade, −4 armour) heal 14% per kill. Avatars of Vengeance (40% evade, −7 armour) heal 20% per kill and deal 350 chaos damage to their killer when they fall.
+  - **Specials:**
+    - Elune's Lantern: 87 magic damage per second.
+    - Obelisk of Wilderness: wards a random unit every 7 s (50% spell resistance, a 40% chance to block 40).
+    - Silver Glade (new, replaces the Moonstone Cache): heals 175 and gives +6 armour around a wounded unit every 20 s.
+    - Starfall Obelisk (legendary): 50 damage per second for 11 s, anywhere; its upgrade is gone.
+
 ## 0.46.7
 
 - **Sunspire copied exactly from the map's Elf race:**

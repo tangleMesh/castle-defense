@@ -98,11 +98,15 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   let dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   const block = attack && target.kind === 'unit' ? (UNITS[target.type].block ?? 0) + modsOf(sim, target.id).block : 0;
   if (block) dmg = Math.max(dmg * 0.25, dmg - block);
+  // Resistance of the wilderness: a 40% chance to shrug off 40 of an attack.
+  const ward = target.blessed?.perk === 'ward';
+  if (ward && attack && chanceRoll(sim.state, target, 43) < 0.4) dmg = Math.max(0, dmg - 40);
   // A raging berserker takes more damage.
   if (target.rampageLeft && target.rampageLeft > 0) dmg *= 1 + (UNITS[target.type]?.rampage?.vuln ?? 0);
   // Spell resistance: ability (spell) damage and magic attacks.
   const mr = (type === 'magic' || type === 'spells') && target.kind === 'unit' ? UNITS[target.type].magicResist : undefined;
   if (mr) dmg *= 1 - mr;
+  if (ward && (type === 'magic' || type === 'spells')) dmg *= 0.5;
   target.hp -= dmg;
   if (target.hp <= 0 && target.kind !== 'castle') {
     target.hp = 0;
@@ -257,6 +261,12 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
     sim.emit({ t: 'slay', a: a.id, b: t.id });
     t.hp = 0;
     rewardKill(sim, t, a.owner);
+  }
+  if (t.kind === 'unit' && t.hp <= 0) {
+    if (ud?.killHeal && a.hp > 0) a.hp = Math.min(a.maxHp, a.hp + a.maxHp * ud.killHeal);
+    // Revenge: the fallen avatar strikes back at its killer.
+    const rv = UNITS[t.type]?.revenge;
+    if (rv && a.kind === 'unit' && a.hp > 0 && !t.revenged) { t.revenged = true; dealDamage(sim, a, rv, 'chaos', t.owner); }
   }
   // Vampires: a living unit they kill rises as one of theirs.
   if (ud?.raiseOnKill && t.kind === 'unit' && t.hp <= 0 && t.ttl === undefined && !t.smitten && !t.raised) {
