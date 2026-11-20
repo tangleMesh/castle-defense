@@ -22,7 +22,7 @@ export interface UnitModel {
     // Gravewake undead
     | 'zombie' | 'necromancer' | 'lich' | 'skeleton' | 'vampire' | 'bat' | 'banshee' | 'fleshgolem' | 'bonewyrm'
     // Doomforge demons
-    | 'demon' | 'satyr' | 'quilldemon' | 'twin' | 'succubus' | 'fiend' | 'reddragon' | 'infernal'
+    | 'demon' | 'satyr' | 'quilldemon' | 'twin' | 'succubus' | 'fiend' | 'reddragon' | 'infernal' | 'mutation'
     // Tidecall naga
     | 'murloc' | 'spitter' | 'hydra' | 'naga' | 'lobster' | 'dragonturtle' | 'wingedserpent'
     // Blightroot corrupted
@@ -136,6 +136,8 @@ export interface UnitDef {
   rampage?: { haste: number; duration: number; vuln: number };
   /** Ensnare: every `every` s it binds up to `count` enemy flyers to the ground for `duration` s (melee can hit them). */
   ensnare?: { every: number; duration: number; count: number };
+  /** Chaos spawn (the map's Blood Fiend): every one is trained with a random armour type and a random perk (crit, evasion or demolish). */
+  chaosSpawn?: boolean;
   /** Immune (map legendaries): stuns, slows, hexes, freezes, weakening and control don't affect it. */
   immune?: boolean;
   /** Probability that an attack aimed at this unit misses (WC3 Evasion). */
@@ -165,7 +167,7 @@ export interface UnitDef {
 }
 
 export interface AuraDef {
-  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste' | 'block';
+  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste' | 'block' | 'thorns';
   /** dmg/speed/haste (attack speed): multiplier delta (0.2 = +20%), armor: flat, regen: hp/s, block: flat damage off every attack. */
   value: number;
   radius: number;
@@ -200,7 +202,8 @@ export interface BuildingDef {
   incomeRate?: number;
   /** Treasure Box: raises the owner's income multiplier (see TREASURE_BONUS). */
   treasure?: boolean;
-  spawn?: { unit: string; count: number; interval: number };
+  /** `extra`: a second unit type trained in the same cycle (Serenity's twins). */
+  spawn?: { unit: string; count: number; interval: number; extra?: string };
   aura?: AuraDef;
   /** Tower attack. `chain`: the shot bounces between this many enemies (incl. the first). */
   attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number; chain?: number; multishot?: number; bonusVs?: { vs: ArmorType | 'air' | 'structure'; mult: number } };

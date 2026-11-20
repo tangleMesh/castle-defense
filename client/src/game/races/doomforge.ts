@@ -106,6 +106,33 @@ UNIT_PAINTERS.twin = (c, u, cx, fy, S, pose) => {
   const hx = cx + S(pose.attack ? 13 : 8), hy = y - S(pose.attack ? 20 : 11);
   limb(c, cx + S(4), y - S(18), hx, hy, S(1.8), m.accent, 1);
   if (pose.attack) { c.strokeStyle = css(0xffffff, 0.8); c.lineWidth = S(0.7); for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(hx, hy + S(2), S(4 + k * 1.5), -1, 0.3); c.stroke(); } }
+  // The Weeper: streams of tears down both cheeks and a sickly green haze of its gas.
+  if (m.variant === 'weeper') {
+    glow(c, cx, y - S(4), S(16), 0x8ad040, 0.25);
+    c.strokeStyle = css(0x9ad0ff, 0.85); c.lineWidth = S(0.6);
+    for (const dx of [-2, 2]) { c.beginPath(); c.moveTo(cx + S(dx), y - S(24)); c.quadraticCurveTo(cx + S(dx * 1.3), y - S(19), cx + S(dx * 0.8), y - S(14)); c.stroke(); }
+  }
+};
+
+/** Mutation (Present of Chaos): a lumpy, many-eyed slime of chaos flesh with groping tendrils. */
+UNIT_PAINTERS.mutation = (c, u, cx, fy, S, pose) => {
+  const m = u.model;
+  const ph = pose.ph * TAU;
+  softEllipse(c, cx, fy, S(10), S(2.5), 0x000000, 0.3);
+  for (let k = 0; k < 4; k++) {
+    const a = -0.5 + k * 0.35 + Math.sin(ph + k) * 0.15;
+    limb(c, cx + S(2), fy - S(8), cx + S(2) + Math.cos(a) * S(13), fy - S(8) + Math.sin(a) * S(5) - S(pose.attack && k === 1 ? 6 : 0), S(1.6), lit(m.accent, 0.9), 0.9);
+  }
+  const squash = 1 + Math.sin(ph * 2) * 0.06;
+  blob(c, cx, fy - S(9), S(11) * squash, S(9) / squash, m.body, 1);
+  blob(c, cx - S(4), fy - S(15), S(5), S(4), lit(m.body, 1.15), 1);
+  blob(c, cx + S(5), fy - S(13), S(4), S(3.5), lit(m.body, 0.9), 1);
+  for (const [ex, ey, r] of [[-4, -15, 1.6], [1, -12, 1.2], [5, -14, 1], [-1, -6, 0.9]] as const) {
+    c.fillStyle = css(0xfff0a0); c.beginPath(); c.arc(cx + S(ex), fy + S(ey), S(r), 0, TAU); c.fill();
+    c.fillStyle = css(0x2a0a0a); c.beginPath(); c.arc(cx + S(ex + 0.3), fy + S(ey), S(r * 0.45), 0, TAU); c.fill();
+  }
+  c.strokeStyle = css(m.accent, 0.8); c.lineWidth = S(0.8);
+  c.beginPath(); c.arc(cx + S(2), fy - S(4), S(3), 0.2, Math.PI - 0.2); c.stroke();
 };
 
 UNIT_PAINTERS.succubus = (c, u, cx, fy, S, pose) => {

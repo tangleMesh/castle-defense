@@ -7,6 +7,26 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.3
+
+- **Doomforge Pact copied exactly from the map's Chaos race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Units:**
+    - Chaos Warriors and Champions cleave; the Champion's roar gives allies +25% damage.
+    - Quill Demons' quills bounce, and their aura reflects 35% of melee damage.
+    - Succubi curse (−35% damage for 45 s).
+    - Blood Fiends are chaos-born: each gets a random armour type and a random perk.
+    - Infernals hit flyers and burn every enemy within 3 tiles (33 damage per second).
+  - **Serenity (legendary) trains both Twins:**
+    - Twin Smiley: ranged, 30% crit at 4×, a slowing clap.
+    - Twin Weeper: melee cleave and poison gas, with its own look.
+    - Both are immune, divine-armoured and resist 90% of spells.
+  - **Specials:**
+    - Present of Chaos has the map's eight random fates, including turning the target into your new Mutation unit (own look).
+    - Volcano: 100 damage per second for 2.75 s.
+    - Hell's Fist (legendary): 400 damage, and the building is disabled for 6 minutes.
+    - Eraser (legendary, two upgrades, 50 / 37.5 / 25 s): kills every enemy unit of a random type, map-wide.
+
 ## 0.46.2
 
 - **Bloodtusk Horde copied exactly from the map's Orc race:**

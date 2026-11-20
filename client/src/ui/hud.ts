@@ -609,7 +609,7 @@ export class Hud {
     const lines = [`<span class="tip-desc">${d.desc}</span>`];
     if (d.spawn) {
       const u = UNITS[d.spawn.unit];
-      lines.push(`Spawns <b>${d.spawn.count}× ${u.name}</b> every ${d.spawn.interval}s`);
+      lines.push(`Spawns <b>${d.spawn.count}× ${u.name}</b>${d.spawn.extra ? ` and <b>1× ${UNITS[d.spawn.extra].name}</b>` : ''} every ${d.spawn.interval}s`);
       lines.push(`${Math.round(u.hp)} HP · ${num(u.dmg)} ${ATTACK_LABEL[u.attackType]} dmg (strong vs ${strongAgainst(u.attackType)}) · ${ARMOR_LABEL[u.armorType]} armor ${u.armor}${u.air ? ' · <i>flying</i>' : ''}${u.range > 1.5 ? ` · range ${u.range}` : ''}`);
       for (const a of unitAbilities(u, UNITS)) lines.push(`<span class="tip-ability">✦ ${a}</span>`);
     }
@@ -684,7 +684,7 @@ export class Hud {
         h('div', { class: 'info-title' }, d.name), h('div', { class: 'dim' }, ownerName), hpBar,
         extra !== 100 ? h('div', { class: 'gold-text' }, `${extra < 0 ? 'Upgrading' : 'Constructing'}… ${Math.abs(extra)}%`) : null,
         h('div', { class: 'desc' }, d.desc),
-        d.spawn ? h('div', null, `Spawns ${d.spawn.count}× ${UNITS[d.spawn.unit].name} every ${d.spawn.interval}s`) : null,
+        d.spawn ? h('div', null, `Spawns ${d.spawn.count}× ${UNITS[d.spawn.unit].name}${d.spawn.extra ? ` and 1× ${UNITS[d.spawn.extra].name}` : ''} every ${d.spawn.interval}s`) : null,
         ...buildingAbilities(d).map((t) => h('div', { class: 'ability' }, `✦ ${t}`)),
         upgradeHint(d) ? h('div', { class: 'upgrade-hint' }, `⬆ ${upgradeHint(d)}`) : null,
         d.spawn && extra === 100 ? (this.spawnBar = h('div', { class: 'ispawn', title: 'Time until the next unit' }, h('div'), h('span'))) : null,

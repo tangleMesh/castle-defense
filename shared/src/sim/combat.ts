@@ -48,7 +48,7 @@ export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number }
   if (e.kind === 'unit') {
     const u = UNITS[e.type];
     const m = modsOf(sim, e.id);
-    return { type: u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) + (e.blessed?.armor ?? 0) };
+    return { type: e.armorType ?? u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) + (e.blessed?.armor ?? 0) };
   }
   // Bulwark Seal: extra armor on all structures of the carrier's team.
   if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
@@ -336,7 +336,8 @@ function onHit(sim: Sim, a: Entity, ud: UnitDef, t: Entity, dealt: number, range
   if (ud.poison && t.kind === 'unit' && t.hp > 0) {
     t.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: isImmune(t) ? 0 : ud.poison.slow, owner: a.owner };
   }
-  const thorns = t.kind === 'unit' ? UNITS[t.type].thorns : undefined;
+  // Thorns of the unit itself plus a thorns aura (Quill Aura).
+  const thorns = t.kind === 'unit' ? (UNITS[t.type].thorns ?? 0) + modsOf(sim, t.id).thorns : undefined;
   if (thorns && !ranged && dealt > 0 && a.hp > 0) dealDamage(sim, a, dealt * thorns, 'chaos', t.owner, true);
 }
 

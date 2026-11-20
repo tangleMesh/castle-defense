@@ -69,7 +69,8 @@ export function stepBuildings(sim: Sim) {
     e.spawnTimer -= step[e.team];
     if (e.spawnTimer > 0) continue;
     e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
-    for (let i = 0; i < def.spawn.count; i++) spawnUnit(sim, e, def.spawn.unit, i, def.spawn.count);
+    for (let i = 0; i < def.spawn.count; i++) spawnUnit(sim, e, def.spawn.unit, i, def.spawn.count + (def.spawn.extra ? 1 : 0));
+    if (def.spawn.extra) spawnUnit(sim, e, def.spawn.extra, def.spawn.count, def.spawn.count + 1);
   }
 }
 
@@ -93,10 +94,18 @@ export function spawnUnit(sim: Sim, from: Entity, unitId: string, i: number, n: 
       x = f.x; y = f.y;
     }
   }
-  return sim.add({
+  const e = sim.add({
     kind: 'unit', type: unitId, owner: from.owner, team: from.team,
     x, y, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0,
   });
+  // Chaos spawns (Blood Fiends) roll a random armour type and perk (seeded, side-symmetric).
+  if (u.chaosSpawn) {
+    const r = sideRandom(sim.state, rx * 977 + ry * 131 + i * 17 + 5);
+    const types = ['light', 'medium', 'heavy', 'unarmored'] as const, perks = ['crit', 'evade', 'demolish'] as const;
+    e.armorType = types[Math.floor(r * types.length)];
+    e.blessed = { dmg: 0, haste: 0, armor: 0, perk: perks[Math.floor((r * 12) % 3)] };
+  }
+  return e;
 }
 
 /** A unit calls helpers to its side (Grove Keeper's treants); they fade after `ttl` seconds. */

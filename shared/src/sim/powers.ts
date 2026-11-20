@@ -187,14 +187,36 @@ function nearestEnemyUnit(sim: Sim, e: Entity, range: number): Entity | undefine
  * casts, so it is deterministic and mirror matches stay mirrored): a blast, a stun, death, nothing.
  */
 function chaos(sim: Sim, e: Entity, p: PowerDef): boolean {
-  const t = nearestEnemyUnit(sim, e, reach(p));
-  if (!t) return false;
-  const fate = (e.revives = (e.revives ?? 0) + 1) % 4;
-  if (fate === 1) { sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, p.dmg, 'spells', e.owner); }
-  else if (fate === 2) { if (!isImmune(t)) t.stun = Math.max(t.stun ?? 0, Math.round((p.duration ?? 4) * TICK_RATE)); sim.emit({ t: 'hex', id: t.id, d: t.stun ?? 0 }); dealDamage(sim, t, p.dmg / 3, 'spells', e.owner); }
-  else if (fate === 3) {
-    sim.emit({ t: 'slay', a: e.id, b: t.id });
-    if (t.maxHp <= p.dmg * 1.5) { t.hp = 0; rewardKill(sim, t, e.owner); } else dealDamage(sim, t, p.dmg, 'spells', e.owner);
+  // A random enemy unit (map-wide when global), one of the map's eight fates.
+  const pool = sim.state.entities.filter((u) => u.kind === 'unit' && u.team !== e.team && u.hp > 0 && !u.hidden
+    && (p.global || Math.hypot(u.x - centre(e).x, u.y - centre(e).y) <= p.range));
+  if (!pool.length) return false;
+  const t = pool[Math.floor(nextRandom(sim.state) * pool.length)];
+  const fate = Math.floor(nextRandom(sim.state) * 8);
+  const imm = isImmune(t);
+  switch (fate) {
+    case 0: // explodes (no bounty)
+      sim.emit({ t: 'splash', x: r2(t.x), y: r2(t.y), r: 1 }); t.hp = 0; t.smitten = true; break;
+    case 1: // dies (the caster gets the bounty)
+      sim.emit({ t: 'slay', a: e.id, b: t.id }); t.hp = 0; rewardKill(sim, t, e.owner); break;
+    case 2: // becomes a Mutation fighting for the caster
+      if (imm || !p.unit) { dealDamage(sim, t, 500, 'spells', e.owner); break; }
+      sim.emit({ t: 'charm', id: t.id });
+      t.hp = 0; t.smitten = true;
+      { const d = UNITS[p.unit]; sim.add({ kind: 'unit', type: p.unit, owner: e.owner, team: e.team, x: t.x, y: t.y, hp: d.hp, maxHp: d.hp, cd: 0, healCd: 0 }); }
+      break;
+    case 3: // hexed
+      if (!imm) { t.stun = t.sheep = 5 * TICK_RATE; sim.emit({ t: 'hex', id: t.id, d: t.stun }); }
+      break;
+    case 4: // 500 damage
+      sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, 500, 'spells', e.owner); break;
+    case 5: // blessed by chaos: +400 HP, +25 damage, fully healed (it helps the enemy!)
+      t.maxHp += 400; t.hp = t.maxHp; t.blessed = { dmg: (t.blessed?.dmg ?? 0) + 25, haste: t.blessed?.haste ?? 0, armor: t.blessed?.armor ?? 0, perk: t.blessed?.perk };
+      sim.emit({ t: 'revive', id: t.id }); break;
+    case 6: // stunned for 6 s and 200 spell damage
+      if (!imm) t.stun = Math.max(t.stun ?? 0, 6 * TICK_RATE);
+      sim.emit({ t: 'hex', id: t.id, d: 6 * TICK_RATE }); dealDamage(sim, t, 200, 'spells', e.owner); break;
+    default: break; // nothing at all
   }
   return true;
 }
@@ -203,15 +225,18 @@ function chaos(sim: Sim, e: Entity, p: PowerDef): boolean {
 function erase(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   const count = new Map<string, Entity[]>();
-  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
+  for (const u of around(sim, c, reach(p))) {
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || isImmune(u) || Math.hypot(u.x - c.x, u.y - c.y) > reach(p)) continue;
     const list = count.get(u.type) ?? [];
     list.push(u); count.set(u.type, list);
   }
-  let best: Entity[] = [], bestType = '';
-  for (const [type, list] of count) if (list.length > best.length || (list.length === best.length && type < bestType)) { best = list; bestType = type; }
-  if (!best.length) return false;
-  for (const u of best) { sim.emit({ t: 'slay', a: e.id, b: u.id }); u.hp = 0; rewardKill(sim, u, e.owner); }
+  if (!count.size) return false;
+  // Map-wide (the map's Eraser): a random enemy unit type; locally: the most numerous one.
+  const types = [...count.keys()].sort();
+  let pick: string;
+  if (p.global) pick = types[Math.floor(nextRandom(sim.state) * types.length)];
+  else pick = types.reduce((a, b) => (count.get(b)!.length > count.get(a)!.length ? b : a));
+  for (const u of count.get(pick)!) { sim.emit({ t: 'slay', a: e.id, b: u.id }); u.hp = 0; rewardKill(sim, u, e.owner); }
   return true;
 }
 

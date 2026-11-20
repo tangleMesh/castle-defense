@@ -39,7 +39,8 @@ describe('data', () => {
         if (b.spawn) expect(UNITS[b.spawn.unit], b.spawn.unit).toBeTruthy();
         for (const u of b.upgrades ?? []) expect(BUILDINGS[u]?.upgradeOnly, u).toBe(true);
       }
-      expect(f.buildings.filter((b) => b.special && !b.upgradeOnly)).toHaveLength(1);
+      // Legendaries (specials) need a sapphire unless they are upgrades of one.
+      for (const b of f.buildings.filter((x) => x.special && !x.upgradeOnly)) expect(b.sapphires, b.id).toBe(1);
     }
   });
 });

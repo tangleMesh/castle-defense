@@ -1,6 +1,6 @@
 import type { BuildingDef, UnitDef } from './types';
 
-const STAT: Record<string, string> = { dmg: 'damage', armor: 'armour', regen: 'HP/s regeneration', speed: 'speed', haste: 'attack speed', block: 'damage blocked per hit' };
+const STAT: Record<string, string> = { dmg: 'damage', armor: 'armour', regen: 'HP/s regeneration', speed: 'speed', haste: 'attack speed', block: 'damage blocked per hit', thorns: 'melee damage reflected' };
 const VS: Record<string, string> = { air: 'flyers', structure: 'buildings', light: 'light armour', medium: 'medium armour', heavy: 'heavy armour', fortified: 'fortified', unarmored: 'unarmoured', hero: 'hero armour', divine: 'divine armour' };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 /**
@@ -43,6 +43,7 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.cleave) out.push(`Cleaving attack: each hit deals ${pct(u.cleave.pct)} of its damage to all enemies within ${num(u.cleave.radius)} tiles of the target`);
   if (u.rampage) out.push(`Berserk: after a kill it attacks ${pct(u.rampage.haste)} faster for ${num(u.rampage.duration)}s (and takes ${pct(u.rampage.vuln)} more damage)`);
   if (u.ensnare) out.push(`Ensnare: every ${num(u.ensnare.every)}s it binds ${u.ensnare.count > 1 ? `up to ${u.ensnare.count} enemy flyers` : 'an enemy flyer'} to the ground for ${num(u.ensnare.duration)}s, so melee units can hit ${u.ensnare.count > 1 ? 'them' : 'it'}`);
+  if (u.chaosSpawn) out.push('Chaos-born: each one comes with a random armour type and a random perk (critical strike, evasion or demolish)');
   if (u.immune) out.push('Immune: stuns, slows, hexes, freezes and control have no effect');
   if (u.evade) out.push(`Evasion: ${pct(u.evade)} chance that an attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
@@ -69,8 +70,8 @@ export function powerText(b: BuildingDef): string | undefined {
   if (p.kind === 'tentacles') return `Tentacle prison: every ${num(p.cooldown)}s ${p.count} tentacles burst from the ground around the nearest enemy ${within} (they last ${num(p.duration)}s)`;
   if (p.kind === 'charm') return `Control: every ${num(p.cooldown)}s the nearest enemy unit ${within} with at most ${num(p.dmg)} HP joins your side`;
   if (p.kind === 'wave') return `Tsunami: every ${num(p.cooldown)}s a wave rolls ${num(p.range)} tiles towards the enemy, ${num(p.dmg)} damage to every ground unit in its path`;
-  if (p.kind === 'chaos') return `Present of chaos: every ${num(p.cooldown)}s the nearest enemy unit ${within} suffers the next fate: ${num(p.dmg)} damage, a ${num(p.duration)}s stun, death (up to ${Math.round(p.dmg * 1.5)} HP), or nothing`;
-  if (p.kind === 'erase') return `Erase: every ${num(p.cooldown)}s every enemy unit of the most numerous type ${within} dies (types with more than ${num(p.dmg)} HP are immune)`;
+  if (p.kind === 'chaos') return `Present of chaos: every ${num(p.cooldown)}s a random enemy unit ${within} suffers one of eight fates: it explodes, dies (you get the bounty), turns into a Mutation fighting for you, is hexed, takes 500 damage, is stunned for 6s with 200 damage, is strengthened (+400 HP, +25 damage), or nothing happens`;
+  if (p.kind === 'erase') return p.global ? `Erase: every ${num(p.cooldown)}s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared)` : `Erase: every ${num(p.cooldown)}s every enemy unit of the most numerous type ${within} dies (types with more than ${num(p.dmg)} HP are immune)`;
   if (p.kind === 'slay') return `Sudden death: every ${num(p.cooldown)}s the nearest enemy unit ${within} with at most ${num(p.dmg)} HP dies at once`;
   if (p.kind === 'hex' && p.air) return `Freezing blast: every ${num(p.cooldown)}s the toughest enemy flyer ${within} is frozen for ${num(p.duration)}s and takes ${num(p.dmg)} magic damage`;
   if (p.kind === 'hex') return `Hex: every ${num(p.cooldown)}s the toughest enemy unit ${within} is turned into a harmless critter for ${num(p.duration)}s`;

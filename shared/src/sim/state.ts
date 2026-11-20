@@ -1,4 +1,4 @@
-import type { FactionId } from '../data/types';
+import type { ArmorType, FactionId } from '../data/types';
 import type { GameMode } from '../constants';
 
 export type Team = 0 | 1;
@@ -64,7 +64,9 @@ export interface Entity {
   /** Ensnaring units: ticks until the next ensnare. */
   ensnareCd?: number;
   /** Tribal Blessing: permanent bonuses of this unit. */
-  blessed?: { dmg: number; haste: number; armor: number; perk: 'crit' | 'evade' | 'demolish' };
+  blessed?: { dmg: number; haste: number; armor: number; perk?: 'crit' | 'evade' | 'demolish' };
+  /** Armour type of this one unit (chaos spawns roll their own). */
+  armorType?: ArmorType;
   /** Stoneskin Scroll: extra armor for a while. */
   stone?: { armor: number; left: number };
   /** Stealth units: invisible to the enemy right now. */

@@ -179,7 +179,7 @@ describe('building powers', () => {
     for (const b of Object.values(BUILDINGS)) {
       // The City of Magic's sheep hex is map-wide on request; the flyer-freezing mushroom stays local.
       // Map-wide where the map says so: the Stasis Totem freezes every enemy unit.
-      if (b.power && ['beam', 'wave', 'erase'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
+      if (b.power && ['beam', 'wave'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
       if (b.power?.kind === 'hex') expect(!!b.power.global, b.id).toBe(b.id === 'su_city_of_magic');
       if (b.power && ['bombard', 'cyclone', 'slay', 'charm', 'chaos', 'tentacles'].includes(b.power.kind)) expect(b.power.global, b.id).toBe(true);
     }
@@ -549,41 +549,45 @@ describe('Doomforge mechanics', () => {
   ];
   const simD = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 14 });
 
-  it('the Eraser wipes out the most numerous enemy kind in range, strong kinds are immune', () => {
+  const typesOf = (pred: (u: (typeof UNITS)[string]) => boolean, n: number) => Object.values(UNITS).filter((u) => pred(u) && !u.air && !u.immune && !u.onDeath && !u.summon).slice(0, n).map((u) => u.id);
+
+  it('the Eraser kills every enemy unit of one random type, anywhere on the map (immune ones are spared)', () => {
     const sim = simD();
-    building(sim, 0, 'df_eraser', 30, 18);
-    const vines = [0, 1, 2].map((i) => unit(sim, 1, 'tw_vineling', 36 + i, 19));
-    const archers = [0, 1].map((i) => unit(sim, 1, 'tw_thorn_archer', 36 + i, 21));
-    const treant = unit(sim, 1, 'tw_ancient_treant', 38, 23);
-    const all = [...vines, ...archers, treant];
+    building(sim, 0, 'df_eraser', 6, 18);
+    const [a, b] = typesOf((u) => u.hp >= 200, 2);
+    const as = [0, 1, 2].map((i) => unit(sim, 1, a, 60 + i, 19));
+    const bs = [0, 1].map((i) => unit(sim, 1, b, 90 + i, 21));
+    const imm = unit(sim, 1, Object.values(UNITS).find((u) => u.immune && !u.air)!.id, 80, 23);
+    const all = [...as, ...bs, imm];
+    for (const u of all) u.hp = u.maxHp = 1e5;
     const at = all.map((u) => [u.x, u.y]);
     let erased = false;
     for (let i = 0; i < (BUILDINGS.df_eraser.power!.cooldown + 1) * TICK_RATE && !erased; i++) {
       all.forEach((u, k) => { if (u.hp > 0) { u.x = at[k][0]; u.y = at[k][1]; } });
       erased = sim.step().some((e) => e.t === 'slay');
     }
-    expect(vines.every((v) => v.hp === 0)).toBe(true);
-    expect(archers.every((a) => a.hp > 0)).toBe(true);
-    expect(treant.hp).toBeGreaterThan(0);
+    const deadA = as.every((u) => u.hp === 0), deadB = bs.every((u) => u.hp === 0);
+    expect(deadA !== deadB).toBe(true); // exactly one whole type
+    expect(imm.hp).toBeGreaterThan(0);
   });
 
-  it('a present of chaos cycles its fates on the nearest enemy', () => {
+  it('a present of chaos picks one of eight fates for a random enemy (seeded)', () => {
     const sim = simD();
-    const ruin = building(sim, 0, 'df_magic_ruin', 30, 18);
-    const p = BUILDINGS.df_magic_ruin.power!;
-    const fates: string[] = [];
-    for (let n = 0; n < 4; n++) {
-      const foe = unit(sim, 1, 'tw_gnasher', 34, 19);
-      foe.hp = foe.maxHp = 500;
+    const ruin = building(sim, 0, 'df_magic_ruin', 6, 18);
+    const [a] = typesOf((u) => u.hp >= 200, 1);
+    const seen = new Set<string>();
+    for (let n = 0; n < 80; n++) {
+      const foe = unit(sim, 1, a, 60, 19);
+      foe.hp = foe.maxHp = 2000;
       ruin.abilityCd = 1;
-      const before = foe.hp;
       const ev = sim.step();
-      fates.push(foe.hp === 0 ? 'death' : foe.stun ? 'stun' : foe.hp < before ? 'blast' : 'nothing');
+      const mutated = sim.state.entities.some((e) => e.type === 'df_mutation' && e.team === 0);
+      seen.add(foe.hp === 0 ? (mutated ? 'mutation' : 'death') : foe.sheep ? 'hex' : foe.stun ? 'stun' : foe.maxHp > 2000 ? 'blessed' : foe.hp < 2000 ? 'hurt' : 'nothing');
       expect(ev.length).toBeGreaterThanOrEqual(0);
-      sim.removeNow(foe);
+      for (const e of [...sim.state.entities]) if (e.kind === 'unit') sim.removeNow(e);
     }
-    expect(fates).toEqual(['blast', 'stun', 'death', 'nothing']);
-    void p;
+    expect(seen.size).toBeGreaterThanOrEqual(6);
+    expect(seen.has('mutation')).toBe(true);
   });
 });
 
