@@ -111,8 +111,8 @@ describe('targeting', () => {
     const sim = newSim();
     const a = unit(sim, 0, 'iv_arbalester', 50, 20);
     const st = attackStats(a)!;
-    expect(canTarget(sim, a, st, unit(sim, 1, 'tw_vineling', 52, 20))).toBe(false);
-    expect(canTarget(sim, a, st, unit(sim, 1, 'tw_dusk_moth', 52, 21))).toBe(true);
+    expect(canTarget(sim, a, st, unit(sim, 1, 'tw_spider', 52, 20))).toBe(false);
+    expect(canTarget(sim, a, st, unit(sim, 1, 'tw_jade_wyrm', 52, 21))).toBe(true);
     expect(canTarget(sim, a, st, sim.castle(1))).toBe(false);
   });
 });
@@ -144,10 +144,14 @@ describe('summons', () => {
     const gold = sim.state.players[0].gold;
     // Keep the keeper from summoning again while the first pair fades.
     k.abilityCd = 1e6;
-    for (let i = 0; i < sm.ttl * TICK_RATE + 2; i++) { k.x = 90; k.y = 4; for (const t of treants()) { t.x = 92; t.y = 4; } sim.step(); }
+    let income = 0;
+    for (let i = 0; i < sm.ttl * TICK_RATE + 2; i++) {
+      k.x = 90; k.y = 4; for (const t of treants()) { t.x = 92; t.y = 4; }
+      for (const ev of sim.step()) if (ev.t === 'income') income += ev.amounts[0];
+    }
     expect(treants()).toHaveLength(0);
     expect(sim.state.players[1].lost ?? 0).toBe(0);
-    expect(sim.state.players[0].gold - gold).toBeLessThan(20); // only income, no bounty
+    expect(sim.state.players[0].gold - gold).toBe(income); // only income, no bounty
   });
 });
 
@@ -500,7 +504,7 @@ describe('Frostmark mechanics', () => {
   it('the Chilling Mushroom freezes flyers only', () => {
     const sim = simF();
     building(sim, 0, 'fm_frost_mushroom', 30, 18);
-    const moth = unit(sim, 1, 'tw_dusk_moth', 35, 19), stag = unit(sim, 1, 'tw_boulder_ram', 34, 19);
+    const moth = unit(sim, 1, 'tw_jade_wyrm', 35, 19), stag = unit(sim, 1, 'tw_boulder_ram', 34, 19);
     for (const u of [moth, stag]) u.hp = u.maxHp = 1e5;
     for (let i = 0; i < (BUILDINGS.fm_frost_mushroom.power!.cooldown + 1) * TICK_RATE && !moth.stun; i++) { moth.x = 35; moth.y = 19; stag.x = 34; stag.y = 19; sim.step(); }
     expect(moth.stun).toBeGreaterThan(0);
@@ -511,7 +515,7 @@ describe('Frostmark mechanics', () => {
   it("an Ancient Wendigo's howl makes nearby enemies deal less damage", () => {
     const sim = simF();
     unit(sim, 0, 'fm_ancient_wendigo', 50, 20);
-    const foe = unit(sim, 1, 'tw_vineling', 51, 20);
+    const foe = unit(sim, 1, 'tw_spider', 51, 20);
     sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
     computeAuras(sim);
     expect(sim.mods.get(foe.id)?.dmgMalus).toBeCloseTo(UNITS.fm_ancient_wendigo.aura!.value);
@@ -878,6 +882,34 @@ describe('Cogspark mechanics', () => {
     expect(hexed).toBe(2);
     expect(g.eshield).toBeUndefined();
     expect(g.sheep).toBeGreaterThan(0);
+  });
+});
+
+describe('Thornwild mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'thornwild' },
+    { userId: 'b', name: 'B', team: 1, faction: 'gravewake' },
+  ];
+  const simT = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 9 });
+
+  it('the Ancient Guardian banishes an enemy anywhere: it cannot attack and takes more magic damage', () => {
+    const sim = simT();
+    building(sim, 0, 'tw_mossheart', 20, 18);
+    const foe = unit(sim, 1, 'gw_zombie', 100, 20);
+    foe.hp = foe.maxHp = 1e5;
+    for (let i = 0; i < (BUILDINGS.tw_mossheart.power!.cooldown + 1) * TICK_RATE && !foe.banished; i++) { foe.x = 100; foe.y = 20; sim.step(); }
+    expect(foe.banished).toBeGreaterThan(0);
+    const plain = unit(sim, 1, 'gw_zombie', 102, 22);
+    plain.hp = plain.maxHp = 1e5;
+    expect(dealDamage(sim, foe, 100, 'magic', 0)).toBeCloseTo(dealDamage(sim, plain, 100, 'magic', 0) * 1.66, 3);
+  });
+
+  it('a giant spider bursts into two forest spiders', () => {
+    const sim = simT();
+    const s = unit(sim, 0, 'tw_giant_spider', 40, 20);
+    s.hp = 0;
+    sim.removeDead();
+    expect(sim.state.entities.filter((e) => e.type === 'tw_forest_spider')).toHaveLength(2);
   });
 });
 

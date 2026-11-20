@@ -23,7 +23,7 @@ const newSim = (bestOf = 3, n = 1) => Sim.create({ countdownTicks: 0, players: p
 function placeNow(sim: Sim, player: number, building: string, tx: number, ty: number, complete = true) {
   const p = sim.state.players[player];
   sim.state.players[player].gold += 10000;
-  sim.state.players[player].lumber += 10000;
+  sim.state.players[player].lumber = (sim.state.players[player].lumber ?? 0) + 10000;
   sim.step([{ player, cmd: { c: 'build', building, tx, ty } }]);
   for (let i = 0; i < 400 && sim.get(p.builderId)!.orders!.length; i++) sim.step();
   const b = sim.state.entities.find((e) => e.kind === 'building' && e.tx === tx && e.ty === ty)!;
@@ -234,7 +234,7 @@ describe('spawning & combat', () => {
   it('opposing units fight and kills pay bounty', () => {
     const sim = newSim();
     const a = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 25, 12), 'iv_knight', 0, 1);
-    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_burrow', 85, 12), 'tw_vineling', 0, 1);
+    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_burrow', 85, 12), 'tw_spider', 0, 1);
     a.x = 55; a.y = 16; b.x = 56; b.y = 16;
     const gold = sim.state.players[0].gold;
     const events: SimEvent[] = [];
@@ -246,13 +246,13 @@ describe('spawning & combat', () => {
     dealDamage(sim, sim.castle(1), 100, 'chaos', 0);
     expect(sim.state.players[0].castleDmg).toBeCloseTo(sim.castle(1).maxHp - sim.castle(1).hp);
     expect(makeSnapshot(sim, []).players[0].castleDmg).toBeGreaterThan(0);
-    expect(sim.state.players[0].gold).toBeGreaterThanOrEqual(gold + Math.max(1, Math.round(UNITS.tw_vineling.bounty * BOUNTY_MULT)));
+    expect(sim.state.players[0].gold).toBeGreaterThanOrEqual(gold + Math.max(1, Math.round(UNITS.tw_spider.bounty * BOUNTY_MULT)));
   });
 
   it('ground melee cannot hit air units', () => {
     const sim = newSim();
     const a = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 25, 12), 'iv_militia', 0, 1);
-    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_moth_hive', 85, 12), 'tw_dusk_moth', 0, 1);
+    const b = spawnUnit(sim, placeNow(sim, 1, 'tw_wyrm_roost', 85, 12), 'tw_jade_wyrm', 0, 1);
     a.x = 55; a.y = 16; b.x = 55.5; b.y = 16;
     const hp = b.hp;
     for (let i = 0; i < 10; i++) { b.x = 55.5; b.y = 16; sim.step(); }
@@ -265,9 +265,9 @@ describe('rescue strike', () => {
     const sim = newSim();
     const c = rectCenter(MAP.castles[0]);
     const hut = placeNow(sim, 1, 'tw_burrow', 85, 12);
-    const enemy = spawnUnit(sim, hut, 'tw_vineling', 0, 1);
+    const enemy = spawnUnit(sim, hut, 'tw_spider', 0, 1);
     enemy.x = c.x + 6; enemy.y = c.y;
-    const far = spawnUnit(sim, hut, 'tw_vineling', 0, 1);
+    const far = spawnUnit(sim, hut, 'tw_spider', 0, 1);
     far.x = c.x + 20; far.y = c.y;
     const friend = spawnUnit(sim, placeNow(sim, 0, 'iv_militia_hall', 10, 2), 'iv_militia', 0, 1);
     friend.x = c.x + 6; friend.y = c.y + 1;
@@ -297,7 +297,7 @@ describe('rescue strike', () => {
     expect(sim.get(friend.id)).toBeDefined();
     expect(sim.get(far.id)).toBeDefined();
     // The smitten Vineling doesn't burst into Sproutlings (the far one is untouched).
-    expect(sim.state.entities.filter((e) => e.type === 'tw_sproutling')).toEqual([]);
+    expect(sim.state.entities.filter((e) => e.type === 'tw_forest_spider')).toEqual([]);
     sim.step([{ player: 0, cmd: { c: 'rescue', x: c.x + 6, y: c.y } }]);
     expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('already'))).toBe(true);
   });
@@ -316,7 +316,7 @@ describe('rescue strike', () => {
     }
     expect(sim.get(enemy.id)).toBeUndefined();
     expect(p.kills).toBe(kills0 + 1);
-    expect(paid).toBe(Math.round(UNITS.tw_vineling.bounty * BOUNTY_MULT));
+    expect(paid).toBe(Math.round(UNITS.tw_spider.bounty * BOUNTY_MULT));
   });
 });
 

@@ -19,6 +19,8 @@ export interface UnitModel {
     | 'highelf' | 'blademaster' | 'sorceress' | 'ballista' | 'dragonhawk'
     // Frostmark northerners
     | 'frostbeast' | 'magnataur' | 'wendigo' | 'yeti' | 'icetroll' | 'icequeen' | 'drake'
+    // Thornwild (the map's Nature race)
+    | 'spider' | 'furbolg' | 'forestbear' | 'forestspirit'
     // Gravewake undead
     | 'zombie' | 'necromancer' | 'lich' | 'skeleton' | 'vampire' | 'bat' | 'banshee' | 'fleshgolem' | 'bonewyrm'
     // Doomforge demons
@@ -275,7 +277,7 @@ export interface BuildingDef {
  * type `unit` burst from the ground in a ring of `radius` around the nearest enemy and last `duration` s.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine' | 'enchant' | 'eshield';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine' | 'enchant' | 'eshield' | 'banish';
   cooldown: number;
   range: number;
   radius: number;

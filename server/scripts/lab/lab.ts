@@ -38,7 +38,7 @@ const arg = (name: string, def: string) => { const i = argv.indexOf(`--${name}`)
 const flag = (name: string) => argv.includes(`--${name}`);
 const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
 
-// --patch '{"tw_burrow.spawn.interval":24,"tw_vineling.hp":90}': what-if changes to building / unit data.
+// --patch '{"tw_burrow.spawn.interval":24,"tw_spider.hp":90}': what-if changes to building / unit data.
 const patch = JSON.parse(arg('patch', '{}')) as Record<string, unknown>;
 const pool = new LabPool(undefined, patch);
 const problems: string[] = [];

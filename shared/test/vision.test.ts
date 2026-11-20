@@ -29,7 +29,7 @@ describe('fog of war', () => {
   it('filters enemy entities and orders per team, keeps castles, reveals all between rounds', () => {
     const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 7 });
     const castle1 = sim.castle(1)!;
-    const scout = spawnUnit(sim, castle1, 'tw_vineling', 0, 1);
+    const scout = spawnUnit(sim, castle1, 'tw_spider', 0, 1);
     scout.x = 60; scout.y = 14;
     const full = makeSnapshot(sim, [{ t: 'die', id: 999, x: 60, y: 14, k: 'unit' }]);
     const seenBy0 = filterSnapshot(full, 0);

@@ -6,17 +6,17 @@ describe('balance tuning', () => {
 
   it('scales from the hand-written values and never compounds', () => {
     applyTuning(NEUTRAL_TUNING);
-    const hp = UNITS.tw_vineling.hp, dmg = UNITS.tw_vineling.dmg, ivHp = UNITS.iv_militia.hp;
-    const t: Tuning = { factions: { thornwild: { power: 1.21 } }, units: { tw_vineling: { dmg: 0.5 } }, aiIncome: { easy: 0.8 } };
+    const hp = UNITS.tw_spider.hp, dmg = UNITS.tw_spider.dmg, ivHp = UNITS.iv_militia.hp;
+    const t: Tuning = { factions: { thornwild: { power: 1.21 } }, units: { tw_spider: { dmg: 0.5 } }, aiIncome: { easy: 0.8 } };
     applyTuning(t);
     applyTuning(t);
-    expect(UNITS.tw_vineling.hp).toBeCloseTo(hp * 1.1);
-    expect(UNITS.tw_vineling.dmg).toBeCloseTo(dmg * 1.1 * 0.5);
+    expect(UNITS.tw_spider.hp).toBeCloseTo(hp * 1.1);
+    expect(UNITS.tw_spider.dmg).toBeCloseTo(dmg * 1.1 * 0.5);
     expect(UNITS.iv_militia.hp).toBeCloseTo(ivHp);
     expect(AI_INCOME.easy).toBe(0.8);
     applyTuning(NEUTRAL_TUNING);
-    expect(UNITS.tw_vineling.hp).toBe(hp);
-    expect(UNITS.tw_vineling.dmg).toBe(dmg);
+    expect(UNITS.tw_spider.hp).toBe(hp);
+    expect(UNITS.tw_spider.dmg).toBe(dmg);
     expect(AI_INCOME.easy).toBe(1);
     expect(AI_INCOME.brutal).toBe(1.3);
   });
@@ -32,7 +32,7 @@ describe('balance tuning', () => {
 
   it('early scales only first-tier units (and what they burst into) on top of power', () => {
     applyTuning(NEUTRAL_TUNING);
-    expect([...EARLY_UNITS]).toEqual(expect.arrayContaining(['iv_militia', 'tw_vineling', 'tw_sproutling']));
+    expect([...EARLY_UNITS]).toEqual(expect.arrayContaining(['iv_militia', 'tw_spider']));
     expect(EARLY_UNITS.has('iv_knight')).toBe(false);
     expect(EARLY_UNITS.has('iv_sun_champion')).toBe(false);
     const mil = UNITS.iv_militia.hp, kn = UNITS.iv_knight.hp;

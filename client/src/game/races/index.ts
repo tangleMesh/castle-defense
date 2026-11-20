@@ -7,5 +7,6 @@ import './gravewake';
 import './doomforge';
 import './tidecall';
 import './blightroot';
+import './thornwild';
 import './builders';
 import './common';

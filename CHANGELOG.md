@@ -7,6 +7,26 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.12
+
+- **Thornwild rebuilt from the map's Nature race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Spiders** (new): Black Spiders → Giant Spiders → Brood Mothers. They poison and slow, web their prey, and split into smaller spiders when they die.
+  - **Furbolg Shamans** (new) heal 200 / 400.
+  - **Dryads → Keepers of the Grove → the Ancient Keeper (legendary):** heals and summoned treants. The Ancient Keeper is immune, has 25% evade and a +15 HP per second regeneration aura.
+  - **Bears** (new): Bears → Ancient Bears, with cleave, bash and crits.
+  - **Emerald Dragons** corrode armour.
+  - **Mountain Giants:** fortified skin that blocks 25 of every hit, plus pulverize.
+  - **Specials:**
+    - Ancient Protector tower.
+    - Ancient of Gale: map-wide tornadoes.
+    - Ancient Guardian: banishes a random enemy anywhere. A banished unit can't attack and takes 66% more magic damage.
+    - Ancient of Wonders (new, legendary): 4 forest spirits every 40 s that stun and explode.
+  - **Removed:** vinelings, stags, moths, treant champions and the heartwood upgrades (none of them are in the map).
+- **Fixed:**
+  - Heals now resolve for every unit at once at the start of the tick. A healer's choice no longer depends on whether an enemy struck first (mirror matches stay mirrored).
+  - Bots treat flyer-only units (marksmen, copters) as anti-air. Once they decide to answer enemy flyers they keep saving for it.
+
 ## 0.46.11
 
 - **Ironvow rebuilt from the map's Human race:**

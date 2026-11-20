@@ -108,6 +108,7 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   const mr = (type === 'magic' || type === 'spells') && target.kind === 'unit' ? UNITS[target.type].magicResist : undefined;
   if (mr) dmg *= 1 - mr;
   if (ward && (type === 'magic' || type === 'spells')) dmg *= 0.5;
+  if (target.banished && (type === 'magic' || type === 'spells')) dmg *= 1.66;
   target.hp -= dmg;
   if (target.hp <= 0 && target.kind !== 'castle') {
     target.hp = 0;
@@ -451,6 +452,7 @@ export function stepCombatUnits(sim: Sim) {
     // Decay auras (City of Decay) rot enemy units; nobody earns a bounty for what rot kills.
     if (mods.decay > 0) dealDamage(sim, e, mods.decay / TICK_RATE, 'chaos', -1, true);
     if (e.weaken && --e.weaken.left <= 0) delete e.weaken;
+    if (e.banished && --e.banished <= 0) delete e.banished;
     if (e.rampageLeft && --e.rampageLeft <= 0) delete e.rampageLeft;
     if (e.netted && --e.netted <= 0) delete e.netted;
     if (e.ensnareCd && e.ensnareCd > 0) e.ensnareCd--;
@@ -486,6 +488,9 @@ export function stepCombatUnits(sim: Sim) {
     }
   }
   acting = acting.filter((e) => e.hp > 0); // killed by poison: no last blow
+  // Heals first, for everyone at once: inside each unit's turn a healer's choice depended on
+  // whether an enemy had already struck this tick (stunned healers don't heal).
+  for (const e of acting) if (!e.stun) tryHeal(sim, e);
   // Moves are simultaneous too: every unit decides from the positions at the start of the tick
   // (a chaser must not see where its target has already stepped this tick), then all move at once.
   const moved: Array<[Entity, number, number]> = [];
@@ -506,7 +511,7 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
     // Killed this tick: its last blow still lands (no movement, no regeneration).
     const st = attackStats(e)!, t = sim.get(e.targetId);
     // Its own turn would have counted the cooldown down first: a blow due this very tick still lands.
-    if ((e.cd ?? 0) <= 1 && !e.stun && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg * (1 + modsOf(sim, e.id).dmgMalus));
+    if ((e.cd ?? 0) <= 1 && !e.stun && !e.banished && t && t.hp > 0 && t.team !== e.team && sim.edgeDist(e, t) <= st.range + 0.05) performAttack(sim, e, st, t, modsOf(sim, e.id).dmg * (1 + modsOf(sim, e.id).dmgMalus));
     return;
   }
   const st = attackStats(e)!;
@@ -514,7 +519,6 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
   if ((e.cd ?? 0) > 0) e.cd!--;
   // Stunned: no moving, attacking or healing.
   if (e.stun) { e.stun--; if (e.sheep && --e.sheep <= 0) delete e.sheep; return; }
-  tryHeal(sim, e);
 
   let target = sim.get(e.targetId);
   const rescan = (tick + e.id) % 5 === 0;

@@ -31,7 +31,7 @@ export function stepPowers(sim: Sim) {
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     e.abilityCd -= 1 + manaBoost(sim, e);
     if (e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : p.kind === 'moonshine' ? moonshine(sim, e, p) : p.kind === 'enchant' ? enchant(sim, e, p) : p.kind === 'eshield' ? energyShield(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : p.kind === 'moonshine' ? moonshine(sim, e, p) : p.kind === 'enchant' ? enchant(sim, e, p) : p.kind === 'eshield' ? energyShield(sim, e, p) : p.kind === 'banish' ? banish(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -212,6 +212,22 @@ function energyShield(sim: Sim, e: Entity, p: PowerDef): boolean {
   const u = pool[Math.floor(nextRandom(sim.state) * pool.length)];
   u.eshield = { armor: p.armor ?? 2, charges: p.charges ?? 1, hp: p.hp ?? 0 };
   sim.emit({ t: 'revive', id: u.id });
+  return true;
+}
+
+/** Banish: a random enemy unit (anywhere, if global) turns ethereal: it can't attack and takes more magic damage. */
+function banish(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const c = centre(e);
+  const pool: Entity[] = [];
+  for (const u of around(sim, c, reach(p))) {
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.banished || isImmune(u) || Math.hypot(u.x - c.x, u.y - c.y) > reach(p)) continue;
+    pool.push(u);
+  }
+  if (!pool.length) return false;
+  const t = pool[Math.floor(nextRandom(sim.state) * pool.length)];
+  if (shieldBlocks(t)) return true;
+  t.banished = Math.round((p.duration ?? 12) * TICK_RATE);
+  sim.emit({ t: 'hex', id: t.id, d: 0 });
   return true;
 }
 

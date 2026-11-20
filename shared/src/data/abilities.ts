@@ -77,6 +77,7 @@ export function powerText(b: BuildingDef): string | undefined {
   // Global powers reach the whole map.
   const within = p.global ? 'anywhere on the map' : `within ${num(p.range)} tiles`;
   if (p.kind === 'bless' && p.ward) return `Resistance of the wilderness: every ${num(p.cooldown)}s a random unit of yours (one without it first) permanently gains 50% spell resistance and a 40% chance to take 40 less damage from an attack`;
+  if (p.kind === 'banish') return `Banish: every ${num(p.cooldown)}s a random enemy unit ${p.global ? 'anywhere on the map' : `within ${num(p.range)} tiles`} turns ethereal for ${num(p.duration)}s: it can't attack and takes 66% more magic and spell damage`;
   if (p.kind === 'eshield') return `Energy shield: every ${num(p.cooldown)}s a random unit of yours (one without it first) gains +${num(p.armor)} armor and a shield that blocks the next ${p.charges ?? 1} hostile building abilit${(p.charges ?? 1) > 1 ? 'ies' : 'y'}${p.hp ? ` (the first block heals ${num(p.hp)})` : ''}`;
   if (p.kind === 'enchant') return `Enchantment: every ${num(p.cooldown)}s a random unit of yours (one without it first) gets a forged weapon (50% splash), a rock shield (+15 armor), haste (+75% attack speed) or rejuvenation (+450 HP)`;
   if (p.kind === 'moonshine') return `Moonshine blessing: every ${num(p.cooldown)}s everything within ${num(p.radius)} tiles of a random wounded unit of yours heals ${num(p.dmg)} HP and gains +${num(p.armor)} armor for ${num(p.duration)}s`;

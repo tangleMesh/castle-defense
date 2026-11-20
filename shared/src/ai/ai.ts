@@ -159,6 +159,8 @@ type Option =
 const RESCUE_CLAIMS = new WeakMap<Sim, Map<number, number>>();
 
 export class AiPlayer {
+  /** Decided to build anti-air against enemy flyers (kept until the gap is closed). */
+  private aaCommitted = false;
   readonly profile: Profile;
   private nextThink: number;
   private rescueSeenAt = -1;
@@ -330,12 +332,17 @@ export class AiPlayer {
     // Enemy flyers outnumber our anti-air: the best anti-air spawner comes first, and the bot saves
     // up for it (hard ~40 s, normal ~25 s) instead of buying yet another ground spawner that can't
     // hit them. Easy reacts too, but only every other decision.
-    const aa = (P.antiAirWait !== undefined && this.antiAirGap(sim, me, mine, queued) > 0 && (P.counter || this.rnd() < 0.5))
+    // Once the bot decides to answer the flyers it sticks to it until the gap is closed.
+    const gap = P.antiAirWait !== undefined && this.antiAirGap(sim, me, mine, queued) > 0;
+    if (!gap) this.aaCommitted = false;
+    else if (!this.aaCommitted && (P.counter || this.rnd() < 0.5)) this.aaCommitted = true;
+    const aa = this.aaCommitted
       ? options.filter((o) => o.kind === 'build' && o.def.spawn && canHitAir(UNITS[o.def.spawn.unit])).sort((a, b) => b.score - a.score)[0]
       : undefined;
     if (goal && goal.def.cost <= me.gold) pick = goal;
     else if (aa && aa.def.cost <= me.gold) pick = aa;
-    else if (aa && aa.def.cost <= me.gold + perTick * (P.antiAirWait ?? 0)) return null;
+    // Committed to anti-air: save for it (at least 8 income ticks: the map's economy is tight early).
+    else if (aa && aa.def.cost <= me.gold + perTick * Math.max(P.antiAirWait ?? 0, 8)) return null;
     else if (P.planner) {
       pick = this.plan(sim, me, mine, options, perTick);
       if (!pick) return null;
@@ -716,7 +723,7 @@ function teamVision(sim: Sim, team: number): Uint8Array {
 const INTEL_UNIT_TICKS = 60 * TICK_RATE;
 
 /** The unit can fight flyers (shoots up, or flies itself). */
-const canHitAir = (u: UnitDef) => !!(u.targetsAir || u.air);
+const canHitAir = (u: UnitDef) => !!(u.targetsAir || u.airOnly || u.air);
 
 interface EnemyProfile {
   armor: Partial<Record<ArmorType, number>>;
