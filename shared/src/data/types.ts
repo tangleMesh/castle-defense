@@ -238,6 +238,8 @@ export interface BuildingDef {
   incomeBonus?: number;
   /** Every `every`-th own unit that falls within `radius` tiles rises again on the spot (not summons). */
   /** Revive fallen own units: every n-th (`every`) or with a real `chance` (the map's Golden Shrine: 20%, stacks once, never legendaries). */
+  /** Call to Arms (Heroic Shrine): chance that a unit trained by the team comes with an extra one for the shrine's owner (stacks once). */
+  callToArms?: number;
   /** Power plant: own buildings within `radius` tiles get +2 armor and are immune to freezing; towers +25% damage; their units +100 HP, +2 armor, +20% damage. */
   powerPlant?: { radius: number };
   /** Link (the map's Linker): when an own unit dies this share of its max HP heals the team's other units. */

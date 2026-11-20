@@ -7,6 +7,24 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.11
+
+- **Ironvow rebuilt from the map's Human race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Footmen → Defenders:** defenders evade 15% and take only 40% of ranged and 50% of spell damage.
+  - **Chapel line:** Crusaders → Paladins → the Holy Warrior (legendary, 70% spell resistance, +7 armour aura). All of them cleave and bash.
+  - **Gryphon Riders:** 15% bash and 10% chain lightning.
+  - **Warlocks** (new, Hall of Warlocks): chaos blasts for 270 around their target.
+  - **Snipers** upgrade into Marksmen (flyers only, 40% 3× crits) or Heavy Gunners (splash, 20% crits).
+  - **Mortars:** very long-range splash.
+  - **Specials:**
+    - Watch Tower: 90 damage per second, 9.5 tiles.
+    - Gjallarhorn: +66% attack speed nearby.
+    - Artillery: shells the enemy base anywhere for 350.
+    - Heroic Shrine (legendary): a 16% chance per trained unit of an extra one, stacking once.
+  - **Removed:** halberdiers, acolytes, priestesses, stables, the cannon bastion, the counting house and the Sun Citadel champions (none of them are in the map).
+- **Fixed:** randomly raised skeletons (Skull Shrine) now roll a new kind each time, side-symmetric.
+
 ## 0.46.10
 
 - **Cogspark copied exactly from the map's Mechanical race:**

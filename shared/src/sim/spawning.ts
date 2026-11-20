@@ -2,7 +2,7 @@ import { FIRST_BUILD_BONUS, START_LUMBER, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, teamItemBonus } from '../data';
 import { idx, inBounds, nearestFree } from './grid';
 import type { Sim } from './sim';
-import { sideRandom } from './rng';
+import { sideRandom, chanceRoll } from './rng';
 import { MAP } from '../map/map';
 import type { Entity } from './state';
 
@@ -70,11 +70,25 @@ export function stepBuildings(sim: Sim) {
     if (e.spawnTimer > 0) continue;
     e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
     const sp = def.spawn;
+    const half = (e.size ?? 2) / 2, at = { x: e.tx! + half, y: e.ty! + half, team: e.team };
     for (let i = 0; i < sp.count; i++) {
       // A random kind from the pool (raised skeletons), seeded and side-symmetric.
-      const kind = sp.pool ? sp.pool[Math.floor(sideRandom(sim.state, e.tx! * 31 + e.ty! * 977 + i + (e.team === 0 ? 0 : 0)) * sp.pool.length)] : sp.unit;
+      const kind = sp.pool ? sp.pool[Math.floor(chanceRoll(sim.state, at, 50 + i) * sp.pool.length)] : sp.unit;
       const u = spawnUnit(sim, e, kind, i, sp.count + (sp.extra ? 1 : 0));
       if (sp.ttl) u.ttl = Math.round(sp.ttl * TICK_RATE);
+    }
+    // Call to Arms (Heroic Shrine): a chance that an extra unit is trained for the shrine's owner
+    // (a second shrine of the team stacks once; never legendary units or summons).
+    if (!def.special && !sp.ttl) {
+      const shrines = sim.state.entities.filter((b) => b.kind === 'building' && b.team === e.team && b.hp > 0 && !b.buildLeft && BUILDINGS[b.type].callToArms);
+      if (shrines.length) {
+        const p = 1 - Math.pow(1 - BUILDINGS[shrines[0].type].callToArms!, Math.min(2, shrines.length));
+        if (chanceRoll(sim.state, at, 60) < p) {
+          const extra = spawnUnit(sim, e, sp.unit, sp.count, sp.count + 1);
+          extra.owner = shrines[0].owner;
+          sim.emit({ t: 'revive', id: extra.id });
+        }
+      }
     }
     if (def.spawn.extra) spawnUnit(sim, e, def.spawn.extra, def.spawn.count, def.spawn.count + 1);
   }

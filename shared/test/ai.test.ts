@@ -43,7 +43,7 @@ describe('AI players', () => {
         if (!before && sim.state.entities.some((e) => e.team === 1 && e.kind === 'unit' && UNITS[e.type].air)) before = new Set(sim.playerBuildings(0).map((e) => e.id));
       }
       expect(before, 'the flyer army showed up').not.toBeNull();
-      const isAa = (id: string) => { const sp = BUILDINGS[id].spawn; return !!sp && !!(UNITS[sp.unit].targetsAir || UNITS[sp.unit].air); };
+      const isAa = (id: string) => { const sp = BUILDINGS[id].spawn; return !!sp && !!(UNITS[sp.unit].targetsAir || UNITS[sp.unit].airOnly || UNITS[sp.unit].air); };
       const after = sim.playerBuildings(0).filter((e) => !before!.has(e.id) && BUILDINGS[e.type].spawn).map((e) => e.type);
       const all = sim.playerBuildings(0).map((e) => e.type).filter(isAa);
       expect(after.slice(0, 2).some(isAa), `${level} #${seed}: built ${after.join(', ')} after the first flyer`).toBe(true);

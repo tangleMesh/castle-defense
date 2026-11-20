@@ -23,6 +23,7 @@ const newSim = (bestOf = 3, n = 1) => Sim.create({ countdownTicks: 0, players: p
 function placeNow(sim: Sim, player: number, building: string, tx: number, ty: number, complete = true) {
   const p = sim.state.players[player];
   sim.state.players[player].gold += 10000;
+  sim.state.players[player].lumber += 10000;
   sim.step([{ player, cmd: { c: 'build', building, tx, ty } }]);
   for (let i = 0; i < 400 && sim.get(p.builderId)!.orders!.length; i++) sim.step();
   const b = sim.state.entities.find((e) => e.kind === 'building' && e.tx === tx && e.ty === ty)!;
@@ -68,7 +69,7 @@ describe('map & pathing', () => {
     const i = (x: number, y: number) => y * MAP.width + x;
     const start = before[i(18, 20)];
     // wall off a column in front of tile (18,20) with buildings, leaving gaps at the edges
-    for (let y = 4; y < 36; y += 2) placeNow(sim, 0, 'iv_war_banner', 20, y);
+    for (let y = 4; y < 36; y += 2) placeNow(sim, 0, 'iv_militia_hall', 20, y);
     const after = sim.flowField(0);
     expect(after[i(18, 20)]).toBeGreaterThan(start);
     expect(after[i(18, 20)]).toBeLessThan(0xffff);
@@ -115,6 +116,7 @@ describe('placement', () => {
     const sim = newSim();
     const me = sim.state.players[0];
     me.gold = 5000;
+    me.lumber = 5000;
     expect(me.sapphires).toBe(START_SAPPHIRES);
     const errs = () => sim.state.events.filter((e) => e.t === 'err').map((e) => (e as { msg: string }).msg);
     sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_sun_citadel', tx: 10, ty: 6 } }]);
@@ -135,8 +137,8 @@ describe('placement', () => {
     expect(errs()[0]).toMatch(/sapphire costs/);
     // Elite upgrade of a spawn building.
     me.gold = 5000;
-    const st = placeNow(sim, 0, 'iv_lancer_stables', 20, 6);
-    sim.step([{ player: 0, cmd: { c: 'upgrade', id: st.id, to: 'iv_knight_stables' } }]);
+    const st = placeNow(sim, 0, 'iv_chapel', 20, 6);
+    sim.step([{ player: 0, cmd: { c: 'upgrade', id: st.id, to: 'iv_cathedral' } }]);
     st.buildLeft = 1; sim.step();
     sim.step([{ player: 0, cmd: { c: 'upgrade', id: st.id, to: 'iv_paladin_chapter' } }]);
     expect(st.type).toBe('iv_paladin_chapter');
@@ -150,9 +152,9 @@ describe('placement', () => {
     const sim = newSim();
     // ring of 2x2 buildings around the 2x2 hole at (17..18, 4..5)
     const ring = [[15, 2], [17, 2], [19, 2], [15, 4], [19, 4], [15, 6]];
-    for (const [x, y] of ring) placeNow(sim, 0, 'iv_war_banner', x, y);
+    for (const [x, y] of ring) placeNow(sim, 0, 'iv_militia_hall', x, y);
     sim.state.players[0].gold = 10000;
-    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_war_banner', tx: 17, ty: 6 } }]);
+    sim.step([{ player: 0, cmd: { c: 'build', building: 'iv_militia_hall', tx: 17, ty: 6 } }]);
     expect(sim.state.events.some((e) => e.t === 'err' && e.msg.includes('block'))).toBe(true);
   });
 
@@ -178,17 +180,17 @@ describe('economy', () => {
     expect(sim.state.incomeTicks).toBe(INCOME_INTERVAL_TICKS);
   });
 
-  it('income bonus buildings scale income', () => {
+  it('a Treasure Box adds 25% income, every further one 15% less than the one before', () => {
     const sim = newSim();
-    placeNow(sim, 0, 'iv_counting_house', 10, 6);
-    const ch = BUILDINGS.iv_counting_house;
-    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * ch.cost) * (1 + ch.incomeBonus!)));
-  });
-
-  it('income bonuses are capped', () => {
-    const sim = newSim();
-    for (let i = 0; i < 4; i++) placeNow(sim, 0, 'iv_counting_house', 14 + i * 2, 2);
-    expect(incomeFor(sim, 0)).toBe(Math.floor((BASE_INCOME + INCOME_PCT * 4 * BUILDINGS.iv_counting_house.cost) * (1 + MAX_INCOME_BONUS)));
+    const hall = placeNow(sim, 0, 'iv_militia_hall', 10, 6);
+    const base = BASE_INCOME + (hall.value ?? 0) * (BUILDINGS.iv_militia_hall.incomeRate ?? INCOME_PCT);
+    expect(incomeFor(sim, 0)).toBe(Math.floor(base));
+    const box1 = placeNow(sim, 0, 'treasure_box', 14, 6);
+    const withBox = base + (box1.value ?? 0) * BUILDINGS.treasure_box.incomeRate!;
+    expect(incomeFor(sim, 0)).toBe(Math.floor(withBox * 1.25));
+    const box2 = placeNow(sim, 0, 'treasure_box', 18, 6);
+    const withTwo = withBox + (box2.value ?? 0) * BUILDINGS.treasure_box.incomeRate!;
+    expect(incomeFor(sim, 0)).toBe(Math.floor(withTwo * (1 + 0.25 + 0.2125)));
   });
 });
 

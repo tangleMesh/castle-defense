@@ -80,7 +80,7 @@ export async function fullMatchScenario(base: string, opts: { perTeam: number; b
   }
   assert(wins === opts.perTeam && losses === opts.perTeam, `wins/losses split per team (${wins}/${losses})`);
   log.push(`history + stats verified for ${bots.length} players`);
-  const errs = bots.flatMap((b) => b.errors).filter((e) => !/Not enough gold|occupied|block|busy|round starts in/.test(e));
+  const errs = bots.flatMap((b) => b.errors).filter((e) => !/Not enough gold|Not enough lumber|occupied|block|busy|round starts in/.test(e));
   log.push(`unexpected errors: ${errs.length ? errs.join(' | ') : 'none'}`);
   bots.forEach((b) => b.disconnect());
   return { log };

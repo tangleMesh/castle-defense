@@ -329,6 +329,14 @@ export function paintUnit(c: Ctx, u: UnitDef, frame: Frame) {
         front: tw ? bow(S, atk, 0x8a6a3a) : crossbow(S, atk) }, pose);
       break;
     case 'caster':
+      if (m.variant === 'warlock') {
+        // Warlock: a hooded figure in dark robes, a chaos orb burning above the raised hand.
+        humanoid(c, cx, fy, S, { h: 26, body: m.body, accent: m.accent, helmet: 'hood', armor: 'robe', attackArm: 'raise', front: staff(S, m.accent, atk) }, pose);
+        const oy = fy - S(atk ? 36 : 32);
+        c.fillStyle = grad(c, cx + S(6), oy - S(4), cx + S(10), oy + S(4), [[0, lit(m.accent, 1.5)], [1, lit(m.accent, 0.7)]]);
+        c.beginPath(); c.arc(cx + S(8), oy, S(atk ? 3.4 : 2.4), 0, Math.PI * 2); c.fill();
+        break;
+      }
       humanoid(c, cx, fy, S, { h: 27, body: m.body, accent: m.accent, helmet: tw ? 'antlers' : 'circlet', armor: 'robe', attackArm: 'raise', front: staff(S, m.accent, atk) }, pose);
       break;
     case 'cavalry': {

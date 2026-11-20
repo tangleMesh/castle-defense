@@ -103,6 +103,7 @@ export function buildingAbilities(b: BuildingDef): string[] {
   if (b.attack?.bonusVs) out.push(`${num(b.attack.bonusVs.mult)}× damage against ${VS[b.attack.bonusVs.vs]}`);
   if (b.attack?.multishot) out.push(`Multi-shot: each volley strikes ${b.attack.multishot} enemies`);
   if (b.powerPlant) out.push(`Power plant: your buildings within ${num(b.powerPlant.radius)} tiles get +2 armor and can't be frozen; towers deal +25% damage; units trained there get +100 HP, +2 armor and +20% damage`);
+  if (b.callToArms) out.push(`Call to arms: whenever your team trains a unit, a ${pct(b.callToArms)} chance that an extra one is trained for you (a second shrine stacks once; not legendaries)`);
   if (b.link) out.push(`Link: whenever a unit of your team dies, ${pct(b.link)} of its life heals your wounded units`);
   if (b.manaBoost) out.push(`Mana transfusion: your team's ability buildings recharge ${pct(b.manaBoost)} faster (half for non-elemental buildings; up to 3 generators)`);
   if (b.revive?.chance !== undefined) out.push(`Grace: every own unit that falls ${b.revive.global ? 'anywhere on the map' : `within ${num(b.revive.radius)} tiles`} has a ${pct(b.revive.chance)} chance to rise again (a second shrine stacks once; not legendaries)`);
