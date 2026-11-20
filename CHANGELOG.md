@@ -7,6 +7,21 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.6
+
+- **Frostmark copied exactly from the map's Northern race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Frost attacks:** ice trolls, rime throwers and the Ice Queen can freeze a ground target in place (7–12.5 s) while it takes damage.
+  - **Chill:** witch doctors, azure drakes and the icy tower slow what they hit by 30%.
+  - **Beasts:** wolves crit; bears and magnataurs cleave (the magnataur crits 3× and stomps).
+  - **Wendigos** pulverize; the Ancient Wendigo's howl gives enemies −30% damage.
+  - **Frost armour:** priests and witch doctors armour nearby allies (+3.5 / +7).
+  - **Raging Rime Thrower (legendary):** triple shot, immune, 70% spell resistance.
+  - **Specials:**
+    - Chilling Mushroom: freezes a flyer for 6 s and deals 200 damage.
+    - Frost Launchers: freeze an enemy building for 10 / 12 s.
+    - World Freezer (legendary): a 60-damage-per-second winter storm; its upgrade is gone.
+
 ## 0.46.5
 
 - **Gravewake copied exactly from the map's Undead race:**
