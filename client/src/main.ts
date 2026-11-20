@@ -11,6 +11,7 @@ import { MatchSession } from './game/session';
 import { GameScene } from './game/scene';
 import { DPR } from './game/iso';
 import { $ } from './ui/dom';
+import { getGraphics, onGraphics } from './settings';
 
 type Screen = 'auth' | 'lobby' | 'game';
 
@@ -83,12 +84,14 @@ class App {
       // Battlefield on screen: the round's start countdown may begin.
       this.socket!.send({ type: 'match.loaded' });
     };
-    scene.onReady = () => { ready = true; tryHud(); };
+    scene.onReady = () => { ready = true; void scene.setGraphics(getGraphics()); tryHud(); };
+    const offGraphics = onGraphics((m) => { if (this.session === session) void scene.setGraphics(m); else offGraphics(); });
     session.on('snapshot', () => { if (!pendingSnap) { pendingSnap = true; tryHud(); } });
     this.game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: 'phaser',
-      backgroundColor: '#16210f',
+      // Transparent: in 3D mode the three.js view shows through (the page background is the 2D ground colour).
+      transparent: true,
       // Render at device pixel density (sharp on Retina) and shrink back to CSS size.
       scale: { mode: Phaser.Scale.NONE, width: window.innerWidth * DPR, height: window.innerHeight * DPR, zoom: 1 / DPR },
       render: { antialias: true, roundPixels: false },
@@ -107,6 +110,8 @@ class App {
   }
 
   private leaveGame() {
+    // Free the 3D renderer (WebGL context, textures) with the match.
+    void (this.game?.scene.getScene('game') as GameScene | undefined)?.setGraphics('2d');
     this.hud?.destroy();
     this.hud = null;
     this.game?.destroy(true);

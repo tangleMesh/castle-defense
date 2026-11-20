@@ -7,6 +7,20 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.45.0
+
+- **Graphics option: 2D or 3D, chosen by each player.**
+  - **Where to switch:** the lobby header or the in-game menu (F10). The choice is saved in your browser; other players keep their own.
+  - **What's 3D:**
+    - Terrain with a road and the build zones, faceted rocks, a forest around the battlefield, sunlight and shadows, and fog of war.
+    - Both castles: walls, towers in the team colour, flags.
+    - Every building: each of the 111 styles is a procedural 3D model built from its archetype (tower, hut, temple, portal, well, crystal, factory, citadel, …) with its own proportions and colours. Buildings rise while under construction and fly their team's flag.
+  - **Units:** they stay the painted sprites, standing upright in the 3D world (2.5D), with walk and attack frames, team rings and shadows.
+  - **Effects:** projectiles, chain lightning, beams, storms, shells, mines, strikes, heals, deaths and floating gold.
+  - **Overlays:** health bars, selection, the placement ghost and rescue targeting.
+  - **Unchanged:** controls, camera, minimap and HUD work exactly as in 2D.
+  - **Download:** three.js loads only when someone switches to 3D.
+
 ## 0.44.0+9 · balance
 
 - **Second 12-faction run.** Final check: Frostmark 67%, Gravewake 63%, Tidecall 60%, Doomforge 36%, Blightroot 38%. The other seven factions are within 44–56%.

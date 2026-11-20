@@ -16,7 +16,7 @@ import { Ambient } from './ambient';
 /** Ground paintings are low-frequency; 1.5× is plenty even on Retina and saves GPU memory. */
 const GROUND_RES = Math.min(TEX_RES, 1.5);
 
-interface View {
+export interface View {
   id: number;
   /** Status flags from the snapshot (FX_POISON). */
   fx?: number;
@@ -52,11 +52,7 @@ interface View {
   ruined?: boolean;
 }
 
-const KIND_UNIT = 0, KIND_BUILDING = 1, KIND_BUILDER = 2, KIND_CASTLE = 3;
-const WALK = ['', '_w1', '_w2', '_w3'];
-const AIR_LIFT = 22;
-/** Units are drawn slightly larger than their footprint for readability. */
-const UNIT_SCALE = 1.25;
+import { AIR_LIFT, KIND_BUILDER, KIND_BUILDING, KIND_CASTLE, KIND_UNIT, UNIT_SCALE, WALK } from './viewTypes';
 /** Logical scale → image scale for TEX_RES× textures. */
 const sc = (v: number) => v / TEX_RES;
 
@@ -70,7 +66,7 @@ export class GameScene extends Phaser.Scene {
   private ghost!: Phaser.GameObjects.Image;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private mouse = { x: -1, y: -1, inside: false, overControl: false };
-  private hoverTile = { x: 0, y: 0 };
+  hoverTile = { x: 0, y: 0 };
   private dragStart: { x: number; y: number; sx: number; sy: number } | null = null;
   private telegraphs: Array<{ x: number; y: number; until: number; obj: Phaser.GameObjects.Image }> = [];
   /** Current fog-of-war grid (1 = visible), null while fog is off (between rounds). */
@@ -93,8 +89,33 @@ export class GameScene extends Phaser.Scene {
   groundChunks: Array<{ canvas: HTMLCanvasElement; x: number; y: number; w: number; h: number }> = [];
   private ambient!: Ambient;
   showAllBars = false;
+  /** The 3D renderer while the graphics option is "3D" (Phaser then only handles input and logic). */
+  r3d: import('./three/renderer3d').Renderer3D | null = null;
+  private graphicsToken = 0;
 
   constructor() { super('game'); }
+
+  /**
+   * Switch between the painted 2D view and the 3D view. Phaser keeps running (input, selection,
+   * placement, camera, minimap); in 3D its world camera stops drawing and three.js renders the
+   * same views underneath the (transparent) Phaser canvas. three.js loads on first use.
+   */
+  async setGraphics(mode: '2d' | '3d') {
+    const token = ++this.graphicsToken;
+    if (mode === '3d' && !this.r3d) {
+      const { Renderer3D } = await import('./three/renderer3d');
+      if (token !== this.graphicsToken || !this.sys?.isActive()) return;
+      this.r3d = new Renderer3D(this, document.getElementById('three')!);
+      this.cameras.main.setVisible(false);
+    } else if (mode === '2d' && this.r3d) {
+      this.r3d.dispose();
+      this.r3d = null;
+      this.cameras.main.setVisible(true);
+    }
+  }
+
+  /** Top-left tile of a building of `size` under the pointer (placement). */
+  ghostTileAt(size: number) { return this.ghostTile(size); }
 
   /** Image from a generated (TEX_RES×) texture, shown at logical size. Use `sc()` for any further scaling. */
   private img(x: number, y: number, key: string) {
@@ -293,6 +314,7 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- input
 
   private worldTile(pointer: Phaser.Input.Pointer) {
+    if (this.r3d) return this.r3d.tileAt(pointer.x / DPR, pointer.y / DPR);
     const wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     return toTile(wp.x, wp.y);
   }
@@ -378,6 +400,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Entity under the pointer: units and builders first, then structures. */
   private pick(p: Phaser.Input.Pointer): number | null {
+    if (this.r3d) return this.r3d.pick(p.x / DPR, p.y / DPR);
     const wp = this.cameras.main.getWorldPoint(p.x, p.y);
     const t = toTile(wp.x, wp.y);
     let best: number | null = null, bestD = 22;
@@ -629,6 +652,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.drawOverlay(time);
     this.drawBars();
+    this.r3d?.frame(time);
     this.telegraphs = this.telegraphs.filter((t) => {
       if (time < t.until) { t.obj.setAlpha(0.35 + 0.25 * Math.sin(time / 60)); return true; }
       t.obj.destroy();
@@ -883,6 +907,7 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- effects
 
   private moveMarker(x: number, y: number) {
+    this.r3d?.marker(x, y);
     const p = toScreen(x, y);
     const m = this.img(p.x, p.y, 'ring').setTint(0x40ff60).setScale(sc(0.8)).setDepth(7e6);
     this.tweens.add({ targets: m, scale: sc(0.2), alpha: 0, duration: 450, onComplete: () => m.destroy() });
@@ -1070,6 +1095,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onSimEvent(ev: SimEvent) {
+    this.r3d?.event(ev);
     if (ev.t === 'round' || ev.t === 'match') this.castleFalls((1 - ev.winner) as Team);
     switch (ev.t) {
       case 'atk': {

@@ -1,5 +1,6 @@
 import { AI_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
 import { builderPortrait } from './portraits';
+import { getGraphics, setGraphicsMode } from '../settings';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
 import type { Socket } from '../net/socket';
 import { TEAM_CSS, TEAM_NAMES } from '../game/iso';
@@ -73,6 +74,8 @@ export class LobbyView {
           h('b', null, this.user.username),
           h('span', { class: 'elo-badge', title: `Elo rating · peak ${s.peakRating ?? START_RATING}` }, `Elo ${s.rating ?? START_RATING}`),
           h('span', { class: 'dim' }, ` · ${s.wins}W ${s.losses}L · ${s.roundsWon} rounds won · ${s.unitsKilled} kills · ${s.rescueStrikesUsed} strikes`),
+          h('button', { class: 'btn small ghost', title: 'Graphics of the battlefield: painted 2D or 3D (only for you)', onclick: () => { setGraphicsMode(getGraphics() === '3d' ? '2d' : '3d'); this.render(); } },
+            `Graphics: ${getGraphics() === '3d' ? '3D' : '2D'}`),
           h('button', { class: 'btn small ghost', onclick: () => this.onLogout() }, 'Sign out'),
         ),
       ),

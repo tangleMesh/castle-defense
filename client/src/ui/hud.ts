@@ -2,6 +2,7 @@ import {
   BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries, AI_LEVEL_NAMES, type MatchStats, type MatchStatsPlayer,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
+import { getGraphics, setGraphicsMode } from '../settings';
 import { OUTER_TILES, outerDecor } from '../game/landscape';
 import type { GameScene } from '../game/scene';
 import type { MatchSession, Mode } from '../game/session';
@@ -1008,6 +1009,8 @@ export class Hud {
     clear(this.menu);
     this.menu.append(h('div', { class: 'dialog' },
       h('h2', null, 'Menu'),
+      h('button', { class: 'btn', title: 'Your own display setting (other players keep theirs)', onclick: () => { setGraphicsMode(getGraphics() === '3d' ? '2d' : '3d'); this.renderMenu(); } },
+        `Graphics: ${getGraphics() === '3d' ? '3D' : '2D'} (switch to ${getGraphics() === '3d' ? '2D' : '3D'})`),
       h('button', { class: 'btn', onclick: () => this.votePause(!this.pauseVote) }, this.pauseVote ? 'Withdraw pause vote' : 'Vote to pause'),
       this.session.isHost ? h('button', { class: 'btn', onclick: () => this.sendRaw({ type: 'game.saveAndExit' }) }, 'Save & exit (resume later)') : h('p', { class: 'dim' }, 'Only the host can save the game.'),
       h('button', { class: 'btn danger', onclick: (e: MouseEvent) => {

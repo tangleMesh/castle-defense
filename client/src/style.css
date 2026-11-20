@@ -153,7 +153,11 @@ button.mode { cursor: pointer; }
 /* ---------------------------------------------------------------- game */
 
 #screen-game { overflow: hidden; background: #16210f; }
+/* 3D graphics: three.js renders under the (then transparent) Phaser canvas, which keeps the input; the HUD stays above both. */
+#three { position: absolute; inset: 0; }
 #phaser { position: absolute; inset: 0; }
+#three .three-canvas, #three .three-overlay { position: absolute; inset: 0; }
+#three .three-overlay { pointer-events: none; }
 #hud { position: absolute; inset: 0; pointer-events: none; font-size: 14px; }
 #hud > * { pointer-events: auto; }
 
