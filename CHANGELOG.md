@@ -7,6 +7,12 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.45.1
+
+- **3D view fixes:**
+  - **Camera:** it moves again with the screen edge, the arrow keys and middle-drag, and the minimap's view rectangle follows. The hidden 2D camera had stopped updating its position.
+  - **Impact flashes:** flashes from projectiles that hit now disappear. Effects started by other effects were lost from the update list and stayed on the map.
+
 ## 0.45.0
 
 - **Graphics option: 2D or 3D, chosen by each player.**

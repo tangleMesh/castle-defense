@@ -198,6 +198,9 @@ export class Renderer3D {
   /** Follow Phaser's camera: the same view centre and the same pixels per tile along x. */
   private updateCamera() {
     const cam = this.gs.cameras.main;
+    // Phaser skips the per-frame update of a hidden camera (scroll bounds, view rectangle, midpoint),
+    // and edge/arrow scrolling, panning and the minimap rely on it: run it here.
+    (cam as unknown as { preRender: () => void }).preRender();
     const mid = cam.midPoint;
     const t = toTile(mid.x, mid.y);
     this.target.set(t.x, 0, t.y);
@@ -611,7 +614,11 @@ export class Renderer3D {
 
   private stepFx(_time: number) {
     const now = performance.now();
-    this.fx = this.fx.filter((f) => {
+    // Effects may start new ones while they run (a missile's impact flash): those go into the new
+    // list, so swap it in first instead of filtering in place (they would be lost and stay on the map).
+    const running = this.fx;
+    this.fx = [];
+    for (const f of running) {
       const k = (now - f.t0) / f.dur;
       if (k >= 1) {
         this.scene.remove(f.obj);
@@ -620,11 +627,11 @@ export class Renderer3D {
           if (m.geometry && m.geometry !== this.shared.disc && m.geometry !== this.shared.ring && m.geometry !== this.shared.sphere) m.geometry.dispose();
           (m.material as THREE.Material | undefined)?.dispose();
         });
-        return false;
+        continue;
       }
       f.tick(k, now);
-      return true;
-    });
+      this.fx.push(f);
+    }
   }
 
   private glow(color: number, size: number, opacity = 1) {
