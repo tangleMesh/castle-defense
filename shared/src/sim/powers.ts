@@ -158,12 +158,17 @@ function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
 /** Sudden death: the nearest enemy unit in range that isn't too strong (max HP ≤ dmg) dies at once. */
 function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
+  const pool: Entity[] = [];
   let best: Entity | undefined, bestD = Infinity;
   for (const u of around(sim, c, reach(p))) {
-    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || isImmune(u)) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
-    if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
+    if (d > reach(p)) continue;
+    pool.push(u);
+    if (d < bestD) { best = u; bestD = d; }
   }
+  // Map-wide (the map's Death Pit): a random enemy unit; locally: the nearest.
+  if (p.global && pool.length) best = pool[Math.floor(nextRandom(sim.state) * pool.length)];
   if (!best) return false;
   sim.emit({ t: 'slay', a: e.id, b: best.id });
   best.hp = 0;

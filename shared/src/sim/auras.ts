@@ -16,6 +16,8 @@ export interface Mods {
   block: number;
   /** Share of melee damage reflected (thorns aura). */
   thorns: number;
+  /** Lifesteal for melee attacks (vampiric aura). */
+  lifesteal: number;
   /** Rot from enemy decay auras, HP lost per second (a negative regen aura). */
   decay: number;
   /** Weakening enemy auras (≤ 0): damage multiplier delta and armour, kept apart from ally boosts so both apply. */
@@ -23,7 +25,7 @@ export interface Mods {
   armorMalus: number;
 }
 
-const NONE: Mods = Object.freeze({ dmg: 1, armor: 0, regen: 0, speed: 1, haste: 1, block: 0, thorns: 0, decay: 0, dmgMalus: 0, armorMalus: 0 });
+const NONE: Mods = Object.freeze({ dmg: 1, armor: 0, regen: 0, speed: 1, haste: 1, block: 0, thorns: 0, lifesteal: 0, decay: 0, dmgMalus: 0, armorMalus: 0 });
 
 export function modsOf(sim: Sim, id: number): Mods {
   return sim.mods.get(id) ?? NONE;
@@ -95,6 +97,7 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
     case 'haste': m.haste = Math.max(m.haste, 1 + aura.value); break;
     case 'block': m.block = Math.max(m.block, aura.value); break;
     case 'thorns': m.thorns = Math.max(m.thorns, aura.value); break;
+    case 'lifesteal': m.lifesteal = Math.max(m.lifesteal, aura.value); break;
   }
 }
 
@@ -103,7 +106,7 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
  * on top of building auras. The same stat from several teammates' items doesn't stack.
  */
 function applyItemAuras(sim: Sim) {
-  const zero = (): Mods => ({ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0, thorns: 0, decay: 0, dmgMalus: 0, armorMalus: 0 });
+  const zero = (): Mods => ({ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0, thorns: 0, lifesteal: 0, decay: 0, dmgMalus: 0, armorMalus: 0 });
   const bonus: [Mods, Mods] = [zero(), zero()];
   let any = false;
   for (const p of sim.state.players) {

@@ -251,6 +251,20 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   // Shield wall: ranged attacks lose part of their force.
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
+  // Soul steal: now and then the target dies outright and its soul heals the attacker.
+  if (ud?.soulSteal && t.kind === 'unit' && t.hp > 0 && !isImmune(t) && roll(9) < ud.soulSteal.chance) {
+    a.hp = Math.min(a.maxHp, a.hp + t.hp * ud.soulSteal.heal);
+    sim.emit({ t: 'slay', a: a.id, b: t.id });
+    t.hp = 0;
+    rewardKill(sim, t, a.owner);
+  }
+  // Vampires: a living unit they kill rises as one of theirs.
+  if (ud?.raiseOnKill && t.kind === 'unit' && t.hp <= 0 && t.ttl === undefined && !t.smitten && !t.raised) {
+    t.raised = true;
+    const d = UNITS[ud.raiseOnKill];
+    sim.add({ kind: 'unit', type: ud.raiseOnKill, owner: a.owner, team: a.team, x: t.x, y: t.y, hp: d.hp, maxHp: d.hp, cd: 0, healCd: 0 });
+    sim.emit({ t: 'revive', id: a.id });
+  }
   // Incinerate: a target killed by the flames explodes.
   if (ud?.incinerate && t.hp <= 0 && t.kind === 'unit') {
     const inc = ud.incinerate;
@@ -354,7 +368,9 @@ function explode(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmg: number, r
 
 /** Lifesteal, poison and thorns after a single-target hit. */
 function onHit(sim: Sim, a: Entity, ud: UnitDef, t: Entity, dealt: number, ranged: 0 | 1) {
-  if (ud.lifesteal && dealt > 0 && a.hp > 0) a.hp = Math.min(a.maxHp, a.hp + dealt * ud.lifesteal);
+  // Lifesteal: the unit's own plus a vampiric aura (melee attacks only).
+  const steal = (ud.lifesteal ?? 0) + (ranged ? 0 : modsOf(sim, a.id).lifesteal);
+  if (steal && dealt > 0 && a.hp > 0) a.hp = Math.min(a.maxHp, a.hp + dealt * steal);
   if (ud.weaken && t.kind === 'unit' && t.hp > 0 && !isImmune(t)) t.weaken = { mult: Math.max(ud.weaken.mult, t.weaken?.mult ?? 0), left: Math.round(ud.weaken.duration * TICK_RATE) };
   if (ud.poison && t.kind === 'unit' && t.hp > 0) {
     t.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: isImmune(t) ? 0 : ud.poison.slow, owner: a.owner };

@@ -528,18 +528,31 @@ describe('Gravewake mechanics', () => {
     expect(far.maxHp - far.hp).toBeCloseTo(2 * net, 0);
   });
 
-  it('the Death Pit slays the nearest weak enemy but not champions', () => {
+  it('the Death Pit kills a random enemy unit anywhere, but not immune legendaries', () => {
     const sim = simG();
-    building(sim, 0, 'gw_death_pit', 30, 18);
-    const champ = unit(sim, 1, 'tw_ancient_treant', 34, 19), weak = unit(sim, 1, 'tw_vineling', 38, 19);
+    const pit = building(sim, 0, 'gw_death_pit', 6, 18);
+    pit.hp = pit.maxHp = 1e6;
+    const imm = unit(sim, 1, Object.values(UNITS).find((u) => u.immune && !u.air)!.id, 60, 19);
+    const weak = unit(sim, 1, Object.values(UNITS).find((u) => !u.immune && !u.air && u.hp >= 200)!.id, 100, 19);
+    for (const u of [imm, weak]) u.hp = u.maxHp = 1e5;
     let slain = false;
     for (let i = 0; i < (BUILDINGS.gw_death_pit.power!.cooldown + 1) * TICK_RATE && !slain; i++) {
-      champ.x = 34; champ.y = 19; weak.x = 38; weak.y = 19;
+      imm.x = 60; imm.y = 19; weak.x = 100; weak.y = 19;
       slain = sim.step().some((e) => e.t === 'slay');
     }
     expect(slain).toBe(true);
     expect(weak.hp).toBe(0);
-    expect(champ.hp).toBeGreaterThan(0);
+    expect(imm.hp).toBeGreaterThan(0);
+  });
+
+  it('vampires turn what they kill into lesser vampires', () => {
+    const sim = simG();
+    const v = unit(sim, 0, 'gw_vampire', 60, 20);
+    const prey = unit(sim, 1, Object.values(UNITS).find((u) => !u.immune && !u.air && !u.evade && u.hp >= 200)!.id, 60.6, 20);
+    prey.hp = 1;
+    sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
+    performAttack(sim, v, attackStats(v)!, prey, 1);
+    expect(sim.state.entities.some((e) => e.type === 'gw_lesser_vampire' && e.team === 0)).toBe(true);
   });
 });
 

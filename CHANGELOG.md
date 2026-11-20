@@ -7,6 +7,22 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.5
+
+- **Gravewake copied exactly from the map's Undead race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Rot:** zombies, suffocated zombies and plague bearers rot every enemy around them; the latter two also carry a plague bite.
+  - **Necromancers** raise a Skeleton every 45 s; Mighty Necromancers raise a Greater Skeleton every 30 s and release carrion swarms.
+  - **Lich King (legendary):** immune, 70% spell resistance, and a 15% soul steal that kills the target outright.
+  - **Vampires** heal from their bites (70% / 100%), give melee allies 30% lifesteal, and every living unit they kill rises on their side: Lesser Vampires (new) for vampires, Vampires for Vampire Lords. The bats are gone.
+  - **Banshees:** divine armour, a fear aura (−15% enemy damage) and slowing chains.
+  - **Flesh Golems:** 150% damage to buildings and pulverize.
+  - **Frost Wyrms:** splash and chill.
+  - **Skull Pile / Skull Shrine:** raise random skeletons (and Skeletal Generals) that crumble after 40 s.
+  - **Death Pit:** kills a random enemy anywhere every 15 s.
+  - **City of Decay (legendary):** 10 damage per second to every enemy unit on the map; its upgrade is gone.
+  - **Turret of Souls:** 75 chaos damage per second.
+
 ## 0.46.4
 
 - **Blightroot Coven copied exactly from the map's Corrupted race:**

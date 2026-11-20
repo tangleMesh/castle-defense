@@ -69,7 +69,13 @@ export function stepBuildings(sim: Sim) {
     e.spawnTimer -= step[e.team];
     if (e.spawnTimer > 0) continue;
     e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);
-    for (let i = 0; i < def.spawn.count; i++) spawnUnit(sim, e, def.spawn.unit, i, def.spawn.count + (def.spawn.extra ? 1 : 0));
+    const sp = def.spawn;
+    for (let i = 0; i < sp.count; i++) {
+      // A random kind from the pool (raised skeletons), seeded and side-symmetric.
+      const kind = sp.pool ? sp.pool[Math.floor(sideRandom(sim.state, e.tx! * 31 + e.ty! * 977 + i + (e.team === 0 ? 0 : 0)) * sp.pool.length)] : sp.unit;
+      const u = spawnUnit(sim, e, kind, i, sp.count + (sp.extra ? 1 : 0));
+      if (sp.ttl) u.ttl = Math.round(sp.ttl * TICK_RATE);
+    }
     if (def.spawn.extra) spawnUnit(sim, e, def.spawn.extra, def.spawn.count, def.spawn.count + 1);
   }
 }

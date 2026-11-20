@@ -136,6 +136,10 @@ export interface UnitDef {
   rampage?: { haste: number; duration: number; vuln: number };
   /** Ensnare: every `every` s it binds up to `count` enemy flyers to the ground for `duration` s (melee can hit them). */
   ensnare?: { every: number; duration: number; count: number };
+  /** Raise on kill (vampires): every living unit it kills rises as this unit on its side. */
+  raiseOnKill?: string;
+  /** Soul steal (Lich King): chance per hit to kill the target outright and heal `heal` of its remaining HP. */
+  soulSteal?: { chance: number; heal: number };
   /** Overtake: chance per hit to take control of the target unit for good (not immune ones or summons). */
   overtake?: number;
   /** Incinerate: each consecutive hit on the same target deals `step` more; a target killed explodes for `blast` spell damage within `radius`. */
@@ -171,7 +175,7 @@ export interface UnitDef {
 }
 
 export interface AuraDef {
-  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste' | 'block' | 'thorns';
+  stat: 'dmg' | 'armor' | 'regen' | 'speed' | 'haste' | 'block' | 'thorns' | 'lifesteal';
   /** dmg/speed/haste (attack speed): multiplier delta (0.2 = +20%), armor: flat, regen: hp/s, block: flat damage off every attack. */
   value: number;
   radius: number;
@@ -207,7 +211,8 @@ export interface BuildingDef {
   /** Treasure Box: raises the owner's income multiplier (see TREASURE_BONUS). */
   treasure?: boolean;
   /** `extra`: a second unit type trained in the same cycle (Serenity's twins). */
-  spawn?: { unit: string; count: number; interval: number; extra?: string };
+  /** `pool`: a random one of these instead of `unit` (Skull Shrine); `ttl`: spawned units crumble after this many seconds (raised skeletons). */
+  spawn?: { unit: string; count: number; interval: number; extra?: string; pool?: string[]; ttl?: number };
   aura?: AuraDef;
   /** Tower attack. `chain`: the shot bounces between this many enemies (incl. the first). */
   attack?: { dmg: number; attackType: AttackType; range: number; cooldown: number; targetsAir: boolean; splash?: number; chain?: number; multishot?: number; bonusVs?: { vs: ArmorType | 'air' | 'structure'; mult: number } };
