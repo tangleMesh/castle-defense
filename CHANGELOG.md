@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.2
+
+- **Bloodtusk Horde copied exactly from the map's Orc race:**
+  - **Values:** all costs, lumber, HP, armour, damage, cooldowns, ranges, speeds, spawn times, bounties and upgrades are the map's.
+  - **Units:**
+    - Veterans crit 25% (2×); Axemasters crit 30% (3×) and pulverize (35%, 130 damage).
+    - Spellbreakers resist 80% of spell damage.
+    - War Drum and Shield Bearer riders have +30% damage and +4 armour auras (9 tiles).
+    - Wyverns carry a light poison.
+    - The catapult's burning ammo deals 48 damage per second.
+  - **Berserk, as in the map:** trolls rampage after every kill, with +200% attack speed for 6 s and 10% more damage taken.
+  - **Ensnare:** Troll Trappers bind a flyer to the ground for 16 s, so melee can hit it. The legendary Forest Trapper ensnares up to five and is immune.
+  - **Ceremonial Totem (Tribal Blessing):** every 10 s a random unit permanently gains +20 damage, +200 HP, +3 armour and +20% attack speed, plus a crit, evasion or demolish perk.
+  - **Serpent Rock:** 30 damage per second and a 20% slow for 5 s.
+  - **Anti-air tower:** 175 DPS against flyers, 37 against ground.
+  - **Stasis Totem (legendary):** freezes every enemy unit on the map for 4.5 s every 40 s. Its second stage is gone (the map has none).
+
 ## 0.46.1
 
 - **Tidecall Dominion copied exactly from the map's Naga race:**

@@ -57,6 +57,14 @@ export interface Entity {
   mineCd?: number;
   /** Hexed (City of Magic): a harmless sheep for this many more ticks (it is stunned as well). */
   sheep?: number;
+  /** Rampage (Berserk): ticks left of the post-kill frenzy. */
+  rampageLeft?: number;
+  /** Ensnared flyer: ticks it stays bound to the ground (ground units can hit it). */
+  netted?: number;
+  /** Ensnaring units: ticks until the next ensnare. */
+  ensnareCd?: number;
+  /** Tribal Blessing: permanent bonuses of this unit. */
+  blessed?: { dmg: number; haste: number; armor: number; perk: 'crit' | 'evade' | 'demolish' };
   /** Stoneskin Scroll: extra armor for a while. */
   stone?: { armor: number; left: number };
   /** Stealth units: invisible to the enemy right now. */

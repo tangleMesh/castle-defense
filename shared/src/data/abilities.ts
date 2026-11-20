@@ -41,6 +41,8 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.slam) out.push(`Pulverize: ${pct(u.slam.chance)} chance to deal ${Math.round(u.slam.dmg)} damage to all enemies within ${num(u.slam.radius)} tiles`);
   if (u.storm) out.push(`Chain lightning: ${pct(u.storm.chance)} chance to call lightning (${Math.round(u.storm.dmg)} damage, ${u.storm.jumps} targets)`);
   if (u.cleave) out.push(`Cleaving attack: each hit deals ${pct(u.cleave.pct)} of its damage to all enemies within ${num(u.cleave.radius)} tiles of the target`);
+  if (u.rampage) out.push(`Berserk: after a kill it attacks ${pct(u.rampage.haste)} faster for ${num(u.rampage.duration)}s (and takes ${pct(u.rampage.vuln)} more damage)`);
+  if (u.ensnare) out.push(`Ensnare: every ${num(u.ensnare.every)}s it binds ${u.ensnare.count > 1 ? `up to ${u.ensnare.count} enemy flyers` : 'an enemy flyer'} to the ground for ${num(u.ensnare.duration)}s, so melee units can hit ${u.ensnare.count > 1 ? 'them' : 'it'}`);
   if (u.immune) out.push('Immune: stuns, slows, hexes, freezes and control have no effect');
   if (u.evade) out.push(`Evasion: ${pct(u.evade)} chance that an attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
@@ -63,6 +65,7 @@ export function powerText(b: BuildingDef): string | undefined {
   if (!p) return undefined;
   // Global powers reach the whole map.
   const within = p.global ? 'anywhere on the map' : `within ${num(p.range)} tiles`;
+  if (p.kind === 'bless') return `Tribal blessing: every ${num(p.cooldown)}s a random unit of yours permanently gains +${num(p.dmg)} damage, +${num(p.hp)} HP, +${num(p.armor)} armor and ${pct(p.haste ?? 0)} attack speed, plus a 25% critical strike, 30% evasion or 1.5× damage against buildings`;
   if (p.kind === 'tentacles') return `Tentacle prison: every ${num(p.cooldown)}s ${p.count} tentacles burst from the ground around the nearest enemy ${within} (they last ${num(p.duration)}s)`;
   if (p.kind === 'charm') return `Control: every ${num(p.cooldown)}s the nearest enemy unit ${within} with at most ${num(p.dmg)} HP joins your side`;
   if (p.kind === 'wave') return `Tsunami: every ${num(p.cooldown)}s a wave rolls ${num(p.range)} tiles towards the enemy, ${num(p.dmg)} damage to every ground unit in its path`;

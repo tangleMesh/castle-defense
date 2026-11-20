@@ -132,6 +132,10 @@ export interface UnitDef {
   storm?: { chance: number; dmg: number; jumps: number };
   /** Cleaving attack: each hit also deals `pct` of its damage to every other enemy ground unit within `radius` tiles of the target. */
   cleave?: { pct: number; radius: number };
+  /** Rampage (the map's Berserk): after a kill it attacks `haste` faster for `duration` s and takes `vuln` more damage. */
+  rampage?: { haste: number; duration: number; vuln: number };
+  /** Ensnare: every `every` s it binds up to `count` enemy flyers to the ground for `duration` s (melee can hit them). */
+  ensnare?: { every: number; duration: number; count: number };
   /** Immune (map legendaries): stuns, slows, hexes, freezes, weakening and control don't affect it. */
   immune?: boolean;
   /** Probability that an attack aimed at this unit misses (WC3 Evasion). */
@@ -236,7 +240,7 @@ export interface BuildingDef {
  * type `unit` burst from the ground in a ring of `radius` around the nearest enemy and last `duration` s.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless';
   cooldown: number;
   range: number;
   radius: number;
@@ -253,6 +257,10 @@ export interface PowerDef {
    * self-centred or directional powers (stasis, tsunami, erase) stay local.
    */
   global?: boolean;
+  /** Bless (Tribal Blessing): a random own unit permanently gains `dmg` damage, `hp` HP, `armor` and `haste`, plus one perk (crit, evasion or demolish). */
+  hp?: number;
+  armor?: number;
+  haste?: number;
   /** Bombard: what the shell hits is frozen for this many seconds (buildings stop training, shooting and casting). */
   freeze?: number;
 }

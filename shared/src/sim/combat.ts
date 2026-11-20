@@ -48,7 +48,7 @@ export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number }
   if (e.kind === 'unit') {
     const u = UNITS[e.type];
     const m = modsOf(sim, e.id);
-    return { type: u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) };
+    return { type: u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) + (e.blessed?.armor ?? 0) };
   }
   // Bulwark Seal: extra armor on all structures of the carrier's team.
   if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
@@ -61,7 +61,8 @@ export function canTarget(sim: Sim, a: Entity, st: AttackStats, t: Entity | unde
   // Hidden assassins can't be targeted.
   if (t.hidden) return false;
   if (st.structuresOnly && !sim.isStructure(t)) return false;
-  if (sim.isAir(t) ? !st.targetsAir : st.airOnly) return false;
+  // Ensnared flyers are bound to the ground: anyone can hit them.
+  if (sim.isAir(t) && !(t.netted && t.netted > 0) ? !st.targetsAir : st.airOnly && !(t.netted && t.netted > 0)) return false;
   return true;
 }
 
@@ -97,6 +98,8 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   let dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   const block = attack && target.kind === 'unit' ? (UNITS[target.type].block ?? 0) + modsOf(sim, target.id).block : 0;
   if (block) dmg = Math.max(dmg * 0.25, dmg - block);
+  // A raging berserker takes more damage.
+  if (target.rampageLeft && target.rampageLeft > 0) dmg *= 1 + (UNITS[target.type]?.rampage?.vuln ?? 0);
   // Spell resistance: ability (spell) damage and magic attacks.
   const mr = (type === 'magic' || type === 'spells') && target.kind === 'unit' ? UNITS[target.type].magicResist : undefined;
   if (mr) dmg *= 1 - mr;
@@ -221,9 +224,11 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (ud?.charge && a.charge) { mult *= ud.charge; a.charge = false; charged = true; }
   // Chance abilities (WC3 percentages): seeded, side-symmetric rolls.
   const roll = (salt: number) => chanceRoll(sim.state, a, salt, t);
-  const crit = !!ud?.crit && roll(1) < ud.crit.chance;
-  if (crit) mult *= ud!.crit!.mult;
-  const raw = st.dmg * mult;
+  // Tribal Blessing: +damage, and possibly a crit or demolish perk.
+  if (a.blessed?.perk === 'demolish' && sim.isStructure(t)) mult *= 1.5;
+  const crit = (!!ud?.crit && roll(1) < ud.crit.chance) || (a.blessed?.perk === 'crit' && roll(6) < 0.25);
+  if (crit) mult *= ud?.crit && roll(1) < ud.crit.chance ? ud.crit.mult : 2;
+  const raw = (st.dmg + (a.blessed?.dmg ?? 0)) * mult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
   if (ud?.suicide) { explode(sim, a, st, t, raw, ud.suicide.radius); return; }
   if (st.chain > 1) {
@@ -236,10 +241,19 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   sim.emit({ t: 'atk', a: a.id, b: t.id, r: ranged });
   const td = t.kind === 'unit' ? UNITS[t.type] : undefined;
   // Evasion: the attack misses (splash and all).
-  if (td?.evade && roll(2) < td.evade) return;
+  if ((td?.evade && roll(2) < td.evade) || (t.blessed?.perk === 'evade' && roll(7) < 0.3)) return;
   // Shield wall: ranged attacks lose part of their force.
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
+  // Berserk: a kill sends it into a rampage.
+  if (ud?.rampage && t.hp <= 0 && t.kind === 'unit') a.rampageLeft = Math.round(ud.rampage.duration * TICK_RATE);
+  // Ensnare: bind enemy flyers to the ground (the target first, then the nearest others).
+  if (ud?.ensnare && sim.isAir(t) && !(a.ensnareCd && a.ensnareCd > 0)) {
+    const left = Math.round(ud.ensnare.duration * TICK_RATE);
+    const flyers = [t, ...[...sim.hash.query(t.x, t.y, 5)].filter((o) => o !== t && o.kind === 'unit' && o.team === t.team && o.hp > 0 && sim.isAir(o) && !isImmune(o))].slice(0, ud.ensnare.count);
+    for (const f of flyers) if (!isImmune(f)) f.netted = left;
+    a.ensnareCd = Math.round(ud.ensnare.every * TICK_RATE);
+  }
   // Cleaving attack: part of the blow hits every other enemy ground unit around the target.
   if (ud?.cleave && t.kind === 'unit') {
     for (const o of sim.hash.query(t.x, t.y, ud.cleave.radius + 1)) {
@@ -367,6 +381,9 @@ export function stepCombatUnits(sim: Sim) {
     // Decay auras (City of Decay) rot enemy units; nobody earns a bounty for what rot kills.
     if (mods.decay > 0) dealDamage(sim, e, mods.decay / TICK_RATE, 'chaos', -1, true);
     if (e.weaken && --e.weaken.left <= 0) delete e.weaken;
+    if (e.rampageLeft && --e.rampageLeft <= 0) delete e.rampageLeft;
+    if (e.netted && --e.netted <= 0) delete e.netted;
+    if (e.ensnareCd && e.ensnareCd > 0) e.ensnareCd--;
     const md = UNITS[e.type].mines;
     if (md && !e.stun) {
       e.mineCd ??= Math.round(md.every * TICK_RATE);
@@ -450,7 +467,10 @@ function stepUnit(sim: Sim, e: Entity, tick: number) {
         performAttack(sim, e, st, target, mods.dmg * (1 + mods.dmgMalus));
         // Berserkers attack faster once badly hurt.
         const bz = UNITS[e.type].berserk;
-        const rage = bz && e.hp < e.maxHp * bz.below ? 1 + bz.haste : 1;
+        let rage = bz && e.hp < e.maxHp * bz.below ? 1 + bz.haste : 1;
+        // Rampage after a kill (the map's Berserk) and Tribal Blessing.
+        if (e.rampageLeft && e.rampageLeft > 0) rage *= 1 + (UNITS[e.type].rampage?.haste ?? 0);
+        if (e.blessed) rage *= 1 + e.blessed.haste;
         e.cd = Math.round(st.cooldownTicks / (mods.haste * rage));
       }
     } else {

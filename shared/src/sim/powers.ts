@@ -2,6 +2,7 @@ import { TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, type PowerDef } from '../data';
 import { distToRect } from '../map/map';
 import { dealDamage, isImmune, rewardKill } from './combat';
+import { nextRandom } from './rng';
 import { footprint } from './grid';
 import type { Sim } from './sim';
 import type { Entity } from './state';
@@ -28,7 +29,7 @@ export function stepPowers(sim: Sim) {
     // A fresh building (or a fresh upgrade) needs a full cooldown before its first cast.
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     if (--e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -94,12 +95,12 @@ function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   const ticks = Math.round((p.duration ?? 3) * TICK_RATE);
   let any = false;
-  for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
-    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
+  for (const u of around(sim, c, reach(p))) {
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > reach(p)) continue;
     if (!isImmune(u)) u.stun = Math.max(u.stun ?? 0, ticks);
     any = true;
   }
-  if (any) sim.emit({ t: 'stasis', x: r2(c.x), y: r2(c.y), r: p.range });
+  if (any) sim.emit({ t: 'stasis', x: r2(c.x), y: r2(c.y), r: p.global ? 40 : p.range });
   return any;
 }
 
@@ -120,6 +121,22 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   if (!p.air) best.sheep = ticks;
   sim.emit({ t: 'hex', id: best.id, d: ticks });
   if (p.dmg) dealDamage(sim, best, p.dmg, 'spells', e.owner);
+  return true;
+}
+
+/**
+ * Tribal Blessing: a random own unit anywhere (not yet blessed, not a summon) permanently gains
+ * damage, HP, armor and attack speed, and one perk: a 25% / 2× critical strike, 30% evasion or
+ * 1.5× damage against buildings. Seeded draws, so replays and saves stay deterministic.
+ */
+function bless(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const pool = sim.state.entities.filter((u) => u.kind === 'unit' && u.team === e.team && u.hp > 0 && !u.blessed && u.ttl === undefined);
+  if (!pool.length) return false;
+  const u = pool[Math.floor(nextRandom(sim.state) * pool.length)];
+  const perks = ['crit', 'evade', 'demolish'] as const;
+  u.blessed = { dmg: p.dmg, haste: p.haste ?? 0, armor: p.armor ?? 0, perk: perks[Math.floor(nextRandom(sim.state) * perks.length)] };
+  if (p.hp) { u.maxHp += p.hp; u.hp += p.hp; }
+  sim.emit({ t: 'revive', id: u.id });
   return true;
 }
 

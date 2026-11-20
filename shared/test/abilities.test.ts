@@ -178,7 +178,8 @@ describe('building powers', () => {
     // Tower-like and self-centred powers keep their range.
     for (const b of Object.values(BUILDINGS)) {
       // The City of Magic's sheep hex is map-wide on request; the flyer-freezing mushroom stays local.
-      if (b.power && ['beam', 'stasis', 'wave', 'erase'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
+      // Map-wide where the map says so: the Stasis Totem freezes every enemy unit.
+      if (b.power && ['beam', 'wave', 'erase'].includes(b.power.kind)) expect(b.power.global, b.id).toBeFalsy();
       if (b.power?.kind === 'hex') expect(!!b.power.global, b.id).toBe(b.id === 'su_city_of_magic');
       if (b.power && ['bombard', 'cyclone', 'slay', 'charm', 'chaos', 'tentacles'].includes(b.power.kind)) expect(b.power.global, b.id).toBe(true);
     }
@@ -329,55 +330,86 @@ describe('Bloodtusk mechanics', () => {
   ];
   const simB = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 6 });
 
-  it('berserk: a badly hurt troll attacks twice as fast', () => {
-    const cdOf = (hurt: boolean) => {
-      const sim = simB();
-      const t = unit(sim, 0, 'bt_berserker', 50, 20), f = unit(sim, 1, 'tw_boulder_ram', 52.5, 20);
-      f.hp = f.maxHp = 1e6;
-      if (hurt) t.hp = t.maxHp * 0.3;
-      let longest = 0;
-      for (let i = 0; i < 4 * TICK_RATE; i++) { t.x = 50; t.y = 20; f.x = 52.5; f.y = 20; sim.step(); longest = Math.max(longest, t.cd ?? 0); }
-      return longest;
-    };
-    expect(cdOf(true)).toBe(Math.round(cdOf(false) / 2));
+  // Units picked by role, so these tests don't depend on other factions' rosters.
+  const groundId = () => Object.values(UNITS).find((u) => !u.air && !u.evade && !u.immune && !u.block && u.hp >= 200 && u.range < 1.5 && !u.thorns)!.id;
+  const flyerId = () => Object.values(UNITS).find((u) => u.air && !u.evade && !u.immune)!.id;
+  const casterId = () => Object.values(UNITS).find((u) => u.attackType === 'magic' && !u.air && !u.chain && !u.splash && !u.poison)!.id;
+
+  it('berserk: after a kill a troll rampages (+200% attack speed for 6 s) and takes 10% more damage', () => {
+    const sim = simB();
+    const t = unit(sim, 0, 'bt_berserker', 50, 20), f = unit(sim, 1, groundId(), 52.5, 20);
+    const rp = UNITS.bt_berserker.rampage!;
+    f.hp = 1;
+    sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
+    performAttack(sim, t, attackStats(t)!, f, 1);
+    expect(t.rampageLeft).toBe(rp.duration * TICK_RATE);
+    const g = unit(sim, 1, groundId(), 52.5, 20);
+    g.hp = g.maxHp = 1e6;
+    let longest = 0;
+    for (let i = 0; i < 3 * TICK_RATE; i++) { t.x = 50; t.y = 20; g.x = 52.5; g.y = 20; sim.step(); longest = Math.max(longest, t.cd ?? 0); }
+    expect(longest).toBeLessThanOrEqual(Math.round((UNITS.bt_berserker.cooldown * TICK_RATE) / (1 + rp.haste)) + 1);
+  });
+
+  it('ensnare binds a flyer to the ground so melee units can hit it', () => {
+    const sim = simB();
+    const trap = unit(sim, 0, 'bt_trapper', 50, 20), fly = unit(sim, 1, flyerId(), 52, 20);
+    fly.hp = fly.maxHp = 1e5;
+    const melee = unit(sim, 0, groundId(), 51.5, 20);
+    const st = attackStats(melee)!;
+    expect(canTarget(sim, melee, st, fly)).toBe(false);
+    hits(sim, trap, fly, 1);
+    expect(fly.netted).toBe(UNITS.bt_trapper.ensnare!.duration * TICK_RATE);
+    expect(canTarget(sim, melee, st, fly)).toBe(true);
   });
 
   it('spell resistance: Spellbreaker Kodos take less magic damage', () => {
     const sim = simB();
-    const k = unit(sim, 0, 'bt_spellbreaker', 50.6, 20), s = unit(sim, 1, 'tw_storm_shaman', 50, 20);
+    const caster = casterId();
+    const k = unit(sim, 0, 'bt_spellbreaker', 50.6, 20), s = unit(sim, 1, caster, 50, 20);
     const d = hits(sim, s, k, 1)[0];
     const sb = UNITS.bt_spellbreaker;
-    expect(d).toBeCloseTo(computeDamage(UNITS.tw_storm_shaman.dmg, 'magic', sb.armorType, sb.armor) * (1 - sb.magicResist!), 1);
+    expect(d).toBeCloseTo(computeDamage(UNITS[caster].dmg, 'magic', sb.armorType, sb.armor) * (1 - sb.magicResist!), 1);
   });
 
-  it('the Spear Tower deals triple damage to flyers', () => {
+  it('the anti-air tower deals 4.67× damage to flyers', () => {
     const sim = simB();
     const tower = building(sim, 0, 'bt_aa_tower', 30, 18);
-    const moth = unit(sim, 1, 'tw_dusk_moth', 33, 19), vine = unit(sim, 1, 'tw_vineling', 33, 19.4);
+    const fly = unit(sim, 1, flyerId(), 33, 19), walk = unit(sim, 1, groundId(), 33, 19.4);
     const st = attackStats(tower)!;
-    for (const u of [moth, vine]) u.hp = u.maxHp = 1e5;
+    for (const u of [fly, walk]) u.hp = u.maxHp = 1e5;
     sim.hash.rebuild(sim.state.entities.filter((e) => e.kind === 'unit'));
-    performAttack(sim, tower, st, moth, 1); performAttack(sim, tower, st, vine, 1);
+    performAttack(sim, tower, st, fly, 1); performAttack(sim, tower, st, walk, 1);
     const a = BUILDINGS.bt_aa_tower.attack!;
-    expect(1e5 - moth.hp).toBeCloseTo(computeDamage(a.dmg * 3, a.attackType, 'light', 0), 1);
-    expect(1e5 - vine.hp).toBeCloseTo(computeDamage(a.dmg, a.attackType, 'light', 0), 1);
+    expect(1e5 - fly.hp).toBeCloseTo(computeDamage(a.dmg * 4.67, a.attackType, UNITS[fly.type].armorType, UNITS[fly.type].armor), 1);
+    expect(1e5 - walk.hp).toBeCloseTo(computeDamage(a.dmg, a.attackType, UNITS[walk.type].armorType, UNITS[walk.type].armor), 1);
   });
 
-  it('the Stasis Totem freezes every enemy unit in range', () => {
+  it('the Stasis Totem freezes every enemy unit on the map', () => {
     const sim = simB();
-    building(sim, 0, 'bt_stasis_totem', 30, 18);
+    building(sim, 0, 'bt_stasis_totem', 6, 18);
     const p = BUILDINGS.bt_stasis_totem.power!;
-    const near = unit(sim, 1, 'tw_vineling', 38, 19), far = unit(sim, 1, 'tw_vineling', 30 + p.range + 4, 19);
+    const near = unit(sim, 1, groundId(), 38, 19), far = unit(sim, 1, groundId(), 100, 19);
     for (const u of [near, far]) u.hp = u.maxHp = 1e5;
     let saw = false;
     for (let i = 0; i < p.cooldown * TICK_RATE + 2; i++) {
-      near.x = 38; near.y = 19; far.x = 30 + p.range + 4; far.y = 19;
+      near.x = 38; near.y = 19; far.x = 100; far.y = 19;
       for (const ev of sim.step()) if (ev.t === 'stasis') saw = true;
       if (saw) break;
     }
     expect(saw).toBe(true);
     expect(near.stun).toBeGreaterThan(0);
-    expect(far.stun ?? 0).toBe(0);
+    expect(far.stun).toBeGreaterThan(0);
+  });
+
+  it('Tribal Blessing makes a random unit permanently stronger', () => {
+    const sim = simB();
+    building(sim, 0, 'bt_war_totem', 6, 18);
+    const p = BUILDINGS.bt_war_totem.power!;
+    const u = unit(sim, 0, groundId(), 20, 19);
+    const hp = u.maxHp;
+    for (let i = 0; i < (p.cooldown + 1) * TICK_RATE && !u.blessed; i++) { u.x = 20; u.y = 19; sim.step(); }
+    expect(u.blessed).toMatchObject({ dmg: 20, armor: 3, haste: 0.2 });
+    expect(u.maxHp).toBe(hp + 200);
   });
 });
 
