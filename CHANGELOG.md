@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.10
+
+- **Cogspark copied exactly from the map's Mechanical race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Tank armour:** light tanks and mine layers take 12 less per hit, assault tanks 18, heavy and rocket tanks 24. Rocket tanks fire anti-air rockets.
+  - **Flamegunners** burn the enemies behind their target (ground only); sergeants throw slowing grenades.
+  - **Copters** hunt only flyers and bash (30% / 50%).
+  - **Golems:** iron golems resist spells, pulverize and bash. The Adamant Golem (legendary upgrade) is immune and has 90% spell resistance.
+  - **Shredders:** the Lumber Mill now trains them directly (no golem upgrade needed). Every hit cuts through everything in front, and they detonate when destroyed.
+  - **Goliath:** the Protection Center (legendary) trains it from the Shredder line; armour 20, immune, stinger missiles at flyers. Its Mk II and Mk III upgrades are gone.
+  - **Lunatic Goblins** blow themselves up and detonate again.
+  - **Energy shields** (blue / red generator) add armour and block hostile building abilities: hex, sudden death, charm and stasis.
+  - **Power Plant** (new): the buildings next to it get +2 armour and can't be frozen; towers deal +25%; units trained there get +100 HP, +2 armour and +20% damage.
+  - **Energy Tower:** bouncing chaos bolts.
+  - **Removed:** the Scrap Exchange (not in the map).
+- **Fixed:** costs the map leaves at the editor default (Water Spring, Arsenal, Red Shield Generator) are 140 gold, the base building's default, not 30.
+
 ## 0.46.9
 
 - **Shardbound copied exactly from the map's Elemental race:**

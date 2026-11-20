@@ -104,6 +104,8 @@ export function spawnUnit(sim: Sim, from: Entity, unitId: string, i: number, n: 
     kind: 'unit', type: unitId, owner: from.owner, team: from.team,
     x, y, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0,
   });
+  // A powered building trains stronger units (+100 HP; +2 armor and +20% damage in combat).
+  if (from.powered) { e.hp += 100; e.maxHp += 100; e.powered = true; }
   // Chaos spawns (Blood Fiends) roll a random armour type and perk (seeded, side-symmetric).
   if (u.chaosSpawn) {
     const r = sideRandom(sim.state, rx * 977 + ry * 131 + i * 17 + 5);

@@ -61,6 +61,12 @@ export interface Entity {
   rampageLeft?: number;
   /** Ensnared flyer: ticks it stays bound to the ground (ground units can hit it). */
   netted?: number;
+  /** Powered by a power plant (buildings), or trained in a powered building (units). */
+  powered?: boolean;
+  /** Energy shield: extra armor; blocks the next `charges` hostile building abilities. */
+  eshield?: { armor: number; charges: number; hp: number };
+  /** Anti-air rockets reload. */
+  rocketCd?: number;
   /** A mirror image: deals 60% damage, takes double. */
   illusion?: boolean;
   /** Its revenge has struck already. */

@@ -51,9 +51,9 @@ describe.each(FACTION_IDS)('faction %s', (id) => {
   });
 
   it('gates special buildings and elite upgrades behind sapphires', () => {
-    const specials = own.filter((b) => b.special && !b.upgradeOnly);
-    expect(specials.length).toBeGreaterThanOrEqual(1);
-    for (const b of specials) expect(b.sapphires ?? 0).toBeGreaterThanOrEqual(1);
+    // Every race has a legendary; in some (the map's Mechanical race) only as an upgrade.
+    expect(own.filter((b) => b.special).length).toBeGreaterThanOrEqual(1);
+    for (const b of own.filter((x) => x.special && !x.upgradeOnly)) expect(b.sapphires ?? 0).toBeGreaterThanOrEqual(1);
     for (const b of own.filter((x) => tierOf(x) === 'elite')) expect(b.sapphires).toBeLessThanOrEqual(START_SAPPHIRES);
   });
 

@@ -142,6 +142,8 @@ export interface UnitDef {
   shockShield?: { chance: number; stun: number };
   /** Illusion: chance per hit to create a copy of itself (60% damage, takes double damage, fades after `ttl` s). */
   illusion?: { chance: number; ttl: number };
+  /** Anti-air rockets: every `every` s, `count` rockets at random enemy flyers within `range`. */
+  aaRockets?: { dmg: number; every: number; range: number; count: number };
   /** Heal this share of its max HP for every kill. */
   killHeal?: number;
   /** Revenge: when killed by an attack, it deals this much chaos damage to its killer (not buildings). */
@@ -236,6 +238,8 @@ export interface BuildingDef {
   incomeBonus?: number;
   /** Every `every`-th own unit that falls within `radius` tiles rises again on the spot (not summons). */
   /** Revive fallen own units: every n-th (`every`) or with a real `chance` (the map's Golden Shrine: 20%, stacks once, never legendaries). */
+  /** Power plant: own buildings within `radius` tiles get +2 armor and are immune to freezing; towers +25% damage; their units +100 HP, +2 armor, +20% damage. */
+  powerPlant?: { radius: number };
   /** Link (the map's Linker): when an own unit dies this share of its max HP heals the team's other units. */
   link?: number;
   /** Mana transfusion: own power buildings recharge this much faster (half for other factions' buildings of the team; max 3 count). */
@@ -269,7 +273,7 @@ export interface BuildingDef {
  * type `unit` burst from the ground in a ring of `radius` around the nearest enemy and last `duration` s.
  */
 export interface PowerDef {
-  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine' | 'enchant';
+  kind: 'bombard' | 'cyclone' | 'stasis' | 'hex' | 'beam' | 'slay' | 'chaos' | 'erase' | 'charm' | 'wave' | 'tentacles' | 'bless' | 'moonshine' | 'enchant' | 'eshield';
   cooldown: number;
   range: number;
   radius: number;
@@ -292,6 +296,8 @@ export interface PowerDef {
   haste?: number;
   /** Bless with the resistance of the wilderness instead: 50% spell resistance and a 40% chance to take 40 less from an attack. */
   ward?: boolean;
+  /** Energy shield: how many hostile building abilities it blocks (`hp`: healed when the first is blocked). */
+  charges?: number;
   /** Bombard: what the shell hits is frozen for this many seconds (buildings stop training, shooting and casting). */
   freeze?: number;
 }

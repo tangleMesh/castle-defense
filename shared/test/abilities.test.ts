@@ -844,3 +844,40 @@ describe('Shardbound mechanics', () => {
   });
 });
 
+describe('Cogspark mechanics', () => {
+  const ps: PlayerSetup[] = [
+    { userId: 'a', name: 'A', team: 0, faction: 'cogspark' },
+    { userId: 'b', name: 'B', team: 1, faction: 'sunspire' },
+  ];
+  const simC = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 8 });
+
+  it('a power plant powers the buildings next to it: armour, and stronger units', () => {
+    const sim = simC();
+    const plant = building(sim, 0, 'cs_power_plant', 20, 18);
+    const near = building(sim, 0, 'cs_gun_smith', 22, 18), far = building(sim, 0, 'cs_gun_smith', 20, 30);
+    sim.step();
+    expect(plant.hp).toBeGreaterThan(0);
+    expect(near.powered).toBe(true);
+    expect(far.powered).toBeFalsy();
+    expect(armorOf(sim, near).value).toBe(armorOf(sim, far).value + 2);
+    const u = spawnUnit(sim, near, 'cs_flamegunner', 0, 1);
+    expect(u.maxHp).toBe(UNITS.cs_flamegunner.hp + 100);
+  });
+
+  it('an energy shield blocks the City of Magic\'s hex once', () => {
+    const sim = simC();
+    const g = unit(sim, 0, 'cs_iron_golem', 60, 20);
+    g.eshield = { armor: 2, charges: 1, hp: 0 };
+    const city = building(sim, 1, 'su_city_of_magic', 90, 18);
+    city.hp = city.maxHp = 1e6;
+    let hexed = 0;
+    for (let i = 0; i < 2 * (BUILDINGS.su_city_of_magic.power!.cooldown + 1) * TICK_RATE && hexed < 2; i++) {
+      g.x = 60; g.y = 20; g.hp = g.maxHp;
+      hexed += sim.step().filter((e) => e.t === 'hex').length;
+    }
+    expect(hexed).toBe(2);
+    expect(g.eshield).toBeUndefined();
+    expect(g.sheep).toBeGreaterThan(0);
+  });
+});
+

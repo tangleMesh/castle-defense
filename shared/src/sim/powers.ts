@@ -20,6 +20,7 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
  */
 export function stepPowers(sim: Sim) {
   const s = sim.state;
+  markPowered(sim);
   for (const e of s.entities) {
     if (e.kind !== 'building' || e.hp <= 0 || e.buildLeft || e.stun) continue;
     const def = BUILDINGS[e.type];
@@ -30,7 +31,7 @@ export function stepPowers(sim: Sim) {
     e.abilityCd ??= Math.round(p.cooldown * TICK_RATE);
     e.abilityCd -= 1 + manaBoost(sim, e);
     if (e.abilityCd > 0) continue;
-    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : p.kind === 'moonshine' ? moonshine(sim, e, p) : p.kind === 'enchant' ? enchant(sim, e, p) : cyclone(sim, e, p);
+    const cast = p.kind === 'bombard' ? bombard(sim, e, p) : p.kind === 'stasis' ? stasis(sim, e, p) : p.kind === 'hex' ? hex(sim, e, p) : p.kind === 'beam' ? beam(sim, e, p) : p.kind === 'slay' ? slay(sim, e, p) : p.kind === 'chaos' ? chaos(sim, e, p) : p.kind === 'erase' ? erase(sim, e, p) : p.kind === 'charm' ? charm(sim, e, p) : p.kind === 'wave' ? wave(sim, e, p) : p.kind === 'tentacles' ? tentacles(sim, e, p) : p.kind === 'bless' ? bless(sim, e, p) : p.kind === 'moonshine' ? moonshine(sim, e, p) : p.kind === 'enchant' ? enchant(sim, e, p) : p.kind === 'eshield' ? energyShield(sim, e, p) : cyclone(sim, e, p);
     // Nothing in range: look again in a second.
     e.abilityCd = cast ? Math.round(p.cooldown * TICK_RATE) : TICK_RATE;
   }
@@ -98,7 +99,7 @@ function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
   let any = false;
   for (const u of around(sim, c, reach(p))) {
     if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > reach(p)) continue;
-    if (!isImmune(u)) u.stun = Math.max(u.stun ?? 0, ticks);
+    if (!isImmune(u) && !shieldBlocks(u)) u.stun = Math.max(u.stun ?? 0, ticks);
     any = true;
   }
   if (any) sim.emit({ t: 'stasis', x: r2(c.x), y: r2(c.y), r: p.global ? 40 : p.range });
@@ -116,6 +117,7 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
     if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
   }
   if (!best) return false;
+  if (shieldBlocks(best)) { sim.emit({ t: 'hex', id: best.id, d: 0 }); return true; }
   const ticks = Math.round((p.duration ?? 5) * TICK_RATE);
   best.stun = ticks;
   // The City of Magic's hex turns its victim into a sheep (the frost blast just freezes flyers).
@@ -182,6 +184,37 @@ function enchant(sim: Sim, e: Entity, p: PowerDef): boolean {
   return true;
 }
 
+/** Power plants power the own buildings around them (recomputed every tick). */
+function markPowered(sim: Sim) {
+  const plants = sim.state.entities.filter((b) => b.kind === 'building' && b.hp > 0 && !b.buildLeft && BUILDINGS[b.type].powerPlant);
+  for (const b of sim.state.entities) {
+    if (b.kind !== 'building') continue;
+    b.powered = plants.some((pl) => pl !== b && pl.team === b.team && distToRect(footprint(b), centre(pl).x, centre(pl).y) <= BUILDINGS[pl.type].powerPlant!.radius + (pl.size ?? 2) / 2);
+    if (!b.powered) delete b.powered;
+  }
+}
+
+/** An energy shield swallows a hostile building ability (the first block of a greater shield also heals). */
+export function shieldBlocks(u: Entity): boolean {
+  const sh = u.eshield;
+  if (!sh || sh.charges <= 0) return false;
+  if (sh.hp) { u.hp = Math.min(u.maxHp, u.hp + sh.hp); sh.hp = 0; }
+  if (--sh.charges <= 0) delete u.eshield;
+  return true;
+}
+
+/** Energy shield: a random own unit (one without a shield first) gains armor and a shield against building abilities. */
+function energyShield(sim: Sim, e: Entity, p: PowerDef): boolean {
+  const all = sim.state.entities.filter((u) => u.kind === 'unit' && u.team === e.team && u.hp > 0 && u.ttl === undefined);
+  const fresh = all.filter((u) => !u.eshield);
+  const pool = fresh.length ? fresh : all;
+  if (!pool.length) return false;
+  const u = pool[Math.floor(nextRandom(sim.state) * pool.length)];
+  u.eshield = { armor: p.armor ?? 2, charges: p.charges ?? 1, hp: p.hp ?? 0 };
+  sim.emit({ t: 'revive', id: u.id });
+  return true;
+}
+
 /** Light beam: the nearest enemy unit in range takes magic damage at once. */
 function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
@@ -212,6 +245,7 @@ function slay(sim: Sim, e: Entity, p: PowerDef): boolean {
   // Map-wide (the map's Death Pit): a random enemy unit; locally: the nearest.
   if (p.global && pool.length) best = pool[Math.floor(nextRandom(sim.state) * pool.length)];
   if (!best) return false;
+  if (shieldBlocks(best)) return true;
   sim.emit({ t: 'slay', a: e.id, b: best.id });
   best.hp = 0;
   rewardKill(sim, best, e.owner);
@@ -297,6 +331,7 @@ function charm(sim: Sim, e: Entity, p: PowerDef): boolean {
     if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
   if (!best) return false;
+  if (shieldBlocks(best)) return true;
   best.owner = e.owner; best.team = e.team;
   delete best.targetId; delete best.poison; delete best.stun; delete best.sheep;
   sim.emit({ t: 'charm', id: best.id });
@@ -347,7 +382,7 @@ function stepShells(sim: Sim) {
       if (b.team === sh.team || b.hp <= 0) continue;
       if (distToRect(footprint(b), sh.x, sh.y) > sh.radius) continue;
       dealDamage(sim, b, sh.dmg, 'siege', sh.owner);
-      if (sh.freeze && b.kind === 'building') b.stun = Math.max(b.stun ?? 0, sh.freeze);
+      if (sh.freeze && b.kind === 'building' && !b.powered) b.stun = Math.max(b.stun ?? 0, sh.freeze);
     }
     for (const u of sim.hash.query(sh.x, sh.y, sh.radius + 1)) {
       if (u.team === sh.team || u.hp <= 0 || sim.isAir(u)) continue;

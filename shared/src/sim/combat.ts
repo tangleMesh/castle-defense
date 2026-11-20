@@ -37,7 +37,7 @@ export function attackStats(e: Entity): AttackStats | null {
     const a = BUILDINGS[e.type].attack;
     if (!a) return null;
     return {
-      dmg: a.dmg, attackType: a.attackType, range: a.range, cooldownTicks: Math.round(a.cooldown * TICK_RATE),
+      dmg: a.dmg * (e.powered ? 1.25 : 1), attackType: a.attackType, range: a.range, cooldownTicks: Math.round(a.cooldown * TICK_RATE),
       targetsAir: a.targetsAir, airOnly: false, structuresOnly: false, splash: a.splash ?? 0, chain: a.chain ?? 0, aggro: a.range,
     };
   }
@@ -48,11 +48,11 @@ export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number }
   if (e.kind === 'unit') {
     const u = UNITS[e.type];
     const m = modsOf(sim, e.id);
-    return { type: e.armorType ?? u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) + (e.blessed?.armor ?? 0) };
+    return { type: e.armorType ?? u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) + (e.blessed?.armor ?? 0) + (e.powered ? 2 : 0) + (e.eshield?.armor ?? 0) };
   }
   // Bulwark Seal: extra armor on all structures of the carrier's team.
   if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
-  if (e.kind === 'building') return { type: 'fortified', value: BUILDINGS[e.type].armor + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
+  if (e.kind === 'building') return { type: 'fortified', value: BUILDINGS[e.type].armor + (e.powered ? 2 : 0) + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
   return { type: 'light', value: 0 };
 }
 
@@ -225,6 +225,7 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   let mult = dmgMult * bonusMult(sim, a, t);
   if (a.weaken) mult *= 1 - a.weaken.mult;
   if (a.illusion) mult *= 0.6;
+  if (a.powered && a.kind === 'unit') mult *= 1.2;
   // Charge: the first blow after marching freely hits much harder.
   let charged = false;
   if (ud?.charge && a.charge) { mult *= ud.charge; a.charge = false; charged = true; }
@@ -453,6 +454,11 @@ export function stepCombatUnits(sim: Sim) {
     if (e.rampageLeft && --e.rampageLeft <= 0) delete e.rampageLeft;
     if (e.netted && --e.netted <= 0) delete e.netted;
     if (e.ensnareCd && e.ensnareCd > 0) e.ensnareCd--;
+    const aa = UNITS[e.type].aaRockets;
+    if (aa && !e.stun) {
+      e.rocketCd ??= Math.round(aa.every * TICK_RATE);
+      if (--e.rocketCd <= 0) { e.rocketCd = Math.round(aa.every * TICK_RATE); fireRockets(sim, e, aa); }
+    }
     const md = UNITS[e.type].mines;
     if (md && !e.stun) {
       e.mineCd ??= Math.round(md.every * TICK_RATE);
@@ -607,3 +613,18 @@ export function stepMines(sim: Sim) {
   }
   sim.state.mines = keep;
 }
+
+/** Anti-air rockets (Rocket Tank, Goliath): random enemy flyers in range take a rocket each. */
+function fireRockets(sim: Sim, e: Entity, aa: { dmg: number; range: number; count: number }) {
+  const flyers: Entity[] = [];
+  for (const u of sim.hash.query(e.x, e.y, aa.range + 1)) {
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || !UNITS[u.type]?.air || Math.hypot(u.x - e.x, u.y - e.y) > aa.range) continue;
+    flyers.push(u);
+  }
+  for (let k = 0; k < aa.count && flyers.length; k++) {
+    const t = flyers[Math.floor(chanceRoll(sim.state, e, 13 + k, flyers[0]) * flyers.length)];
+    sim.emit({ t: 'beam', a: e.id, b: t.id });
+    dealDamage(sim, t, aa.dmg, 'siege', e.owner);
+  }
+}
+

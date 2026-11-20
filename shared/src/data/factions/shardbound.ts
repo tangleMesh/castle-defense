@@ -28,7 +28,7 @@ export const SHARDBOUND: FactionDef = {
   ],
   buildings: [
     {
-      id: 'sb_tidewell', name: 'Tidewell', faction: 'shardbound', cost: 30, hp: 1200, armor: 5, buildTime: 2, size: 2,
+      id: 'sb_tidewell', name: 'Tidewell', faction: 'shardbound', cost: 140, hp: 1200, armor: 5, buildTime: 2, size: 2,
       desc: "Lesser Water Elementals: half of all attacks pass through them, 50% spell resistance. Upgrades into the Golden Fountain.",
       spawn: { unit: 'sb_rill', count: 1, interval: 22 },
       upgrades: ['sb_tide_fountain'],
