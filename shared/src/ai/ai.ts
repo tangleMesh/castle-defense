@@ -1,4 +1,4 @@
-import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, SAPPHIRE_GOLD, START_SAPPHIRES, TICK_RATE } from '../constants';
+import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, SAPPHIRE_GOLD, START_LUMBER, START_SAPPHIRES, TICK_RATE, TREASURE_BONUS, TREASURE_DECAY } from '../constants';
 import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, teammateCarries, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
 import { MAP, clampToRescueArea, inRescueArea, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
@@ -106,7 +106,7 @@ export type BuildCategory = 'melee' | 'ranged' | 'air' | 'swarm' | 'siege' | 'to
 export function buildCategory(def: BuildingDef, upgrade = false): BuildCategory {
   if (def.special) return 'special';
   if (upgrade) return 'upgrade';
-  if (def.incomeBonus || def.bountyBonus) return 'eco';
+  if (def.incomeBonus || def.bountyBonus || def.treasure) return 'eco';
   if (def.attack) return 'tower';
   if (!def.spawn) return 'aura';
   const u = UNITS[def.spawn.unit];
@@ -120,20 +120,20 @@ export const PROFILES: Record<AiLevel, Profile> = {
   easy: {
     think: 4 * TICK_RATE, maxQueue: 1, idle: 0.15, upgradeAfter: 10, specialAt: 14, planner: false, counter: false,
     saves: false, tidy: false, rescueAt: 14, rescueDelay: 2 * TICK_RATE, rescueAim: 2.5, upgradeBias: 1, rangedShare: 0, safeSpots: false, saveForSpecial: 0,
-    itemsAfterMin: 8, items: ['chalice', 'boots', 'hammer'], repairBelow: 0.3,
+    itemsAfterMin: 8, items: ['mason_rune', 'stone_scroll', 'spark_staff'], repairBelow: 0.3,
     // Even a beginner notices flyers it can't hit, but reacts late and only half the time (see decide()).
     antiAirWait: 0,
   },
   normal: {
     think: Math.round(1.5 * TICK_RATE), maxQueue: 2, idle: 0.05, upgradeAfter: 4, specialAt: 7, planner: true, counter: true,
     saves: false, tidy: true, rescueAt: 6, rescueDelay: TICK_RATE, rescueAim: 0.5, upgradeBias: 1, rangedShare: 0.25, safeSpots: false, saveForSpecial: 10,
-    itemsAfterMin: 6, items: ['aegis', 'hammer', 'war_horn'], repairBelow: 0.6,
+    itemsAfterMin: 6, items: ['thunder_drums', 'mason_rune', 'rhythm_engine'], repairBelow: 0.6,
     waitCost: 1.5, maxWait: 120, doctrine: 0.5, noise: 0.3, antiAirWait: 2.5,
   },
   hard: {
     think: Math.round(0.5 * TICK_RATE), maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], repairBelow: 0.75,
+    itemsAfterMin: 5, items: ['thunder_drums', 'rhythm_engine', 'fury_shard', 'mason_rune'], repairBelow: 0.75,
     // Found with the simulation lab (npm run lab -- search / tune): a base behind the castle wins ~65% against one
     // around it, and striking early at small waves (rescueAt 3 instead of 8) another ~70%.
     place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4,
@@ -142,7 +142,7 @@ export const PROFILES: Record<AiLevel, Profile> = {
   brutal: {
     think: 3, maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['war_drum', 'war_horn', 'aegis'], repairBelow: 0.75, place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
+    itemsAfterMin: 5, items: ['thunder_drums', 'rhythm_engine', 'fury_shard', 'mason_rune'], repairBelow: 0.75, place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
   },
 };
 
@@ -362,7 +362,16 @@ export class AiPlayer {
     if (bag.length >= MAX_ITEMS) return null;
     if (s.tick - s.roundStartTick < P.itemsAfterMin * 60 * TICK_RATE || buildings < 5) return null;
     // Team-wide items a teammate already carries add nothing.
-    const id = P.items.find((i) => !bag.includes(i) && !teammateCarries(s.players, this.player, ITEM_BY_ID[i]));
+    const elapsed = s.tick - s.roundStartTick;
+    const id = P.items.find((i) => {
+      const it = ITEM_BY_ID[i];
+      if (!it || bag.includes(i) || teammateCarries(s.players, this.player, it)) return false;
+      // Not offered yet, restocking, or (consumables) a boost of ours still running.
+      if (it.availableAfter && elapsed < it.availableAfter * TICK_RATE) return false;
+      if ((me.itemReady?.[i] ?? 0) > s.tick) return false;
+      if (it.use?.dmg && s.teamBuffs?.some((t) => t.team === me.team)) return false;
+      return (it.lumber ?? 0) <= (me.lumber ?? START_LUMBER);
+    });
     return id ? ITEM_BY_ID[id] : null;
   }
 
@@ -439,9 +448,11 @@ export class AiPlayer {
     const wantTowers = enemy.pressure ? 3 : spawners >= (P.counter ? 3 : 5) ? 1 + Math.floor(spawners / 6) : 0;
 
     const gems = me.sapphires ?? START_SAPPHIRES;
+    // Lumber (towers, Treasure Boxes, legendaries) can't be bought: only what we have counts.
+    const lumber = me.lumber ?? START_LUMBER;
     for (const id of faction.build) {
       const def = BUILDINGS[id];
-      if ((def.sapphires ?? 0) > gems) continue;
+      if ((def.sapphires ?? 0) > gems || (def.lumber ?? 0) > lumber) continue;
       if (def.special) {
         if (total >= P.specialAt && !count((d) => !!d.special)) out.push({ kind: 'build', def, score: top * (P.planner ? 1.3 : 1) });
         continue;
@@ -459,7 +470,13 @@ export class AiPlayer {
         continue;
       }
       // Utility buildings, planned by the stronger bots.
-      if (def.incomeBonus) {
+      if (def.treasure) {
+        // Treasure Box: the next one adds 25% × 0.85^n of our income; worth it when it pays back soon.
+        const boxes = count((d) => !!d.treasure);
+        const perTick = incomeFor(sim, this.player) * TREASURE_BONUS * TREASURE_DECAY ** boxes;
+        const payback = (def.cost / Math.max(0.1, perTick)) * (INCOME_INTERVAL_TICKS / TICK_RATE);
+        if (payback < (P.counter ? 300 : 240) && spawners >= 3) out.push({ kind: 'build', def, score: top * 1.1 });
+      } else if (def.incomeBonus) {
         const bonus = all.reduce((n, t) => n + (BUILDINGS[t].incomeBonus ?? 0), 0);
         if (bonus + def.incomeBonus > MAX_INCOME_BONUS + 1e-9) continue;
         // Only worth it when it pays for itself within a few minutes.
@@ -489,7 +506,7 @@ export class AiPlayer {
         if (!from.upgrades?.length || e.buildLeft) continue;
         for (const to of from.upgrades) {
           const def = BUILDINGS[to];
-          if ((def.sapphires ?? 0) > gems) continue;
+          if ((def.sapphires ?? 0) > gems || (def.lumber ?? 0) > lumber) continue;
           let score: number;
           if (def.special) score = top * (P.planner ? 1.2 : 0.8);
           else if (def.spawn && from.spawn) {
@@ -506,7 +523,7 @@ export class AiPlayer {
       for (const id of faction.build) {
         const def = BUILDINGS[id], cat = buildCategory(def);
         if ((P.bias[cat] ?? 1) >= 2 && (cat === 'tower' || cat === 'eco' || cat === 'aura') && !out.some((o) => o.def.id === id)
-          && (def.sapphires ?? 0) <= gems) out.push({ kind: 'build', def, score: top * (P.bias[cat] ?? 1) });
+          && (def.sapphires ?? 0) <= gems && (def.lumber ?? 0) <= lumber) out.push({ kind: 'build', def, score: top * (P.bias[cat] ?? 1) });
       }
     }
     return out;

@@ -1,4 +1,4 @@
-import { CASTLE_HP, CASTLE_SIZE, INCOME_INTERVAL_TICKS, ROUND_END_TICKS, START_GOLD, START_SAPPHIRES } from '../constants';
+import { CASTLE_HP, CASTLE_SIZE, INCOME_INTERVAL_TICKS, ROUND_END_TICKS, START_GOLD, START_LUMBER, START_SAPPHIRES } from '../constants';
 import { MAP, rectCenter } from '../map/map';
 import { FACTION_IDS } from '../data';
 import { nextRandom } from './rng';
@@ -16,6 +16,7 @@ export function startRound(sim: Sim) {
   s.strikes = [];
   s.shells = [];
   s.zones = [];
+  s.teamBuffs = [];
   s.mines = [];
   s.phase = 'playing';
   s.phaseTicks = s.countdownTicks ?? 0;
@@ -54,6 +55,9 @@ export function startRound(sim: Sim) {
     p.rescueUsed = false;
     p.items = [];
     p.sapphires = START_SAPPHIRES;
+    p.lumber = START_LUMBER;
+    p.itemReady = {};
+    delete p.orbCd;
   }
 }
 

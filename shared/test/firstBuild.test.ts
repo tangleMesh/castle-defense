@@ -12,9 +12,9 @@ const almostBuilt = (sim: Sim, owner: number, upgrading = false) => sim.add({
 const firsts = (ev: SimEvent[]) => ev.filter((e) => e.t === 'first') as Extract<SimEvent, { t: 'first' }>[];
 
 describe('first-building bonus', () => {
-  it('pays 20/15/10 gold to the first three players to finish a building, once each per round', () => {
+  it('pays 20/15/10/5 gold to the first four players (as in the map) to finish a building, once each per round', () => {
     const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 1 });
-    expect(FIRST_BUILD_BONUS).toEqual([20, 15, 10]);
+    expect(FIRST_BUILD_BONUS).toEqual([20, 15, 10, 5]);
     const gold = () => sim.state.players.map((p) => p.gold);
     const g0 = gold();
     // Player 2 finishes first, then player 2 again (no second bonus), then 0, upgrade of 3 (no), then 1 and 3 on the same tick (both third).

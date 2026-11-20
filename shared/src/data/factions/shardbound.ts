@@ -189,7 +189,7 @@ export const SHARDBOUND: FactionDef = {
       rangedResist: 0.4,
       model: { shape: 'water', body: 0x3a7ac8, accent: 0xe0f8ff, scale: 1.1 } },
     { id: 'sb_deep', name: 'Deepwater Spirit', hp: 1300, armor: 6, armorType: 'medium', dmg: 72, attackType: 'normal', range: 0.5, cooldown: 1.6, speed: 2.7, radius: 0.4, bounty: 20,
-      rangedResist: 0.5, evade: 5,
+      rangedResist: 0.5, evade: 0.2,
       model: { shape: 'water', body: 0x2a5ab8, accent: 0x9ae8ff, scale: 1.25, variant: 'deep' } },
     // wind: flying anti-air
     { id: 'sb_breeze', name: 'Breeze Wisp', hp: 250, armor: 2, armorType: 'medium', dmg: 24, attackType: 'pierce', range: 4, cooldown: 1.5, speed: 3.0, radius: 0.32, bounty: 3,
@@ -205,12 +205,12 @@ export const SHARDBOUND: FactionDef = {
     { id: 'sb_ember', name: 'Ember Elemental', hp: 440, armor: 4, armorType: 'heavy', dmg: 25, attackType: 'magic', range: 4, cooldown: 1.4, speed: 2.6, radius: 0.34, bounty: 5,
       model: { shape: 'flame', body: 0xd0603a, accent: 0xffd080, scale: 1 } },
     { id: 'sb_blaze', name: 'Blaze Elemental', hp: 640, armor: 6, armorType: 'heavy', dmg: 40, attackType: 'magic', range: 4.5, cooldown: 1.5, speed: 2.6, radius: 0.38, bounty: 10,
-      slam: { every: 5, dmg: 60, radius: 1.3 }, onDeath: { unit: 'sb_cinder', count: 2 },
+      slam: { chance: 0.2, dmg: 60, radius: 1.3 }, onDeath: { unit: 'sb_cinder', count: 2 },
       model: { shape: 'flame', body: 0xe0402a, accent: 0xffe060, scale: 1.15, variant: 'blaze' } },
     { id: 'sb_cinder', name: 'Cinder', hp: 150, armor: 1, armorType: 'light', dmg: 12, attackType: 'magic', range: 3, cooldown: 1.3, speed: 2.8, radius: 0.26, bounty: 1,
       model: { shape: 'flame', body: 0xff7a3a, accent: 0xffe0a0, scale: 0.65, variant: 'cinder' } },
     { id: 'sb_master', name: 'Master of Elements', hp: 1300, armor: 7, armorType: 'medium', dmg: 76, attackType: 'magic', range: 5.5, cooldown: 1.7, speed: 2.7, radius: 0.4, bounty: 22, targetsAir: true,
-      storm: { every: 4, dmg: 60, jumps: 4 }, aura: { stat: 'dmg', value: 0.15, radius: 6, target: 'ally' },
+      storm: { chance: 0.25, dmg: 60, jumps: 4 }, aura: { stat: 'dmg', value: 0.15, radius: 6, target: 'ally' },
       model: { shape: 'elementalist', body: DEEP, accent: SHARD, scale: 1.3 } },
     // lightning: chain casters with a crackling shield
     { id: 'sb_spark', name: 'Spark Elemental', hp: 300, armor: 2, armorType: 'light', dmg: 26, attackType: 'magic', range: 3.5, cooldown: 1.7, speed: 2.6, radius: 0.32, bounty: 6, targetsAir: true,
@@ -221,10 +221,10 @@ export const SHARDBOUND: FactionDef = {
       model: { shape: 'spark', body: 0xa0d0ff, accent: 0x4a6ad0, scale: 1.35, variant: 'thunder' } },
     // earth: melee siege
     { id: 'sb_stone', name: 'Stone Elemental', hp: 360, armor: 4, armorType: 'heavy', dmg: 44, attackType: 'siege', range: 0.5, cooldown: 1.7, speed: 2.4, radius: 0.42, bounty: 6,
-      slam: { every: 5, dmg: 45, radius: 1.2 },
+      slam: { chance: 0.2, dmg: 45, radius: 1.2 },
       model: { shape: 'rock', body: 0x8a7a5a, accent: 0xc0a0f0, scale: 1.25 } },
     { id: 'sb_mountain', name: 'Mountain Elemental', hp: 740, armor: 7, armorType: 'heavy', dmg: 76, attackType: 'siege', range: 0.6, cooldown: 1.8, speed: 2.4, radius: 0.52, bounty: 13,
-      slam: { every: 4, dmg: 85, radius: 1.5 },
+      slam: { chance: 0.25, dmg: 85, radius: 1.5 },
       model: { shape: 'rock', body: 0x6a5a3a, accent: 0xb090f0, scale: 1.55, variant: 'mountain' } },
     // champions
     { id: 'sb_avatar', name: 'Primal Avatar', hp: 2500, armor: 6, armorType: 'heavy', dmg: 64, attackType: 'magic', range: 0.6, cooldown: 1.5, speed: 2.7, radius: 0.62, bounty: 40, splash: 1.3,
@@ -232,7 +232,7 @@ export const SHARDBOUND: FactionDef = {
     { id: 'sb_avatar_2', name: 'Ascended Avatar', hp: 3600, armor: 7, armorType: 'heavy', dmg: 90, attackType: 'magic', range: 0.6, cooldown: 1.45, speed: 2.8, radius: 0.68, bounty: 55, splash: 1.5,
       model: { shape: 'avatar', body: 0x5a4a9a, accent: 0x7ae0ff, scale: 1.85, variant: 'ascended' } },
     { id: 'sb_avatar_3', name: 'Elemental Paragon', hp: 4500, armor: 8, armorType: 'heavy', dmg: 112, attackType: 'magic', range: 1.2, cooldown: 1.4, speed: 2.9, radius: 0.78, bounty: 80, splash: 1.7,
-      storm: { every: 3, dmg: 90, jumps: 4 },
+      storm: { chance: 0.333, dmg: 90, jumps: 4 },
       model: { shape: 'avatar', body: 0x3a2a6a, accent: 0xd0b0ff, scale: 2.0, variant: 'paragon' } },
   ],
 };

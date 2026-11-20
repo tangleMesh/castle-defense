@@ -33,7 +33,7 @@ export function placementError(sim: Sim, player: number, buildingId: string, tx:
   const p = sim.state.players[player];
   const def = BUILDINGS[buildingId];
   if (!p || !def) return 'Unknown building';
-  if (def.faction !== p.faction) return 'Not your faction';
+  if (def.faction !== 'any' && def.faction !== p.faction) return 'Not your faction';
   if (!Number.isInteger(tx) || !Number.isInteger(ty)) return 'Invalid position';
 
   const grid = sim.blockedGrid.slice();

@@ -7,6 +7,27 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.0
+
+- **Game rules copied from the castleFight map** (first step of the exact map copy; the races follow version by version):
+  - **Damage table:** the map's attack-type × armour-type table, with its extra armour types (unarmoured, hero, divine) and attack types (hero, spells). Ability damage is spell damage, and spell resistance reduces it.
+  - **Real chances:** critical strikes, evasion, bash (now with its bonus damage), pulverize and chain lightning use the map's percentages, rolled with a seeded random generator. Mirror-image fights still get mirror-image luck.
+  - **Economy:**
+    - 250 gold and 125 lumber to start.
+    - Income every 10 s: 5 + 2% of your buildings' value (each building can have its own rate), times the Treasure Chest bonus.
+    - Kill bounties are paid in full.
+    - The first four players to finish a building get 20/15/10/5 gold.
+  - **Lumber (new resource):**
+    - Earned by finishing buildings and upgrades (their value).
+    - Pays for towers, Treasure Chests and legendary buildings.
+    - Shown in the top bar and on building costs.
+  - **Treasure Chest (every faction):** 350 gold + 500 lumber, +25% income, each further one 15% less. Fragile (650 HP).
+  - **Castle:** 5000 HP.
+  - **Shop:** the map's items under our own names: Spark Staff, Stoneskin Scroll, Mason's Rune, Storm Orb, Rhythm Engine, Thunder Drums, Fury Shard and Rage Heart, plus the Sapphire (the map's Cheese). Consumables, unlock times and restocks work as in the map. Six item slots.
+  - **No balance multipliers:** the game uses the map's own values from now on.
+  - **Repair:** a full builder repair takes 120 s, now independent of build time.
+  - **Command card:** the rescue strike is in the top bar and on T, which frees a builder slot for eleven buildings.
+
 ## 0.45.1
 
 - **3D view fixes:**

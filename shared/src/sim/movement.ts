@@ -1,4 +1,4 @@
-import { BUILDER_REACH, BUILDER_SPEED, CASTLE_REPAIR_HPS, REPAIR_TIME_RATIO, START_SAPPHIRES, TICK_RATE } from '../constants';
+import { BUILDER_REACH, BUILDER_SPEED, CASTLE_REPAIR_HPS, REPAIR_FULL_SECONDS, START_LUMBER, START_SAPPHIRES, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, itemEffect } from '../data';
 import { MAP, rectCenter } from '../map/map';
 import { footprint, idx, inBounds, flowStep, nearestFree } from './grid';
@@ -93,6 +93,7 @@ export function stepBuilders(sim: Sim) {
       if (err) {
         p.gold += order.paid;
         if (order.paidS) p.sapphires = (p.sapphires ?? START_SAPPHIRES) + order.paidS;
+        if (order.paidL) p.lumber = (p.lumber ?? START_LUMBER) + order.paidL;
         sim.emit({ t: 'err', p: p.index, msg: `${def.name}: ${err}` });
         continue;
       }
@@ -114,7 +115,7 @@ export function stepBuilders(sim: Sim) {
 
 /**
  * Builder repair (free): walk next to the building or castle, then restore HP each tick
- * (buildings: REPAIR_TIME_RATIO × build time for a full repair; castle: CASTLE_REPAIR_HPS).
+ * (buildings: REPAIR_FULL_SECONDS for a full repair; castle: CASTLE_REPAIR_HPS).
  * Ends when it is whole, gone or busy again (upgrade).
  */
 function stepRepair(sim: Sim, b: Entity, step: number) {
@@ -126,7 +127,7 @@ function stepRepair(sim: Sim, b: Entity, step: number) {
   const at = nearestPointOn(e, b.x, b.y);
   if (Math.hypot(at.x - b.x, at.y - b.y) > BUILDER_REACH - 1) { moveToward(sim, b, at.x, at.y, step); return; }
   // Several builders on the same target stack.
-  const rate = e.kind === 'castle' ? CASTLE_REPAIR_HPS / TICK_RATE : e.maxHp / (REPAIR_TIME_RATIO * BUILDINGS[e.type].buildTime * TICK_RATE);
+  const rate = e.kind === 'castle' ? CASTLE_REPAIR_HPS / TICK_RATE : e.maxHp / (REPAIR_FULL_SECONDS * TICK_RATE);
   const hp = Math.min(e.maxHp - e.hp, rate);
   e.hp += hp;
   // One sparkle per second is enough for the client.

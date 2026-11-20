@@ -100,26 +100,30 @@ function applyAura(sim: Sim, aura: AuraDef, src: Entity, u: Entity) {
  * on top of building auras. The same stat from several teammates' items doesn't stack.
  */
 function applyItemAuras(sim: Sim) {
-  const bonus: [Mods, Mods] = [{ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0, decay: 0, dmgMalus: 0, armorMalus: 0 }, { dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0, decay: 0, dmgMalus: 0, armorMalus: 0 }];
+  const zero = (): Mods => ({ dmg: 0, armor: 0, regen: 0, speed: 0, haste: 0, block: 0, decay: 0, dmgMalus: 0, armorMalus: 0 });
+  const bonus: [Mods, Mods] = [zero(), zero()];
   let any = false;
   for (const p of sim.state.players) {
     for (const id of itemsOf(p)) {
-      const a = ITEM_BY_ID[id]?.teamAura;
-      if (!a) continue;
-      bonus[p.team][a.stat] = Math.max(bonus[p.team][a.stat], a.value);
-      any = true;
+      for (const a of ITEM_BY_ID[id]?.teamAura ?? []) {
+        bonus[p.team][a.stat] = Math.max(bonus[p.team][a.stat], a.value);
+        any = true;
+      }
     }
   }
+  // Consumable damage boosts (Fury Shard, Rage Heart) add up while they last.
+  for (const b of sim.state.teamBuffs ?? []) { bonus[b.team].dmg += b.dmg; any = true; }
   if (!any) return;
   for (const u of sim.state.entities) {
     if (u.kind !== 'unit' || u.hp <= 0) continue;
     const b = bonus[u.team];
-    if (!b.dmg && !b.armor && !b.regen && !b.speed) continue;
+    if (!b.dmg && !b.armor && !b.regen && !b.speed && !b.haste) continue;
     let m = sim.mods.get(u.id);
     if (!m) sim.mods.set(u.id, (m = { ...NONE }));
     m.dmg += b.dmg;
     m.armor += b.armor;
     m.regen += b.regen;
     m.speed += b.speed;
+    m.haste += b.haste;
   }
 }

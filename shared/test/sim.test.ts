@@ -46,10 +46,13 @@ describe('data', () => {
 
 describe('combat table', () => {
   it('applies attack/armour multipliers and armour reduction', () => {
-    expect(computeDamage(100, 'pierce', 'light', 0)).toBeCloseTo(200);
-    expect(computeDamage(100, 'siege', 'fortified', 0)).toBeCloseTo(150);
-    expect(computeDamage(100, 'magic', 'heavy', 0)).toBeCloseTo(200);
-    expect(computeDamage(100, 'normal', 'medium', 5)).toBeCloseTo(150 * (1 - 0.3 / 1.3));
+    // The castleFight map's table (war3mapMisc.txt).
+    expect(computeDamage(100, 'pierce', 'light', 0)).toBeCloseTo(175);
+    expect(computeDamage(100, 'siege', 'fortified', 0)).toBeCloseTo(160);
+    expect(computeDamage(100, 'magic', 'heavy', 0)).toBeCloseTo(175);
+    expect(computeDamage(100, 'pierce', 'unarmored', 0)).toBeCloseTo(105);
+    expect(computeDamage(100, 'hero', 'divine', 0)).toBeCloseTo(40);
+    expect(computeDamage(100, 'normal', 'medium', 5)).toBeCloseTo(175 * (1 - 0.3 / 1.3));
   });
 });
 

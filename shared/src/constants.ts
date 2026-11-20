@@ -15,15 +15,23 @@ export const TICK_RATE = 20;
 /** Snapshot is broadcast every N ticks (10 Hz). */
 export const SNAPSHOT_EVERY = 2;
 
-/** Enough for exactly one cheap spawner of either faction (both cost 90). */
-export const START_GOLD = 150;
+// The economy follows the castleFight map (war3map.j): 250 gold and 125 lumber to start, income
+// every 10 s of 5 gold plus a share of every building's value, Treasure Boxes on top.
+export const START_GOLD = 250;
+/** Lumber at the start of a round; finishing buildings (and upgrades) earns more. */
+export const START_LUMBER = 125;
 export const INCOME_INTERVAL_TICKS = 10 * TICK_RATE;
-/** Gold pace: income and bounties run at 30% of the original (fast-paced) economy. */
-export const BASE_INCOME = 6;
-/** Share of total invested building value paid out each income tick. */
-export const INCOME_PCT = 0.015;
-/** Multiplier on kill bounties (unit bounty values and 10% of a destroyed building's value). */
-export const BOUNTY_MULT = 0.3;
+/** Base income per tick. */
+export const BASE_INCOME = 5;
+/** Default share of a building's value (gold invested, upgrades included) paid out each income tick (the map's 0.2%·10). */
+export const INCOME_PCT = 0.02;
+/** Treasure Boxes: the first adds +25% income, each further one 15% less than the one before. */
+export const TREASURE_BONUS = 0.25;
+export const TREASURE_DECAY = 0.85;
+/** Multiplier on unit kill bounties (the map pays them in full). */
+export const BOUNTY_MULT = 1;
+/** Share of a destroyed building's value paid to the killer. */
+export const BUILDING_BOUNTY = 0.03;
 /** Income buildings stack up to this total bonus (+30%). */
 export const MAX_INCOME_BONUS = 0.3;
 export const SELL_REFUND = 0.5;
@@ -34,9 +42,9 @@ export const START_SAPPHIRES = 1;
 /** Gold price of one more sapphire in the castle shop. */
 export const SAPPHIRE_GOLD = 1500;
 /** Bonus gold for the first, second and third player to finish a building each round. */
-export const FIRST_BUILD_BONUS = [20, 15, 10];
+export const FIRST_BUILD_BONUS = [20, 15, 10, 5];
 
-export const CASTLE_HP = 8000;
+export const CASTLE_HP = 5000;
 export const CASTLE_ARMOR = 5;
 export const CASTLE_SIZE = 4;
 /** Tiles around each castle that must stay free of buildings (keeps paths open and nothing hidden behind it). */
@@ -47,10 +55,11 @@ export const BUILDER_SPEED = 7;
 export const BUILDER_REACH = 2.2;
 
 /**
- * Builder repair is free but slow: repairing a building from 0 to full takes REPAIR_TIME_RATIO ×
- * its build time (~11 HP/s on a tower), so it mends a base between waves but can't out-heal a push.
+ * Builder repair is free but slow: repairing a building from 0 to full takes REPAIR_FULL_SECONDS,
+ * whatever its size (the map's buildings go up in 2 s, so build time can't set the pace), so it
+ * mends a base between waves but can't out-heal a push.
  */
-export const REPAIR_TIME_RATIO = 9;
+export const REPAIR_FULL_SECONDS = 120;
 /** Builder repair of the own castle, HP per second per builder (several builders stack). */
 export const CASTLE_REPAIR_HPS = 11;
 

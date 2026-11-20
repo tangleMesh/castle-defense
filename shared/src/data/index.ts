@@ -12,12 +12,14 @@ import { DOOMFORGE } from './factions/doomforge';
 import { TIDECALL } from './factions/tidecall';
 import { BLIGHTROOT } from './factions/blightroot';
 import { TUNING } from './tuning';
+import { COMMON_BUILDINGS } from './common';
 import type { Tuning } from './types';
 
 export * from './types';
 export * from './combat';
 export * from './items';
 export * from './abilities';
+export * from './common';
 
 export const FACTIONS: Record<FactionId, FactionDef> = { ironvow: IRONVOW, thornwild: THORNWILD, shardbound: SHARDBOUND, cogspark: COGSPARK, duskmoon: DUSKMOON, bloodtusk: BLOODTUSK, sunspire: SUNSPIRE, frostmark: FROSTMARK, gravewake: GRAVEWAKE, doomforge: DOOMFORGE, tidecall: TIDECALL, blightroot: BLIGHTROOT };
 export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
@@ -36,6 +38,11 @@ for (const f of Object.values(FACTIONS)) {
     if (f.trait?.unitEvade && u.evade === undefined) u.evade = f.trait.unitEvade;
     UNITS[u.id] = u;
   }
+}
+// Buildings every builder has (the Treasure Box): registered once, offered to every faction.
+for (const b of COMMON_BUILDINGS) {
+  BUILDINGS[b.id] = b;
+  for (const f of Object.values(FACTIONS)) if (!f.build.includes(b.id)) f.build.push(b.id);
 }
 
 /** Hand-written values of every unit, before tuning. */

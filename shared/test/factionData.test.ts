@@ -17,11 +17,11 @@ describe.each(FACTION_IDS)('faction %s', (id) => {
     expect(f.traits.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('fits its build list on the command card (slots 10 and 11 are rescue strike and stop)', () => {
-    expect(f.build.length).toBeLessThanOrEqual(GRID_HOTKEYS.length - 2);
+  it('fits its build list on the builder card (slot 11 is stop; the strike lives in the top bar and on T)', () => {
+    expect(f.build.length).toBeLessThanOrEqual(GRID_HOTKEYS.length - 1);
     for (const b of f.build) {
       expect(BUILDINGS[b], b).toBeTruthy();
-      expect(BUILDINGS[b].faction).toBe(id);
+      expect([id, 'any']).toContain(BUILDINGS[b].faction);
       expect(BUILDINGS[b].upgradeOnly, `${b} is buildable`).toBeFalsy();
     }
   });

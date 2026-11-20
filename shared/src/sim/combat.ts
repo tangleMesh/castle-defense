@@ -1,4 +1,4 @@
-import { BOUNTY_MULT, CASTLE_ARMOR, DEFAULT_AGGRO, TICK_RATE } from '../constants';
+import { BOUNTY_MULT, BUILDING_BOUNTY, CASTLE_ARMOR, DEFAULT_AGGRO, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, computeDamage, teamItemBonus, type ArmorType, type AttackType, type UnitDef } from '../data';
 import type { Sim } from './sim';
 import type { Entity } from './state';
@@ -7,6 +7,7 @@ import { followFlow, moveToward, nearestPointOn } from './movement';
 import { footprint } from './grid';
 import { MAP, distToRect, inRect } from '../map/map';
 import { summonUnits } from './spawning';
+import { chanceRoll } from './rng';
 
 export interface AttackStats {
   dmg: number;
@@ -47,7 +48,7 @@ export function armorOf(sim: Sim, e: Entity): { type: ArmorType; value: number }
   if (e.kind === 'unit') {
     const u = UNITS[e.type];
     const m = modsOf(sim, e.id);
-    return { type: u.armorType, value: u.armor + m.armor + m.armorMalus };
+    return { type: u.armorType, value: u.armor + m.armor + m.armorMalus + (e.stone?.armor ?? 0) };
   }
   // Bulwark Seal: extra armor on all structures of the carrier's team.
   if (e.kind === 'castle') return { type: 'fortified', value: CASTLE_ARMOR + teamItemBonus(sim.state.players, e.team, 'structureArmor') };
@@ -76,7 +77,7 @@ export function rewardKill(sim: Sim, target: Entity, killerOwner: number) {
   const bounty = target.kind === 'unit'
     // No minimum: swarms of cheap bodies must not feed the enemy more gold than an elite army.
     ? Math.round(UNITS[target.type].bounty * BOUNTY_MULT)
-    : target.kind === 'building' ? Math.floor((target.value ?? 0) * 0.1 * BOUNTY_MULT) : 0;
+    : target.kind === 'building' ? Math.floor((target.value ?? 0) * BUILDING_BOUNTY) : 0;
   if (bounty <= 0) return;
   // Hunting economies (Thornwild's Trophy Totem) earn extra from every kill.
   const bonus = sim.bountyBonus[killerOwner] ?? 0;
@@ -96,7 +97,8 @@ export function dealDamage(sim: Sim, target: Entity, raw: number, type: AttackTy
   let dmg = computeDamage(raw, type, armor.type, ignoreArmor ? 0 : armor.value);
   const block = attack && target.kind === 'unit' ? (UNITS[target.type].block ?? 0) + modsOf(sim, target.id).block : 0;
   if (block) dmg = Math.max(dmg * 0.25, dmg - block);
-  const mr = type === 'magic' && target.kind === 'unit' ? UNITS[target.type].magicResist : undefined;
+  // Spell resistance: ability (spell) damage and magic attacks.
+  const mr = (type === 'magic' || type === 'spells') && target.kind === 'unit' ? UNITS[target.type].magicResist : undefined;
   if (mr) dmg *= 1 - mr;
   target.hp -= dmg;
   if (target.hp <= 0 && target.kind !== 'castle') {
@@ -167,6 +169,13 @@ function bonusMult(sim: Sim, a: Entity, t: Entity): number {
  * Lightning that jumps from `first` to the nearest not-yet-hit enemy within 3.5 tiles, losing 20%
  * per jump. Returns everything it hit.
  */
+/** A chain lightning cast by `a` (an item or a building) at `t`: spell damage, `jumps` targets. */
+export function castLightning(sim: Sim, a: Entity, t: Entity, dmg: number, jumps: number, range: number) {
+  const st: AttackStats = { dmg, attackType: 'spells', range, cooldownTicks: 0, targetsAir: true, airOnly: false, structuresOnly: false, splash: 0, chain: jumps, aggro: range };
+  const hit = chainFrom(sim, a, st, t, dmg, jumps, 'spells');
+  sim.emit({ t: 'chain', ids: [a.id, ...hit.map((h) => h.id)] });
+}
+
 /** How far beyond its own range a chain may jump from the caster. */
 const CHAIN_REACH = 2;
 
@@ -205,9 +214,9 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   // Charge: the first blow after marching freely hits much harder.
   let charged = false;
   if (ud?.charge && a.charge) { mult *= ud.charge; a.charge = false; charged = true; }
-  // Every-nth abilities count the attacker's blows (deterministic, so mirror matches stay mirrored).
-  const n = ud && (ud.crit || ud.bash || ud.slam || ud.storm) ? (a.hits = (a.hits ?? 0) + 1) : 0;
-  const crit = !!ud?.crit && n % ud.crit.every === 0;
+  // Chance abilities (WC3 percentages): seeded, side-symmetric rolls.
+  const roll = (salt: number) => chanceRoll(sim.state, a, salt, t);
+  const crit = !!ud?.crit && roll(1) < ud.crit.chance;
   if (crit) mult *= ud!.crit!.mult;
   const raw = st.dmg * mult;
   const ranged: 0 | 1 = st.range >= 1.5 ? 1 : 0;
@@ -221,8 +230,8 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   }
   sim.emit({ t: 'atk', a: a.id, b: t.id, r: ranged });
   const td = t.kind === 'unit' ? UNITS[t.type] : undefined;
-  // Evasion: every n-th attack aimed at the unit misses (splash and all).
-  if (td?.evade && (t.dodges = (t.dodges ?? 0) + 1) % td.evade === 0) return;
+  // Evasion: the attack misses (splash and all).
+  if (td?.evade && roll(2) < td.evade) return;
   // Shield wall: ranged attacks lose part of their force.
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
@@ -245,8 +254,11 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (charged || crit) sim.emit({ t: 'splash', x: Math.round(t.x * 100) / 100, y: Math.round(t.y * 100) / 100, r: 0.6 });
   if (ud) {
     onHit(sim, a, ud, t, dealt, ranged);
-    if (ud.bash && n % ud.bash.every === 0 && t.kind === 'unit' && t.hp > 0) t.stun = Math.max(t.stun ?? 0, Math.round(ud.bash.stun * TICK_RATE));
-    if (ud.slam && n % ud.slam.every === 0) {
+    if (ud.bash && t.kind === 'unit' && t.hp > 0 && roll(3) < ud.bash.chance) {
+      t.stun = Math.max(t.stun ?? 0, Math.round(ud.bash.stun * TICK_RATE));
+      if (ud.bash.dmg) dealDamage(sim, t, ud.bash.dmg * dmgMult, st.attackType, a.owner, false, true);
+    }
+    if (ud.slam && roll(4) < ud.slam.chance) {
       const p = sim.isStructure(t) ? nearestPointOn(t, a.x, a.y) : { x: t.x, y: t.y };
       for (const u of sim.hash.query(p.x, p.y, ud.slam.radius + 0.8)) {
         if (!canTarget(sim, a, anyTarget(st), u) || sim.isAir(u)) continue;
@@ -255,8 +267,8 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
       }
       sim.emit({ t: 'splash', x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100, r: ud.slam.radius });
     }
-    if (ud.storm && n % ud.storm.every === 0 && t.hp > 0 && t.kind === 'unit') {
-      const hit = chainFrom(sim, a, anyTarget(st), t, ud.storm.dmg * dmgMult, ud.storm.jumps, 'magic');
+    if (ud.storm && t.hp > 0 && t.kind === 'unit' && roll(5) < ud.storm.chance) {
+      const hit = chainFrom(sim, a, anyTarget(st), t, ud.storm.dmg * dmgMult, ud.storm.jumps, 'spells');
       sim.emit({ t: 'chain', ids: [a.id, ...hit.map((h) => h.id)] });
     }
   }

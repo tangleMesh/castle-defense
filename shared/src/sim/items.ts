@@ -1,13 +1,16 @@
 import { TICK_RATE } from '../constants';
-import { itemEffect } from '../data';
+import { ITEM_BY_ID, itemEffect } from '../data';
 import { distToRect } from '../map/map';
 import type { Sim } from './sim';
 import type { Entity } from './state';
-import { canTarget, performAttack, type AttackStats } from './combat';
+import { canTarget, castLightning, performAttack, type AttackStats } from './combat';
 import { footprint } from './grid';
 
-/** Builder item effects that act each tick: the Warden's Crossbow and the Mason's Hammer. */
+/** Item effects that act each tick: builder attacks, repair, the Storm Orb, and timed buffs running out. */
 export function stepItems(sim: Sim) {
+  const s = sim.state;
+  if (s.teamBuffs?.length) s.teamBuffs = s.teamBuffs.filter((b) => --b.left > 0);
+  for (const u of s.entities) if (u.stone && --u.stone.left <= 0) delete u.stone;
   for (const p of sim.state.players) {
     if (!p.items?.length) continue;
     const b = sim.get(p.builderId);
@@ -17,8 +20,23 @@ export function stepItems(sim: Sim) {
       dmg: atk.dmg, attackType: atk.attackType, range: atk.range, cooldownTicks: Math.round(atk.cooldown * TICK_RATE),
       targetsAir: atk.targetsAir, airOnly: false, structuresOnly: false, splash: 0, chain: 0, aggro: atk.range,
     });
-    const rep = itemEffect(p, 'repair');
-    if (rep) repair(sim, b, rep.hps, rep.range);
+    // Repair items stack (several runes, like in the map).
+    for (const id of p.items) { const rep = ITEM_BY_ID[id]?.repair; if (rep) repair(sim, b, rep.hps, rep.range); }
+    const orb = itemEffect(p, 'builderLightning');
+    if (orb) {
+      p.orbCd ??= 0;
+      if (p.orbCd > 0) p.orbCd--;
+      else {
+        let t: Entity | undefined, bestD = Infinity;
+        for (const u of sim.hash.query(b.x, b.y, orb.range + 1)) {
+          if (u.kind !== 'unit' || u.team === b.team || u.hp <= 0 || u.hidden) continue;
+          const d = Math.hypot(u.x - b.x, u.y - b.y);
+          if (d <= orb.range && d < bestD) { t = u; bestD = d; }
+        }
+        if (t) { castLightning(sim, b, t, orb.dmg, orb.jumps, orb.range); p.orbCd = Math.round(orb.every * TICK_RATE); }
+        else p.orbCd = TICK_RATE;
+      }
+    }
   }
 }
 

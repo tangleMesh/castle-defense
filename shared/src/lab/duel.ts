@@ -38,7 +38,7 @@ export interface DuelResult { score: number; castleHp: [number, number]; standin
 export function duel(a: DuelSide, b: DuelSide, opts: { minutes?: number; seed?: number } = {}): DuelResult {
   const sides = [a, b];
   const sim = Sim.create({
-    players: sides.map((s, t) => ({ userId: `d${t}`, name: `d${t}`, team: t as Team, faction: BUILDINGS[s.building].faction })),
+    players: sides.map((s, t) => ({ userId: `d${t}`, name: `d${t}`, team: t as Team, faction: BUILDINGS[s.building].faction as FactionId })),
     bestOf: 1, seed: opts.seed ?? 7,
   });
   sides.forEach((s, t) => {

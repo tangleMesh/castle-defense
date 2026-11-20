@@ -44,80 +44,64 @@ function hits(sim: Sim, a: Entity, t: Entity, n: number): number[] {
   return out;
 }
 
-describe('every-nth abilities', () => {
-  it('critical strike: every n-th attack deals the multiplier', () => {
-    const sim = newSim();
-    const g = UNITS.tw_gnasher;
-    const a = unit(sim, 1, 'tw_gnasher', 50, 20), t = unit(sim, 0, 'iv_militia', 50.6, 20);
-    const d = hits(sim, a, t, 2 * g.crit!.every);
-    const plain = d[0];
-    expect(d[g.crit!.every - 1]).toBeCloseTo(plain * g.crit!.mult);
-    expect(d[2 * g.crit!.every - 1]).toBeCloseTo(plain * g.crit!.mult);
-    expect(d.filter((x) => x > plain * 1.01)).toHaveLength(2);
+describe('chance abilities (WC3 percentages, seeded rolls)', () => {
+  // A plain melee unit and a sturdy target, patched per test (and restored afterwards).
+  const meleeId = Object.values(UNITS).find((u) => u.range < 1 && !u.air && !u.crit && !u.bash && !u.splash && !u.chain && !u.multishot && !u.suicide && !u.charge && !u.poison && !u.weaken && !u.lifesteal)!.id;
+  const tankId = Object.values(UNITS).find((u) => !u.air && !u.evade && !u.block && !u.thorns && !u.rangedResist && !u.magicResist && !u.deathBlast && !u.onDeath && u.hp >= 300)!.id;
+  function withPatch<T>(id: string, patch: Partial<typeof UNITS[string]>, fn: () => T): T {
+    const u = UNITS[id] as unknown as Record<string, unknown>;
+    const old = Object.fromEntries(Object.keys(patch).map((k) => [k, u[k]]));
+    Object.assign(u, patch);
+    try { return fn(); } finally { for (const [k, v] of Object.entries(old)) { if (v === undefined) delete u[k]; else u[k] = v; } }
+  }
+  const duel = () => { const sim = newSim(); return { sim, a: unit(sim, 1, meleeId, 50, 20), t: unit(sim, 0, tankId, 50.6, 20) }; };
+
+  it('critical strike: always at 100%, never at 0%, about the chance in between', () => {
+    const { sim, a, t } = duel();
+    const plain = hits(sim, a, t, 1)[0];
+    withPatch(meleeId, { crit: { chance: 1, mult: 2 } }, () => expect(hits(sim, a, t, 5).every((d) => Math.abs(d - plain * 2) < 0.01)).toBe(true));
+    withPatch(meleeId, { crit: { chance: 0, mult: 2 } }, () => expect(hits(sim, a, t, 5).every((d) => Math.abs(d - plain) < 0.01)).toBe(true));
+    const rate = withPatch(meleeId, { crit: { chance: 0.25, mult: 2 } }, () => {
+      let n = 0;
+      for (let i = 0; i < 600; i++) { sim.state.tick++; if (hits(sim, a, t, 1)[0] > plain * 1.5) n++; }
+      return n / 600;
+    });
+    expect(rate).toBeGreaterThan(0.18);
+    expect(rate).toBeLessThan(0.32);
   });
 
-  it('bash: every n-th attack stuns, and a stunned unit stands still', () => {
-    const sim = newSim();
-    const l = UNITS.iv_lancer;
-    const a = unit(sim, 0, 'iv_lancer', 50, 20), t = unit(sim, 1, 'tw_vineling', 50.6, 20);
-    hits(sim, a, t, l.bash!.every - 1);
-    expect(t.stun ?? 0).toBe(0);
-    hits(sim, a, t, 1);
-    expect(t.stun).toBe(Math.round(l.bash!.stun * TICK_RATE));
+  it('bash stuns and deals its extra damage; a stunned unit stands still', () => {
+    const { sim, a, t } = duel();
+    const plain = hits(sim, a, t, 1)[0];
+    withPatch(meleeId, { bash: { chance: 1, stun: 2, dmg: 25 } }, () => {
+      const d = hits(sim, a, t, 1)[0];
+      expect(d).toBeGreaterThan(plain);
+      expect(t.stun).toBe(2 * TICK_RATE);
+    });
     sim.removeNow(a);
     const x = t.x;
     sim.step();
     expect(t.x).toBe(x);
   });
 
-  it('evasion: every n-th attack against the unit misses', () => {
-    const sim = newSim();
-    const ev = UNITS.iv_shieldbearer.evade!;
-    const a = unit(sim, 1, 'tw_vineling', 50, 20), t = unit(sim, 0, 'iv_shieldbearer', 50.6, 20);
-    delete UNITS.tw_vineling.poison; // keep the damage clean
-    try {
-      const d = hits(sim, a, t, ev * 2);
-      expect(d[ev - 1]).toBe(0);
-      expect(d[2 * ev - 1]).toBe(0);
-      expect(d.filter((x) => x === 0)).toHaveLength(2);
-    } finally {
-      UNITS.tw_vineling.poison = { dps: 2, duration: 4, slow: 0.1 };
-    }
+  it('evasion: the chance of an attack missing', () => {
+    const { sim, a, t } = duel();
+    withPatch(tankId, { evade: 1 }, () => expect(hits(sim, a, t, 5)).toEqual([0, 0, 0, 0, 0]));
+    const misses = withPatch(tankId, { evade: 0.3 }, () => {
+      let n = 0;
+      for (let i = 0; i < 600; i++) { sim.state.tick++; if (hits(sim, a, t, 1)[0] === 0) n++; }
+      return n / 600;
+    });
+    expect(misses).toBeGreaterThan(0.23);
+    expect(misses).toBeLessThan(0.37);
   });
 
-  it('shield wall: ranged attacks deal less, melee doesn\'t', () => {
-    const sim = newSim();
-    const sb = UNITS.iv_shieldbearer;
-    const archer = unit(sim, 1, 'tw_thorn_archer', 50, 20), t = unit(sim, 0, 'iv_shieldbearer', 53, 20);
-    const ranged = hits(sim, archer, t, 1)[0];
-    const full = computeDamage(UNITS.tw_thorn_archer.dmg, 'pierce', sb.armorType, sb.armor + sb.aura!.value * 0);
-    expect(ranged).toBeCloseTo(full * (1 - sb.rangedResist!), 1);
-  });
-
-  it('hardened skin: blocks a flat amount, at least a quarter gets through', () => {
-    const sim = newSim();
-    const giant = UNITS.tw_boulder_ram;
-    const t = unit(sim, 1, 'tw_boulder_ram', 50.6, 20);
-    const knight = unit(sim, 0, 'iv_knight', 50, 20);
-    knight.charge = false;
-    const big = hits(sim, knight, t, 1)[0];
-    expect(big).toBeCloseTo(computeDamage(UNITS.iv_knight.dmg, 'normal', giant.armorType, giant.armor) - giant.block!, 1);
-    const mil = unit(sim, 0, 'iv_militia', 50, 20.6);
-    const small = hits(sim, mil, t, 1)[0];
-    const raw = computeDamage(UNITS.iv_militia.dmg, 'normal', giant.armorType, giant.armor);
-    expect(small).toBeCloseTo(Math.max(raw * 0.25, raw - giant.block!), 1);
-  });
-
-  it('storm: every n-th attack chains lightning to nearby enemies', () => {
-    const sim = newSim();
-    const hawk = UNITS.iv_skyhawk;
-    const a = unit(sim, 0, 'iv_skyhawk', 50, 20);
-    const ts = [0, 1, 2].map((i) => unit(sim, 1, 'tw_vineling', 53 + i * 0.8, 20));
-    const before = ts.slice(1).map((t) => t.hp);
-    hits(sim, a, ts[0], hawk.storm!.every - 1);
-    expect(ts.slice(1).map((t) => t.hp)).toEqual(before);
-    hits(sim, a, ts[0], 1);
-    expect(ts[1].hp).toBeLessThan(before[0]);
+  it('chain lightning (storm) jumps to nearby enemies', () => {
+    const { sim, a } = duel();
+    const ts = [0, 1, 2].map((i) => unit(sim, 0, tankId, 50.6 + i * 0.8, 20));
+    const before = ts[1].hp;
+    withPatch(meleeId, { storm: { chance: 1, dmg: 50, jumps: 3 } }, () => hits(sim, a, ts[0], 1));
+    expect(ts[1].hp).toBeLessThan(before);
     expect(sim.state.events.some((e) => e.t === 'chain')).toBe(true);
   });
 });
@@ -328,13 +312,13 @@ describe('Duskmoon mechanics', () => {
       const d = hits(sim, a, t, 1)[0];
       const raw = computeDamage(UNITS.iv_halberdier.dmg, 'normal', 'medium', UNITS.dm_assassin.armor);
       expect(d).toBeCloseTo(raw - BUILDINGS.dm_wild_obelisk.aura!.value, 1);
-    } finally { UNITS.dm_assassin.evade = 6; }
+    } finally { UNITS.dm_assassin.evade = 0.167; }
   });
 
-  it('Moonlit grace: Duskmoon units without their own evasion dodge every 8th blow', () => {
-    expect(UNITS.dm_huntress.evade).toBe(8);
-    expect(UNITS.dm_assassin.evade).toBe(6);
-    expect(UNITS.iv_militia.evade).toBeUndefined();
+  it('Moonlit grace: Duskmoon units without their own evasion dodge 12.5% of blows', () => {
+    expect(UNITS.dm_huntress.evade).toBe(0.125);
+    expect(UNITS.dm_assassin.evade).toBeCloseTo(1 / 6, 2);
+    expect(Object.values(UNITS).filter((u) => u.id.startsWith('iv_')).every((u) => !u.evade || u.evade < 0.5)).toBe(true);
   });
 });
 

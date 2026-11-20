@@ -2,7 +2,7 @@
  * Builder repair (one building at a time, costs gold) and the Mason's Hammer (slow area repair).
  */
 import { describe, expect, it } from 'vitest';
-import { BUILDINGS, CASTLE_REPAIR_HPS, ITEM_BY_ID, REPAIR_TIME_RATIO, Sim, TICK_RATE, type Entity, type PlayerSetup } from '../src/index';
+import { BUILDINGS, CASTLE_REPAIR_HPS, ITEM_BY_ID, REPAIR_FULL_SECONDS, Sim, TICK_RATE, type Entity, type PlayerSetup } from '../src/index';
 
 const players: PlayerSetup[] = [
   { userId: 'a', name: 'A', team: 0, faction: 'ironvow' },
@@ -34,7 +34,7 @@ describe('builder repair', () => {
     expect(b.hp).toBeGreaterThan(b.maxHp / 2);
     const hp0 = b.hp, gold0 = p.gold;
     for (let i = 0; i < TICK_RATE; i++) sim.step();
-    const rate = def.hp / (REPAIR_TIME_RATIO * def.buildTime);
+    const rate = def.hp / REPAIR_FULL_SECONDS;
     expect(b.hp - hp0).toBeCloseTo(rate, 0);
     expect(p.gold).toBeGreaterThanOrEqual(gold0);
     // Repairs to full, then stops on its own.
@@ -104,16 +104,16 @@ describe('castle repair', () => {
   });
 });
 
-describe("Mason's Hammer", () => {
+describe("Mason's Rune", () => {
   it('slowly repairs every own building near the builder, for free', () => {
     const sim = newSim();
-    const rep = ITEM_BY_ID.hammer.repair!;
+    const rep = ITEM_BY_ID.mason_rune.repair!;
     const p = sim.state.players[0];
     const builder = sim.get(p.builderId)!;
     const near = [building(sim, 0, 'iv_bastion_tower', 20, 6), building(sim, 0, 'iv_militia_hall', 20, 9)];
     const far = building(sim, 0, 'iv_bastion_tower', 20, 30);
     for (const b of [...near, far]) b.hp = 200;
-    p.items = ['hammer'];
+    p.items = ['mason_rune'];
     builder.x = 19; builder.y = 8;
     const gold = p.gold;
     for (let i = 0; i < 2 * TICK_RATE; i++) sim.step();
@@ -122,6 +122,6 @@ describe("Mason's Hammer", () => {
     expect(p.gold).toBeGreaterThanOrEqual(gold);
     // Slower than the builder's own repair of the same tower.
     const t = BUILDINGS.iv_bastion_tower;
-    expect(rep.hps).toBeLessThan(t.hp / (REPAIR_TIME_RATIO * t.buildTime));
+    expect(rep.hps).toBeLessThan(t.hp / REPAIR_FULL_SECONDS);
   });
 });

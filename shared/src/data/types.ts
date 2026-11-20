@@ -1,6 +1,7 @@
-/** `chaos` (castles only) deals full damage to every armour type. */
-export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos';
-export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified';
+/** Attack types of the WC3 map: `chaos` deals full damage to every armour type, `spells` is ability damage. */
+export type AttackType = 'normal' | 'pierce' | 'siege' | 'magic' | 'chaos' | 'hero' | 'spells';
+/** Armour types of the WC3 map (light = small, heavy = large, unarmored = none). */
+export type ArmorType = 'light' | 'medium' | 'heavy' | 'fortified' | 'hero' | 'divine' | 'unarmored';
 export type FactionId = 'ironvow' | 'thornwild' | 'shardbound' | 'cogspark' | 'duskmoon' | 'bloodtusk' | 'sunspire' | 'frostmark' | 'gravewake' | 'doomforge' | 'tidecall' | 'blightroot';
 
 /** Visual description used by the client to generate procedural sprites. */
@@ -54,7 +55,9 @@ export interface BuildingModel {
     // Tidecall
     | 'murloccamp' | 'swampwell' | 'spawningpool' | 'nagaspring' | 'reptilepool' | 'snaketemple' | 'coralstatue' | 'pyramid' | 'oracle' | 'tidalguardian'
     // Blightroot
-    | 'blightancient' | 'voidportal' | 'felshrine' | 'hellgate' | 'demonstatue' | 'blightprotector' | 'forgottenone' | 'painwell' | 'corruptioneye';
+    | 'blightancient' | 'voidportal' | 'felshrine' | 'hellgate' | 'demonstatue' | 'blightprotector' | 'forgottenone' | 'painwell' | 'corruptioneye'
+    // Every faction
+    | 'treasure';
   wall: number;
   roof: number;
   height: number;
@@ -119,15 +122,15 @@ export interface UnitDef {
   regen?: number;
   /** Only attacks flyers (needs `targetsAir`). */
   airOnly?: boolean;
-  /** Every `every`-th attack is a critical strike dealing `mult`× damage. */
-  crit?: { every: number; mult: number };
-  /** Every `every`-th attack stuns a unit for `stun` seconds. */
-  bash?: { every: number; stun: number };
-  /** Every `every`-th attack also slams the ground: `dmg` to every enemy ground unit within `radius` of the target. */
-  slam?: { every: number; dmg: number; radius: number };
-  /** Every `every`-th attack calls down lightning that jumps between `jumps` enemies, starting at the target. */
-  storm?: { every: number; dmg: number; jumps: number };
-  /** Every `every`-th attack aimed at this unit misses. */
+  /** With probability `chance` an attack is a critical strike dealing `mult`× damage (WC3 Critical Strike). */
+  crit?: { chance: number; mult: number };
+  /** With probability `chance` an attack stuns a unit for `stun` seconds and deals `dmg` extra (WC3 Bash). */
+  bash?: { chance: number; stun: number; dmg?: number };
+  /** With probability `chance` an attack also slams the ground: `dmg` to every enemy ground unit within `radius` of the target (Pulverize). */
+  slam?: { chance: number; dmg: number; radius: number };
+  /** With probability `chance` an attack calls down lightning that jumps between `jumps` enemies, starting at the target. */
+  storm?: { chance: number; dmg: number; jumps: number };
+  /** Probability that an attack aimed at this unit misses (WC3 Evasion). */
   evade?: number;
   /** Share of damage from ranged attacks that this unit shrugs off (shield wall). */
   rangedResist?: number;
@@ -164,7 +167,8 @@ export interface AuraDef {
 export interface BuildingDef {
   id: string;
   name: string;
-  faction: FactionId;
+  /** Owning faction; 'any' for buildings every builder has (the Treasure Box). */
+  faction: FactionId | 'any';
   desc: string;
   cost: number;
   hp: number;
@@ -177,6 +181,17 @@ export interface BuildingDef {
   special?: boolean;
   /** Sapphires needed (on top of gold) to build or upgrade into this building. */
   sapphires?: number;
+  /** Lumber cost (towers, Treasure Boxes, legendaries and some specials in the map). */
+  lumber?: number;
+  /**
+   * Lumber earned when this building (or this upgrade) is finished, as a share of its value:
+   * default 1 for spawn buildings, 0 for towers, specials, Treasure Boxes and anything costing lumber.
+   */
+  lumberGain?: number;
+  /** Share of the building's value paid out per income tick (default INCOME_PCT = 2%). */
+  incomeRate?: number;
+  /** Treasure Box: raises the owner's income multiplier (see TREASURE_BONUS). */
+  treasure?: boolean;
   spawn?: { unit: string; count: number; interval: number };
   aura?: AuraDef;
   /** Tower attack. `chain`: the shot bounces between this many enemies (incl. the first). */
@@ -246,7 +261,7 @@ export interface FactionDef {
   /** Short summary of what makes the faction play differently (lobby). */
   traits: string[];
   /** Applied to every unit / building of the faction. */
-  trait?: { unitRegen?: number; buildingRegen?: number; buildingArmor?: number; unitEvade?: number };
+  trait?: { unitRegen?: number; buildingRegen?: number; buildingArmor?: number; /** Evasion chance of every unit of the faction (0.125 = 12.5%). */ unitEvade?: number };
   /** Buildable building ids in command-card order. */
   build: string[];
   buildings: BuildingDef[];

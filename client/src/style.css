@@ -524,3 +524,11 @@ button.mode { cursor: pointer; }
 .stats-rounds { display: grid; gap: 4px; }
 .stats-round { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 13.5px; }
 @media (max-width: 600px) { .stats-table { font-size: 12px; } .stats-table th, .stats-table td { padding: 3px 4px; } }
+
+/* Lumber (second resource, from the castleFight map) */
+.lumber-ico { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; border-radius: 3px;
+  background: linear-gradient(90deg, #6a4424 0 20%, #9a6a3a 20% 40%, #6a4424 40% 60%, #9a6a3a 60% 80%, #6a4424 80%); box-shadow: inset 0 0 0 1px #3a2210; }
+.res .lumber { margin-left: 10px; color: #d8b080; }
+.lumber-badge { position: absolute; left: 2px; top: 2px; font-size: 10px; line-height: 1; padding: 1px 3px; border-radius: 3px; background: rgba(60,36,16,0.9); color: #e8c090; }
+.lumber-badge.short { color: #ff8070; }
+.tip-cost.lumber { color: #e0b888; }

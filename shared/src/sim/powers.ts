@@ -119,7 +119,7 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   // The City of Magic's hex turns its victim into a sheep (the frost blast just freezes flyers).
   if (!p.air) best.sheep = ticks;
   sim.emit({ t: 'hex', id: best.id, d: ticks });
-  if (p.dmg) dealDamage(sim, best, p.dmg, 'magic', e.owner);
+  if (p.dmg) dealDamage(sim, best, p.dmg, 'spells', e.owner);
   return true;
 }
 
@@ -134,7 +134,7 @@ function beam(sim: Sim, e: Entity, p: PowerDef): boolean {
   }
   if (!best) return false;
   sim.emit({ t: 'beam', a: e.id, b: best.id });
-  dealDamage(sim, best, p.dmg, 'magic', e.owner);
+  dealDamage(sim, best, p.dmg, 'spells', e.owner);
   return true;
 }
 
@@ -173,11 +173,11 @@ function chaos(sim: Sim, e: Entity, p: PowerDef): boolean {
   const t = nearestEnemyUnit(sim, e, reach(p));
   if (!t) return false;
   const fate = (e.revives = (e.revives ?? 0) + 1) % 4;
-  if (fate === 1) { sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, p.dmg, 'magic', e.owner); }
-  else if (fate === 2) { t.stun = Math.max(t.stun ?? 0, Math.round((p.duration ?? 4) * TICK_RATE)); sim.emit({ t: 'hex', id: t.id, d: t.stun }); dealDamage(sim, t, p.dmg / 3, 'magic', e.owner); }
+  if (fate === 1) { sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, p.dmg, 'spells', e.owner); }
+  else if (fate === 2) { t.stun = Math.max(t.stun ?? 0, Math.round((p.duration ?? 4) * TICK_RATE)); sim.emit({ t: 'hex', id: t.id, d: t.stun }); dealDamage(sim, t, p.dmg / 3, 'spells', e.owner); }
   else if (fate === 3) {
     sim.emit({ t: 'slay', a: e.id, b: t.id });
-    if (t.maxHp <= p.dmg * 1.5) { t.hp = 0; rewardKill(sim, t, e.owner); } else dealDamage(sim, t, p.dmg, 'magic', e.owner);
+    if (t.maxHp <= p.dmg * 1.5) { t.hp = 0; rewardKill(sim, t, e.owner); } else dealDamage(sim, t, p.dmg, 'spells', e.owner);
   }
   return true;
 }
@@ -227,7 +227,7 @@ function wave(sim: Sim, e: Entity, p: PowerDef): boolean {
     const along = (u.x - c.x) * ux + (u.y - c.y) * uy;
     if (along < 0 || along > p.range) continue;
     const off = Math.abs((u.x - c.x) * uy - (u.y - c.y) * ux);
-    if (off <= p.radius + sim.radius(u)) dealDamage(sim, u, p.dmg, 'magic', e.owner);
+    if (off <= p.radius + sim.radius(u)) dealDamage(sim, u, p.dmg, 'spells', e.owner);
   }
   sim.emit({ t: 'wave', x: r2(c.x), y: r2(c.y), x2: r2(ex), y2: r2(ey), r: p.radius });
   return true;
@@ -280,7 +280,7 @@ function stepZones(sim: Sim) {
     if (z.ticksLeft % ZONE_PULSE_TICKS !== 0) continue;
     for (const u of sim.hash.query(z.x, z.y, z.radius + 1)) {
       if (u.team === z.team || u.hp <= 0 || sim.isAir(u) !== !!z.air) continue;
-      if (Math.hypot(u.x - z.x, u.y - z.y) <= z.radius) dealDamage(sim, u, (z.dps * ZONE_PULSE_TICKS) / TICK_RATE, 'magic', z.owner);
+      if (Math.hypot(u.x - z.x, u.y - z.y) <= z.radius) dealDamage(sim, u, (z.dps * ZONE_PULSE_TICKS) / TICK_RATE, 'spells', z.owner);
     }
   }
   sim.state.zones = zones.filter((z) => z.ticksLeft > 0);

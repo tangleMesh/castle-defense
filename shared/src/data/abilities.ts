@@ -1,7 +1,7 @@
 import type { BuildingDef, UnitDef } from './types';
 
 const STAT: Record<string, string> = { dmg: 'damage', armor: 'armour', regen: 'HP/s regeneration', speed: 'speed', haste: 'attack speed', block: 'damage blocked per hit' };
-const VS: Record<string, string> = { air: 'flyers', structure: 'buildings', light: 'light armour', medium: 'medium armour', heavy: 'heavy armour', fortified: 'fortified' };
+const VS: Record<string, string> = { air: 'flyers', structure: 'buildings', light: 'light armour', medium: 'medium armour', heavy: 'heavy armour', fortified: 'fortified', unarmored: 'unarmoured', hero: 'hero armour', divine: 'divine armour' };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 /**
  * A number for the UI: whole numbers from 10 up, otherwise at most one decimal (tuned values such
@@ -36,11 +36,11 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.regen) out.push(`Regenerates ${num(u.regen)} HP/s`);
   if (u.structuresOnly) out.push('Attacks buildings only');
   if (u.airOnly) out.push('Anti-air: attacks flyers only');
-  if (u.crit) out.push(`Critical strike: every ${nth(u.crit.every)} attack deals ${num(u.crit.mult)}× damage`);
-  if (u.bash) out.push(`Bash: every ${nth(u.bash.every)} attack stuns for ${num(u.bash.stun)}s`);
-  if (u.slam) out.push(`Slam: every ${nth(u.slam.every)} attack deals ${Math.round(u.slam.dmg)} damage around the target`);
-  if (u.storm) out.push(`Storm: every ${nth(u.storm.every)} attack calls lightning (${Math.round(u.storm.dmg)} damage, ${u.storm.jumps} targets)`);
-  if (u.evade) out.push(`Evasion: every ${nth(u.evade)} attack against it misses`);
+  if (u.crit) out.push(`Critical strike: ${pct(u.crit.chance)} chance to deal ${num(u.crit.mult)}× damage`);
+  if (u.bash) out.push(`Bash: ${pct(u.bash.chance)} chance to stun for ${num(u.bash.stun)}s${u.bash.dmg ? ` and deal ${num(u.bash.dmg)} extra damage` : ''}`);
+  if (u.slam) out.push(`Pulverize: ${pct(u.slam.chance)} chance to deal ${Math.round(u.slam.dmg)} damage to all enemies within ${num(u.slam.radius)} tiles`);
+  if (u.storm) out.push(`Chain lightning: ${pct(u.storm.chance)} chance to call lightning (${Math.round(u.storm.dmg)} damage, ${u.storm.jumps} targets)`);
+  if (u.evade) out.push(`Evasion: ${pct(u.evade)} chance that an attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
   if (u.block) out.push(`Hardened skin: blocks ${num(u.block)} damage of every attack`);
   if (u.berserk) out.push(`Berserk: below ${pct(u.berserk.below)} health it attacks ${pct(u.berserk.haste)} faster`);
@@ -97,10 +97,10 @@ export function buildingAbilities(b: BuildingDef): string[] {
 export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   let dmg = 1, hp = 1;
   const perHit = u.dmg || 1;
-  if (u.crit) dmg += (u.crit.mult - 1) / u.crit.every;
-  if (u.slam) dmg += (u.slam.dmg * 1.8) / (u.slam.every * perHit);
-  if (u.storm) dmg += (u.storm.dmg * Math.min(3, u.storm.jumps) * 0.8) / (u.storm.every * perHit);
-  if (u.bash) dmg += Math.min(0.5, u.bash.stun / (u.bash.every * u.cooldown));
+  if (u.crit) dmg += (u.crit.mult - 1) * u.crit.chance;
+  if (u.slam) dmg += (u.slam.dmg * 1.8 * u.slam.chance) / perHit;
+  if (u.storm) dmg += (u.storm.dmg * Math.min(3, u.storm.jumps) * 0.8 * u.storm.chance) / perHit;
+  if (u.bash) dmg += Math.min(0.5, (u.bash.stun * u.bash.chance) / u.cooldown) + ((u.bash.dmg ?? 0) * u.bash.chance) / perHit;
   if (u.multishot) dmg += (u.multishot - 1) * 0.45;
   if (u.weaken) hp *= 1 + u.weaken.mult * 0.4;
   if (u.berserk) dmg += u.berserk.haste * 0.25;
@@ -113,7 +113,7 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   // A mine every few seconds, most of them going off in a crowd.
   if (u.mines) dmg += (u.mines.dmg * 1.5) / ((u.mines.every * perHit) / u.cooldown);
   if (u.summon) dmg += 0.15 * u.summon.count * Math.min(1, u.summon.ttl / u.summon.every);
-  if (u.evade) hp *= u.evade / (u.evade - 1);
+  if (u.evade) hp *= 1 / (1 - Math.min(0.9, u.evade));
   if (u.rangedResist) hp *= 1 + u.rangedResist * 0.5;
   if (u.block) hp *= 1 + Math.min(1, u.block / 25);
   return { dmg, hp };

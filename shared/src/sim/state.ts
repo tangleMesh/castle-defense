@@ -13,6 +13,8 @@ export interface BuildOrder {
   paid: number;
   /** Sapphires already paid for this order (refunded if it fails). */
   paidS?: number;
+  /** Lumber paid (refunded on cancel). */
+  paidL?: number;
 }
 
 /**
@@ -55,6 +57,8 @@ export interface Entity {
   mineCd?: number;
   /** Hexed (City of Magic): a harmless sheep for this many more ticks (it is stunned as well). */
   sheep?: number;
+  /** Stoneskin Scroll: extra armor for a while. */
+  stone?: { armor: number; left: number };
   /** Stealth units: invisible to the enemy right now. */
   hidden?: boolean;
   /** Stealth units: ticks until a revealed one vanishes again. */
@@ -108,8 +112,14 @@ export interface PlayerState {
   past?: RoundStats;
   /** Builder items carried this round (optional: absent in games saved by older versions). */
   items?: string[];
+  /** Shop restock: tick from which each item can be bought again by this player. */
+  itemReady?: Record<string, number>;
+  /** Storm Orb: ticks until the builder's next chain lightning. */
+  orbCd?: number;
   /** Sapphires (rare resource for special buildings and elite upgrades); absent in old saves = START_SAPPHIRES. */
   sapphires?: number;
+  /** Lumber (absent in games saved before lumber existed = START_LUMBER). */
+  lumber?: number;
   /** Income multiplier (handicap); absent = 1. */
   incomeMult?: number;
 }
@@ -253,6 +263,8 @@ export interface SimState {
   /** Building powers in flight / on the ground (optional: absent in older saves). */
   shells?: Shell[];
   zones?: Zone[];
+  /** Timed team-wide damage bonuses from consumables (Fury Shard, Rage Heart). */
+  teamBuffs?: Array<{ team: Team; dmg: number; left: number }>;
   /** Buried mines (absent in games saved before mines existed). */
   mines?: Mine[];
   /** Players who already finished a building this round, in order (optional: absent in older saves). */

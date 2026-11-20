@@ -20,7 +20,7 @@ export interface Built {
 type Arch =
   | 'house' | 'hall' | 'tower' | 'spire' | 'totem' | 'hut' | 'tent' | 'pen' | 'dome' | 'temple' | 'pyramid' | 'portal' | 'well'
   | 'volcano' | 'rocks' | 'crystal' | 'statue' | 'factory' | 'generator' | 'citadel' | 'cage' | 'tree' | 'mushroom' | 'crypt'
-  | 'graveyard' | 'nest' | 'lantern' | 'eye' | 'banner' | 'cart' | 'mine';
+  | 'graveyard' | 'nest' | 'lantern' | 'eye' | 'banner' | 'cart' | 'mine' | 'chest';
 
 const ARCH: Record<string, Arch> = {
   hall: 'hall', warhall: 'hall', moonhall: 'hall', honorhall: 'hall', academy: 'hall', elfrange: 'hall', stable: 'hall', plaguebarn: 'hall', slaughterhouse: 'hall',
@@ -54,6 +54,7 @@ const ARCH: Record<string, Arch> = {
   corruptioneye: 'eye',
   banner: 'banner',
   haycart: 'cart',
+  treasure: 'chest',
 };
 
 const matCache = new Map<string, THREE.Material>();
@@ -431,6 +432,24 @@ export function buildStructure(def: BuildingDef, team: number): Built {
         g.add(mesh(new THREE.PlaneGeometry(0.3 * S, 0.5 * S), R, sx * S * 0.38 + 0.16 * S, H * 1.0, S * 0.2));
       }
       top = H * 1.2;
+      break;
+    }
+    case 'chest': {
+      // Treasure Chest: an iron-bound chest on a stone step, lid open, gold glowing inside.
+      g.add(mesh(new THREE.BoxGeometry(S * 0.85, 0.2, S * 0.7), mat(0x8a8478, { flat: true }), 0, 0.1, 0));
+      const cw = S * 0.62, ch = 0.55, cd = S * 0.42;
+      g.add(mesh(new THREE.BoxGeometry(cw, ch, cd), W, 0, 0.2 + ch / 2, 0));
+      const gold = mesh(new THREE.BoxGeometry(cw * 0.92, 0.08, cd * 0.9), mat(roof, { emissive: shade(roof, 0.6), metal: 0.6, rough: 0.35 }), 0, 0.2 + ch + 0.02, 0);
+      g.add(gold);
+      const lid = mesh(new THREE.BoxGeometry(cw, 0.08, cd), W, 0, 0, 0);
+      const hinge = new THREE.Group(); hinge.position.set(0, 0.2 + ch, -cd / 2); lid.position.set(0, 0, cd / 2); hinge.add(lid); hinge.rotation.x = -1.1;
+      g.add(hinge);
+      const iron = mat(0x3a3a40, { metal: 0.7, rough: 0.4 });
+      for (const u of [-0.32, 0.32]) g.add(mesh(new THREE.BoxGeometry(0.06, ch + 0.02, cd + 0.02), iron, u * cw, 0.2 + ch / 2, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.14, 0.14, 0.03), mat(0xd0b060, { metal: 0.8, rough: 0.3 }), 0, 0.2 + ch * 0.6, cd / 2 + 0.02));
+      for (let i = 0; i < 6; i++) { const c = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 10), mat(roof, { metal: 0.7, rough: 0.3 }), (rnd() - 0.5) * S * 0.8, 0.02, cd / 2 + 0.15 + rnd() * 0.3); g.add(c); }
+      anims.push((t) => { (gold.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6 + 0.25 * Math.sin(t / 400); });
+      top = 0.2 + ch + 0.5;
       break;
     }
     case 'cart': {

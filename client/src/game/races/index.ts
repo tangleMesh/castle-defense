@@ -8,3 +8,4 @@ import './doomforge';
 import './tidecall';
 import './blightroot';
 import './builders';
+import './common';

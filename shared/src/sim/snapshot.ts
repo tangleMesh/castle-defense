@@ -1,4 +1,4 @@
-import { START_SAPPHIRES, type GameMode } from '../constants';
+import { START_LUMBER, START_SAPPHIRES, type GameMode } from '../constants';
 import { incomeFor } from './economy';
 import type { Sim } from './sim';
 import type { EntityKind, Phase, SimEvent } from './state';
@@ -41,10 +41,15 @@ export interface SnapshotPlayer {
   items: string[];
   /** Sapphires in hand. */
   sapphires: number;
+  lumber: number;
+  /** Shop restock: tick from which each item can be bought again. */
+  itemReady?: Record<string, number>;
 }
 
 export interface Snapshot {
   tick: number;
+  /** Tick at which the current round's clock started (shop items unlock after some minutes). */
+  roundStart?: number;
   phase: Phase;
   phaseTicks: number;
   round: number;
@@ -85,6 +90,7 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
     tick: s.tick,
     phase: s.phase,
     phaseTicks: s.phaseTicks,
+    roundStart: s.roundStartTick,
     round: s.round,
     bestOf: s.bestOf,
     mode: s.mode ?? 'standard',
@@ -98,6 +104,8 @@ export function makeSnapshot(sim: Sim, events: SimEvent[]): Snapshot {
       goldEarned: Math.floor(p.goldEarned), lost: p.lost ?? 0, castleDmg: Math.round(p.castleDmg ?? 0),
       items: [...(p.items ?? [])],
       sapphires: p.sapphires ?? START_SAPPHIRES,
+      lumber: p.lumber ?? START_LUMBER,
+      ...(p.itemReady && Object.keys(p.itemReady).length ? { itemReady: { ...p.itemReady } } : {}),
     })),
     ents,
     orders,

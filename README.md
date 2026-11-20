@@ -4,7 +4,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 
 - **Spawn buildings** train one unit at a time on a timer. Many of them can be upgraded (some offer a choice of two upgrades).
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
-- **Sapphires**: a rare second resource. Every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Special buildings (each faction's champion building, upgradable twice) and elite upgrades of spawn buildings cost a sapphire on top of their gold.
+- **Sapphires** (the map's legendary limit): every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Each legendary building needs one.
 - **Distinct factions**, each modelled on a classic castle-fight race, see [docs/factions.md](docs/factions.md):
   - *Ironvow* (human) fights in elite formations with shield walls, healers, gunpowder, artillery and stunning cavalry.
   - *Thornwild* (nature) swarms with poison, thorns, summoned treants, stone giants, cyclones, regrowth and a kill-bounty economy.
@@ -18,21 +18,22 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
   - *Tidecall* (naga) fights with regenerating murlocs in pairs, naga guardians, sirens with lobsters, dragon turtles, winged serpents and an elite hydra. It has no tower, but an oracle that turns enemies, an earthquake pyramid and a tidal guardian whose tsunamis sweep the field.
   - *Blightroot* (corrupted) fields treants whose blows weaken, void walkers that rot armour, felhounds, infernal machines that detonate, drakes and an incubus, with tentacles from the deep, a well of pain and an Eye of Corruption that strips every enemy's armour.
   - *Cogspark* (mechanical) fields flamegunners, plated tanks, rotorcraft, golems and suicide goblins, with shield generators, a bouncing energy tower and scrap heaps that mend buildings.
-- **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 9× the build time, about 11 HP/s on a tower). The builder can also repair your castle (select it or right-click it): 11 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
+- **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 120 s). The builder can also repair your castle (select it or right-click it): 11 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
 - **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Vineling's Sproutlings.
-- **Castle shop**: expensive late-game items for your builder (press `B` or click your castle). The builder carries up to 3 until the round ends:
-  - *Horn of Valor* (660): +20% damage for every unit of your team.
-  - *Aegis Charm* (600): +3 armor for every unit of your team.
-  - *Verdant Chalice* (540): every unit of your team regenerates 4 HP/s.
-  - *Pathfinder Boots* (420): your team's units move 15% faster, your builder 30%.
-  - *War Drum* (720): every spawn building of your team trains units 15% faster.
-  - *Bulwark Seal* (480): +4 armor for every building of your team and the castle.
-  - *Warden's Crossbow* (150): your builder shoots nearby enemy units (it stays invulnerable).
-  - *Mason's Hammer* (420): every building of your team within 6 tiles of your builder regains 5 HP/s, for free.
+- **Castle shop** (the castleFight map's items, our names; press `B` or click your castle). Permanent items stay with your builder until the round ends (six slots); consumables work the moment you buy them. Some unlock later in the round and each restocks a while after you buy it:
+  - *Spark Staff* (150 gold, 300 lumber): your builder shoots a spark at a nearby enemy every second (60 spell damage).
+  - *Stoneskin Scroll* (150): allies near your builder heal 400 HP and get +8 armor for 30 s.
+  - *Mason's Rune* (100): buildings near your builder regain 5 HP/s; runes stack.
+  - *Storm Orb* (550, from minute 15): every 60 s your builder throws a chain lightning (10 targets, 1000 damage to the first).
+  - *Rhythm Engine* (600): your team's units move 15% faster and attack 30% faster.
+  - *Thunder Drums* (650): +33% damage for your team's units.
+  - *Fury Shard* (600, from minute 5) / *Rage Heart* (1400, from minute 10): double / quadruple team damage for 30 s.
+  - *Sapphire* (1500, the map's Cheese): one more legendary building.
 
-  The team-wide items work anywhere on the map and add to building auras. The same item carried by two teammates doesn't stack. Normal and Hard bots buy items when a round runs long and they can afford them.
-- **Gold only**: you earn income every 10 s (a small base amount plus 1.5% of the value of the buildings you own) and a small bounty for each kill. Each round starts with 150 gold, enough for one cheap spawn building and a head start on the next.
-- **Fast rounds** (about 5–7 minutes): castles have 8000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
+  The team-wide items don't stack within a team. Normal and Hard bots buy items too.
+
+- **Economy (as in the castleFight map)**: every round starts with 250 gold and 125 lumber. Income comes every 10 s: 5 gold plus 2% of the value of your spawn buildings (towers and legendaries pay less), raised by Treasure Chests (+25% for the first, each further one 15% less). Kills pay the unit's bounty. **Lumber** is earned by finishing buildings and upgrades (their value) and pays for towers, Treasure Chests and legendary buildings.
+- **Fast rounds** (about 5–7 minutes): castles have 5000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 24×24 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
 - **Map**: 110×40 tiles, castle to castle from left to right. Each team builds in a 30-tile-wide zone at its end; the 48-tile neutral middle is split into three lanes by rock outcrops.
 - **Best-of rounds**: a round ends when a castle falls. Each new round starts on a fresh map with a new builder, fresh gold and a refreshed rescue strike, after a 5-second countdown in which nobody can build yet, so everyone gets the same start.

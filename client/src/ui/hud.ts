@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_TIME_RATIO, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries, AI_LEVEL_NAMES, type MatchStats, type MatchStatsPlayer,
+  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, START_LUMBER, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_FULL_SECONDS, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries, AI_LEVEL_NAMES, type MatchStats, type MatchStatsPlayer,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { getGraphics, setGraphicsMode } from '../settings';
@@ -29,6 +29,9 @@ interface CardButton {
   gems?: number;
   /** False when the player lacks the sapphires. */
   gemsOk?: boolean;
+  /** Lumber needed on top of the gold. */
+  lumber?: number;
+  lumberOk?: boolean;
   tip: string;
   disabled?: boolean;
   active?: boolean;
@@ -51,8 +54,8 @@ function chainCost(id: string): number {
 }
 const svgUrl = (s: string) => `data:image/svg+xml;utf8,${encodeURIComponent(s)}`;
 
-const ATTACK_LABEL: Record<AttackType, string> = { normal: 'Normal', pierce: 'Pierce', siege: 'Siege', magic: 'Magic', chaos: 'Chaos' };
-const ARMOR_LABEL: Record<ArmorType, string> = { light: 'Light', medium: 'Medium', heavy: 'Heavy', fortified: 'Fortified' };
+const ATTACK_LABEL: Record<AttackType, string> = { normal: 'Normal', pierce: 'Pierce', siege: 'Siege', magic: 'Magic', chaos: 'Chaos', hero: 'Hero', spells: 'Spell' };
+const ARMOR_LABEL: Record<ArmorType, string> = { light: 'Light', medium: 'Medium', heavy: 'Heavy', fortified: 'Fortified', hero: 'Hero', divine: 'Divine', unarmored: 'Unarmored' };
 
 function strongAgainst(a: AttackType): string {
   return (Object.entries(DAMAGE_TABLE[a]) as Array<[ArmorType, number]>).filter(([, m]) => m > 1.1).map(([k]) => ARMOR_LABEL[k]).join(', ') || '—';
@@ -345,7 +348,9 @@ export class Hud {
       h('div', { class: 'res' },
         h('span', { class: 'gold-ico' }),
         h('b', { class: 'gold' }, me.gold),
-        h('span', { class: 'sapphires', title: 'Sapphires: special buildings and elite upgrades cost one. Buy more in the castle shop.' },
+        h('span', { class: 'lumber', title: 'Lumber: towers, Treasure Boxes and legendary buildings cost lumber. Every finished building and upgrade earns its value in lumber.' },
+          h('i', { class: 'lumber-ico' }), h('b', null, String(me.lumber ?? START_LUMBER))),
+        h('span', { class: 'sapphires', title: 'Sapphires: legendary buildings need one each (the map\'s legendary limit). Buy more in the castle shop (Cheese).' },
           h('i', { class: 'gem-ico' }), h('b', null, String(me.sapphires ?? START_SAPPHIRES))),
         h('span', { class: 'income', title: `Income every 10 s = ${BASE_INCOME} + ${INCOME_PCT * 100}% of your building value` },
           `+${me.income}`,
@@ -373,20 +378,23 @@ export class Hud {
     const out: CardButton[] = faction.build.map((id, slot) => {
       const def = BUILDINGS[id];
       const gemsOk = (me.sapphires ?? 1) >= (def.sapphires ?? 0);
+      const lumberOk = (me.lumber ?? START_LUMBER) >= (def.lumber ?? 0);
       return {
-        slot, icon: this.icon(`b_${id}`), name: def.name, cost: def.cost, afford: me.gold >= def.cost, gems: def.sapphires, gemsOk,
+        slot, icon: this.icon(`b_${id}`), name: def.name, cost: def.cost, afford: me.gold >= def.cost, gems: def.sapphires, gemsOk, lumber: def.lumber, lumberOk,
         tip: this.buildingTip(def.id),
-        disabled: me.gold < def.cost || !gemsOk,
+        disabled: me.gold < def.cost || !gemsOk || !lumberOk,
         active: s.mode.kind === 'place' && s.mode.building === id,
         run: () => {
           if (!gemsOk) return this.error('Needs a sapphire (buy one in the castle shop)');
+          if (!lumberOk) return this.error('Not enough lumber (finish buildings to earn more)');
           if (me.gold < def.cost) return this.error('Not enough gold');
           s.setMode({ kind: 'place', building: id });
         },
       };
     });
-    out.push(this.rescueButton(), {
-      slot: 11, icon: svgUrl(SVG.stop), name: 'Stop', tip: 'Cancel queued construction (refunds gold).',
+    // The builder has eleven buildings (as in the map); the rescue strike is in the top bar and on T.
+    out.push({
+      slot: 11, icon: svgUrl(SVG.stop), name: 'Stop', tip: 'Cancel queued construction (refunds gold and lumber).',
       run: () => s.send({ c: 'stop' }),
     });
     return out;
@@ -411,10 +419,11 @@ export class Hud {
     const out: CardButton[] = (def.upgrades ?? []).map((id, slot) => {
       const up = BUILDINGS[id];
       const gemsOk = (me.sapphires ?? 1) >= (up.sapphires ?? 0);
+      const lumberOk = (me.lumber ?? START_LUMBER) >= (up.lumber ?? 0);
       return {
-        slot, icon: this.icon(`b_${id}`), name: `Upgrade: ${up.name}`, cost: up.cost, afford: me.gold >= up.cost, gems: up.sapphires, gemsOk,
+        slot, icon: this.icon(`b_${id}`), name: `Upgrade: ${up.name}`, cost: up.cost, afford: me.gold >= up.cost, gems: up.sapphires, gemsOk, lumber: up.lumber, lumberOk,
         tip: `<b>Upgrade to ${up.name}</b><br>${this.buildingTip(id)}`,
-        disabled: busy || me.gold < up.cost || !gemsOk,
+        disabled: busy || me.gold < up.cost || !gemsOk || !lumberOk,
         run: () => {
           if (busy) return this.error('Building is busy');
           if (!gemsOk) return this.error('Needs a sapphire (buy one in the castle shop)');
@@ -429,8 +438,8 @@ export class Hud {
     const damaged = row[7] < row[8];
     out.push({
       slot: 3, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing…' : 'Repair',
-      tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: free, but slow (a full repair takes ${REPAIR_TIME_RATIO}× the build time).`
-        + (damaged && !busy ? `<br>This one: about ${Math.ceil(((row[8] - row[7]) / row[8]) * REPAIR_TIME_RATIO * BUILDINGS[row[2]].buildTime)} s.` : '') + '<br>One building at a time; any other builder order stops it.',
+      tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: free, but slow (a full repair takes ${REPAIR_FULL_SECONDS} s).`
+        + (damaged && !busy ? `<br>This one: about ${Math.ceil(((row[8] - row[7]) / row[8]) * REPAIR_FULL_SECONDS)} s.` : '') + '<br>One building at a time; any other builder order stops it.',
       disabled: busy || !damaged, active: repairing,
       run: () => {
         if (busy) return this.error('Building is under construction');
@@ -466,7 +475,7 @@ export class Hud {
     if (!this.session.latest) return;
     this.renderBag(force);
     const btns = this.currentCard();
-    const key = JSON.stringify(btns.map((b) => [b.slot, b.name, b.disabled, b.active, b.afford, b.gemsOk]));
+    const key = JSON.stringify(btns.map((b) => [b.slot, b.name, b.disabled, b.active, b.afford, b.gemsOk, b.lumberOk]));
     if (!force && key === this.lastCardKey) return;
     this.lastCardKey = key;
     this.buttons = btns;
@@ -477,6 +486,7 @@ export class Hud {
       const tip = h('div', { class: 'tip' });
       tip.innerHTML = `<div class="tip-title">${b.name}</div>`
         + (b.cost ? `<div class="tip-cost${b.afford === false ? ' short' : ''}"><i class="coin"></i>${b.cost} gold${b.afford === false ? ' <span>· not enough gold</span>' : ''}</div>` : '')
+        + (b.lumber ? `<div class="tip-cost lumber${b.lumberOk === false ? ' short' : ''}"><i class="lumber-ico"></i>${b.lumber} lumber${b.lumberOk === false ? ' <span>· finish buildings to earn lumber</span>' : ''}</div>` : '')
         + (b.gems ? `<div class="tip-cost gem${b.gemsOk === false ? ' short' : ''}"><i class="gem-ico"></i>${b.gems} sapphire${b.gems > 1 ? 's' : ''}${b.gemsOk === false ? ' <span>· buy one in the castle shop</span>' : ''}</div>` : '')
         + `<div>${b.tip}</div>`;
       this.card.append(h('button', {
@@ -486,6 +496,7 @@ export class Hud {
       h('img', { src: b.icon, alt: '' }),
       h('span', { class: 'hk' }, GRID_HOTKEYS[slot]),
       b.cost ? h('span', { class: `cost${b.afford === false ? ' short' : ''}` }, h('i', { class: 'coin' }), String(b.cost)) : null,
+      b.lumber ? h('span', { class: `lumber-badge${b.lumberOk === false ? ' short' : ''}`, title: `Costs ${b.lumber} lumber` }, String(b.lumber)) : null,
       b.gems ? h('span', { class: `gem-badge${b.gemsOk === false ? ' short' : ''}`, title: 'Costs a sapphire' }, h('i', { class: 'gem-ico' })) : null,
       tip));
     }
@@ -516,27 +527,35 @@ export class Hud {
     const me = s.latest.players[s.you];
     const bag = me.items ?? [];
     const out: CardButton[] = ITEMS.map((it, slot) => {
-      const owned = bag.includes(it.id);
-      const full = bag.length >= MAX_ITEMS;
+      const consumable = !!it.use;
+      const owned = !consumable && bag.includes(it.id);
+      const full = !consumable && bag.length >= MAX_ITEMS;
       // Team-wide items don't stack: one copy per team is enough.
-      const mate = owned ? undefined : teammateCarries(s.latest.players, s.you, it);
+      const mate = owned || consumable ? undefined : teammateCarries(s.latest.players, s.you, it);
+      const elapsed = s.latest.tick - (s.latest.roundStart ?? 0);
+      const lockedFor = it.availableAfter ? Math.ceil((it.availableAfter * TICK_RATE - elapsed) / TICK_RATE) : 0;
+      const restockIn = Math.ceil(((me.itemReady?.[it.id] ?? 0) - s.latest.tick) / TICK_RATE);
+      const wait = lockedFor > 0 ? `Available in ${lockedFor >= 60 ? `${Math.ceil(lockedFor / 60)} min` : `${lockedFor} s`}` : restockIn > 0 ? `Restocks in ${restockIn} s` : '';
+      const lumberOk = (me.lumber ?? START_LUMBER) >= (it.lumber ?? 0);
       return {
-        slot, icon: itemIcon(it.id), name: it.name, cost: it.cost, afford: me.gold >= it.cost,
-        tip: `<span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${owned ? '<b>Your builder carries this.</b>' : mate ? `<b>${mate} already carries this.</b> It doesn't stack within a team.` : full ? `Bag full (${MAX_ITEMS} items).` : `Carried by your builder until the round ends · ${bag.length}/${MAX_ITEMS} slots used`}</span>`,
-        disabled: owned || !!mate || full || me.gold < it.cost,
+        slot, icon: itemIcon(it.id), name: it.name, cost: it.cost, afford: me.gold >= it.cost, lumber: it.lumber, lumberOk,
+        tip: `<span class="tip-desc">${it.desc}</span><br><span class="tip-meta">${wait ? `<b>${wait}.</b> ` : ''}${owned ? '<b>Your builder carries this.</b>' : mate ? `<b>${mate} already carries this.</b> It doesn't stack within a team.` : consumable ? 'Used at once when bought.' : full ? `Bag full (${MAX_ITEMS} items).` : `Carried by your builder until the round ends · ${bag.length}/${MAX_ITEMS} slots used`}</span>`,
+        disabled: owned || !!mate || full || !!wait || me.gold < it.cost || !lumberOk,
         active: owned || !!mate,
         run: () => {
+          if (wait) return this.error(`${it.name}: ${wait.toLowerCase()}`);
           if (owned) return this.error(`You already carry ${it.name}`);
           if (mate) return this.error(`${mate} already carries ${it.name}: it doesn't stack within a team`);
           if (full) return this.error(`Your builder can carry only ${MAX_ITEMS} items`);
           if (me.gold < it.cost) return this.error('Not enough gold');
+          if (!lumberOk) return this.error('Not enough lumber');
           s.send({ c: 'buy', item: it.id });
         },
       };
     });
     out.push({
       slot: 8, icon: svgUrl(SVG.sapphire), name: 'Sapphire', cost: SAPPHIRE_GOLD, afford: me.gold >= SAPPHIRE_GOLD,
-      tip: `<span class="tip-desc">A rare gem. Special buildings and elite upgrades cost a sapphire on top of their gold.</span><br><span class="tip-meta">You start every round with ${START_SAPPHIRES}. You have ${me.sapphires ?? START_SAPPHIRES}.</span>`,
+      tip: `<span class="tip-desc">A rare gem: each legendary building needs one (the map's legendary limit; buying one is the map's Cheese).</span><br><span class="tip-meta">You start every round with ${START_SAPPHIRES}. You have ${me.sapphires ?? START_SAPPHIRES}.</span>`,
       disabled: me.gold < SAPPHIRE_GOLD,
       run: () => me.gold < SAPPHIRE_GOLD ? this.error('Not enough gold') : s.send({ c: 'buySapphire' }),
     }, this.castleRepairButton(), this.rescueButton(), {
