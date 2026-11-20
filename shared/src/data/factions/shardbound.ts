@@ -14,7 +14,7 @@ const DEEP = 0x4a3a7a;
 export const SHARDBOUND: FactionDef = {
   id: 'shardbound',
   name: 'Shardbound Conclave',
-  desc: "Elementals: water spirits that attacks pass through, wind elementals that ground enemy flyers, fire elementals that split, lightning that arcs to several targets, earth elementals that hit harder the healthier they are, the legendary Master of Elements and the Linker.",
+  desc: "Elementals: water spirits that most attacks pass through, wind elementals that ground enemy flyers, fire elementals that split, lightning that arcs to several targets, earth elementals that hit harder the healthier they are, the legendary Master of Elements and the Linker.",
   color: 0x9a6ae0,
   traits: [
     "Liquid body: water elementals let 50\u201370% of attacks pass through them and resist spells; the greatest create mirror images",

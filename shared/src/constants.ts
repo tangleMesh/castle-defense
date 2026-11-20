@@ -49,8 +49,8 @@ export const CASTLE_ARMOR = 5;
 export const CASTLE_SIZE = 4;
 /** Tiles around each castle that must stay free of buildings (keeps paths open and nothing hidden behind it). */
 export const CASTLE_CLEARANCE = 2;
-
-export const BUILDER_SPEED = 7;
+/** Builder move speed (the map's builders: 550 → 5.5 tiles per second). */
+export const BUILDER_SPEED = 5.5;
 /** Builder must be this close to a footprint centre to start construction. */
 export const BUILDER_REACH = 2.2;
 

@@ -7,6 +7,11 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.13
+
+- **Builders:** they move at the map's builder speed (550 → 5.5 tiles per second, was 7).
+- **Docs:** \`docs/factions.md\` is now generated from the data (\`npm run docs:factions\`). It lists every race's buildings, upgrades, costs, units and abilities exactly as the game uses them. The README lists the twelve map races.
+
 ## 0.46.12
 
 - **Thornwild rebuilt from the map's Nature race:**

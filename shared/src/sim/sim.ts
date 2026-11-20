@@ -191,7 +191,7 @@ export class Sim {
         this.emit({ t: 'revive', id: r.id });
       }
     }
-    // Units that burst into smaller ones when they fall (Vinelings → Sproutlings, treants → saplings).
+    // Units that burst into smaller ones when they fall (Giant Spiders → Forest Spiders, Brood Mothers → Giant Spiders).
     for (const e of released) {
       const od = UNITS[e.type].onDeath!;
       const u = UNITS[od.unit];

@@ -92,7 +92,7 @@ export interface Entity {
   revealLeft?: number;
   /** Active poison: damage per second, ticks left, slow and the player credited for kills. */
   poison?: { dps: number; left: number; slow: number; owner: number };
-  /** Killed by a rescue strike: nothing bursts out of it (no Sproutlings from a smitten Vineling). */
+  /** Killed by a rescue strike: nothing bursts out of it (no Forest Spiders from a smitten Giant Spider). */
   smitten?: boolean;
   /** Attacks made so far (every-nth abilities: critical strikes, bashes, slams, storms). */
   hits?: number;
