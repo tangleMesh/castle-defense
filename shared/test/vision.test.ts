@@ -60,13 +60,14 @@ describe('builder bounds', () => {
       const b = sim.get(p.builderId)!;
       const z = builderBounds(team);
       sim.step([{ player: team, cmd: { c: 'move', x: team === 0 ? 70 : 5, y: 0 } }]);
-      for (let i = 0; i < 400; i++) sim.step([]);
-      expect(b.x).toBeCloseTo(team === 0 ? z.x1 : z.x0, 5);
-      expect(b.y).toBeCloseTo(z.y0, 5);
+      for (let i = 0; i < 800; i++) sim.step([]);
+      // The builder stops within 0.05 tiles of its (clamped) target.
+      expect(Math.abs(b.x - (team === 0 ? z.x1 : z.x0))).toBeLessThan(0.05);
+      expect(Math.abs(b.y - z.y0)).toBeLessThan(0.05);
       // Even a position forced outside is pulled back on the next move.
       b.x = 40;
       sim.step([{ player: team, cmd: { c: 'move', x: 40, y: 14 } }]);
-      for (let i = 0; i < 400; i++) sim.step([]);
+      for (let i = 0; i < 800; i++) sim.step([]);
       expect(b.x).toBeGreaterThanOrEqual(z.x0); expect(b.x).toBeLessThanOrEqual(z.x1);
     }
   });

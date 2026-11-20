@@ -10,7 +10,7 @@ So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3`
 ## 0.46.13
 
 - **Builders:** they move at the map's builder speed (550 → 5.5 tiles per second, was 7).
-- **Docs:** \`docs/factions.md\` is now generated from the data (\`npm run docs:factions\`). It lists every race's buildings, upgrades, costs, units and abilities exactly as the game uses them. The README lists the twelve map races.
+- **Docs:** `docs/factions.md` is now generated from the data (`npm run docs:factions`). It lists every race's buildings, upgrades, costs, units and abilities exactly as the game uses them. The README lists the twelve map races.
 
 ## 0.46.12
 
