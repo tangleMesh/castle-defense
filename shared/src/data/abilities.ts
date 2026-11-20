@@ -92,7 +92,8 @@ export function buildingAbilities(b: BuildingDef): string[] {
   const out: string[] = [];
   if (b.attack?.bonusVs) out.push(`${num(b.attack.bonusVs.mult)}× damage against ${VS[b.attack.bonusVs.vs]}`);
   if (b.attack?.multishot) out.push(`Multi-shot: each volley strikes ${b.attack.multishot} enemies`);
-  if (b.revive) out.push(`Grace: every ${nth(b.revive.every)} own unit that falls ${b.revive.global ? 'anywhere on the map' : `within ${num(b.revive.radius)} tiles`} rises again`);
+  if (b.revive?.chance !== undefined) out.push(`Grace: every own unit that falls ${b.revive.global ? 'anywhere on the map' : `within ${num(b.revive.radius)} tiles`} has a ${pct(b.revive.chance)} chance to rise again (a second shrine stacks once; not legendaries)`);
+  else if (b.revive) out.push(`Grace: every ${nth(b.revive.every ?? 1)} own unit that falls ${b.revive.global ? 'anywhere on the map' : `within ${num(b.revive.radius)} tiles`} rises again`);
   if (b.attack?.chain) out.push(`Bouncing shot: each shot jumps between ${b.attack.chain} enemies`);
   if (b.mend) out.push(`Mends your team's buildings and castle within ${num(b.mend.radius)} tiles by ${num(b.mend.hps)} HP/s`);
   const p = powerText(b);

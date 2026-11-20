@@ -7,6 +7,22 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.7
+
+- **Sunspire copied exactly from the map's Elf race:**
+  - **Values:** all values, costs, lumber and upgrades are the map's.
+  - **Archers:** 15% / 25% evade, plus headshots (10% for +50, 20% for +125) that stun briefly.
+  - **Blademasters:** heavy armour, evade, critical strikes (2.5× / 3×) and spell resistance.
+  - **Sorceresses** heal 150 and call chain lightning (25%, 150 damage, 7 targets).
+  - **Wizard (legendary):** immune, 70% spell resistance, heals 300, chain lightning (30%, 230).
+  - **Bloodthirsters** bounce between 3 enemies and strip 6 armour from the enemies around them.
+  - **Ballistae** (850 range, ground only) pierce through the enemies behind their target.
+  - **Specials:**
+    - Arcane Tower: 5 targets at once.
+    - City of Magic: a sheep for 45 s every 10 s.
+    - Obelisk of Light: 160 damage to a random enemy anywhere every 4 s.
+    - Golden Shrine (legendary): every fallen unit has a real 20% chance to rise again; a second shrine stacks once; never legendaries; its upgrade is gone.
+
 ## 0.46.6
 
 - **Frostmark copied exactly from the map's Northern race:**

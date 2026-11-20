@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, ROUND_COUNTDOWN_TICKS, START_GOLD, START_SAPPHIRES, TICK_RATE, type GameMode } from '../constants';
-import { sideRandom } from './rng';
+import { chanceRoll, sideRandom } from './rng';
 import { BUILDINGS, UNITS } from '../data';
 import { MAP, distToRect } from '../map/map';
 
@@ -31,6 +31,12 @@ export interface CreateOptions {
  * Deterministic, server-authoritative simulation. `state` is plain JSON; everything
  * else on this class is a cache derived from it and rebuilt on demand.
  */
+let LEGENDARY: Set<string> | undefined;
+/** Units trained by legendary buildings (the Golden Shrine never brings them back). */
+function legendaryUnits(): Set<string> {
+  return (LEGENDARY ??= new Set(Object.values(BUILDINGS).filter((b) => b.special && b.spawn).map((b) => b.spawn!.unit)));
+}
+
 export class Sim {
   state: SimState;
   byId = new Map<number, Entity>();
@@ -151,18 +157,28 @@ export class Sim {
     if (fallen.length) {
       const shrines = this.state.entities.filter((b) => b.kind === 'building' && b.hp > 0 && !b.buildLeft && BUILDINGS[b.type].revive);
       for (const e of fallen) {
-        let best: Entity | undefined, bestD = Infinity;
+        let best: Entity | undefined, bestD = Infinity, n = 0;
         for (const b of shrines) {
           if (b.team !== e.team) continue;
           const d = distToRect(footprint(b), e.x, e.y);
           const rv = BUILDINGS[b.type].revive!;
           // Map-wide shrines catch every fallen unit of the team (the nearest shrine counts it).
-          if ((rv.global || d <= rv.radius) && d < bestD) { best = b; bestD = d; }
+          if (!(rv.global || d <= rv.radius)) continue;
+          n++;
+          if (d < bestD) { best = b; bestD = d; }
         }
         if (!best) continue;
-        best.revives = (best.revives ?? 0) + 1;
-        if (best.revives % BUILDINGS[best.type].revive!.every !== 0) continue;
+        const rv = BUILDINGS[best.type].revive!;
         const u = UNITS[e.type];
+        if (rv.chance !== undefined) {
+          // A real chance per fallen unit; a second shrine stacks once; legendaries never return.
+          if (legendaryUnits().has(e.type) || e.ttl !== undefined) continue;
+          const p = 1 - Math.pow(1 - rv.chance, Math.min(2, n));
+          if (chanceRoll(this.state, e, 41) >= p) continue;
+        } else {
+          best.revives = (best.revives ?? 0) + 1;
+          if (best.revives % (rv.every ?? 1) !== 0) continue;
+        }
         const r = this.add({ kind: 'unit', type: e.type, owner: e.owner, team: e.team, x: e.x, y: e.y, hp: u.hp, maxHp: u.hp, cd: 0, healCd: 0 });
         this.emit({ t: 'revive', id: r.id });
       }

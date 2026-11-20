@@ -456,18 +456,25 @@ describe('Sunspire mechanics', () => {
     expect(far.hp).toBe(far.maxHp);
   });
 
-  it('the Golden Shrine raises every 5th fallen ally nearby', () => {
+  it('the Golden Shrine gives every fallen ally a 20% chance to rise, never legendaries', () => {
     const sim = simS();
     building(sim, 0, 'su_golden_shrine', 20, 18);
-    const count = () => sim.state.entities.filter((e) => e.type === 'su_archer').length;
-    const raised: number[] = [];
-    for (let i = 0; i < 10; i++) {
-      const a = unit(sim, 0, 'su_archer', 24, 19);
-      a.hp = 0;
-      sim.removeDead();
-      raised.push(count());
-    }
-    expect(raised).toEqual([0, 0, 0, 0, 1, 1, 1, 1, 1, 2]);
+    const revives = (type: string) => {
+      const alive = () => sim.state.entities.filter((e) => e.type === type && e.hp > 0).length;
+      let n = 0;
+      for (let i = 0; i < 200; i++) {
+        const before = alive();
+        const a = unit(sim, 0, type, 24 + (i % 20) * 0.37, 10 + Math.floor(i / 20) * 1.3);
+        a.hp = 0;
+        sim.removeDead();
+        n += alive() - before;
+      }
+      return n;
+    };
+    const archers = revives('su_archer');
+    expect(archers).toBeGreaterThan(20);
+    expect(archers).toBeLessThan(60);
+    expect(revives('su_wizard')).toBe(0);
   });
 });
 
