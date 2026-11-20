@@ -40,6 +40,8 @@ export function unitAbilities(u: UnitDef, units: Record<string, UnitDef>): strin
   if (u.bash) out.push(`Bash: ${pct(u.bash.chance)} chance to stun for ${num(u.bash.stun)}s${u.bash.dmg ? ` and deal ${num(u.bash.dmg)} extra damage` : ''}`);
   if (u.slam) out.push(`Pulverize: ${pct(u.slam.chance)} chance to deal ${Math.round(u.slam.dmg)} damage to all enemies within ${num(u.slam.radius)} tiles`);
   if (u.storm) out.push(`Chain lightning: ${pct(u.storm.chance)} chance to call lightning (${Math.round(u.storm.dmg)} damage, ${u.storm.jumps} targets)`);
+  if (u.cleave) out.push(`Cleaving attack: each hit deals ${pct(u.cleave.pct)} of its damage to all enemies within ${num(u.cleave.radius)} tiles of the target`);
+  if (u.immune) out.push('Immune: stuns, slows, hexes, freezes and control have no effect');
   if (u.evade) out.push(`Evasion: ${pct(u.evade)} chance that an attack against it misses`);
   if (u.rangedResist) out.push(`Shield wall: takes ${pct(u.rangedResist)} less damage from ranged attacks`);
   if (u.block) out.push(`Hardened skin: blocks ${num(u.block)} damage of every attack`);
@@ -114,6 +116,7 @@ export function abilityFactors(u: UnitDef): { dmg: number; hp: number } {
   if (u.mines) dmg += (u.mines.dmg * 1.5) / ((u.mines.every * perHit) / u.cooldown);
   if (u.summon) dmg += 0.15 * u.summon.count * Math.min(1, u.summon.ttl / u.summon.every);
   if (u.evade) hp *= 1 / (1 - Math.min(0.9, u.evade));
+  if (u.cleave) dmg += u.cleave.pct * 0.8;
   if (u.rangedResist) hp *= 1 + u.rangedResist * 0.5;
   if (u.block) hp *= 1 + Math.min(1, u.block / 25);
   return { dmg, hp };

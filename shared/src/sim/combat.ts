@@ -135,6 +135,11 @@ export function findTarget(sim: Sim, a: Entity, st: AttackStats, radius: number)
   return best;
 }
 
+/** Immune units (map legendaries) shrug off stuns, slows, hexes, freezes, weakening and control. */
+export function isImmune(e: Entity): boolean {
+  return e.kind === 'unit' && !!UNITS[e.type]?.immune;
+}
+
 /** How far a hidden assassin looks for prey. */
 const HUNT_RADIUS = 8;
 
@@ -224,7 +229,7 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (st.chain > 1) {
     const hit = chainFrom(sim, a, st, t, raw, st.chain, st.attackType);
     // Venomous storms poison every enemy the lightning touches.
-    if (ud?.poison) for (const h of hit) if (h.kind === 'unit' && h.hp > 0) h.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: ud.poison.slow, owner: a.owner };
+    if (ud?.poison) for (const h of hit) if (h.kind === 'unit' && h.hp > 0) h.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: isImmune(h) ? 0 : ud.poison.slow, owner: a.owner };
     sim.emit({ t: 'chain', ids: [a.id, ...hit.map((h) => h.id)] });
     return;
   }
@@ -235,6 +240,14 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   // Shield wall: ranged attacks lose part of their force.
   const resist = ranged && td?.rangedResist ? 1 - td.rangedResist : 1;
   const dealt = dealDamage(sim, t, raw * resist, st.attackType, a.owner, !!ud?.ignoreArmor, true);
+  // Cleaving attack: part of the blow hits every other enemy ground unit around the target.
+  if (ud?.cleave && t.kind === 'unit') {
+    for (const o of sim.hash.query(t.x, t.y, ud.cleave.radius + 1)) {
+      if (o === t || o.kind !== 'unit' || !canTarget(sim, a, st, o) || sim.isAir(o)) continue;
+      if (Math.hypot(o.x - t.x, o.y - t.y) - sim.radius(o) > ud.cleave.radius) continue;
+      dealDamage(sim, o, raw * ud.cleave.pct, st.attackType, a.owner, !!ud.ignoreArmor, true);
+    }
+  }
   // Multi-shot: the same volley strikes further enemies in range, nearest first.
   const ms = ud ? ud.multishot : a.kind === 'building' ? BUILDINGS[a.type].attack?.multishot : undefined;
   if (ms && ms > 1) {
@@ -255,7 +268,7 @@ export function performAttack(sim: Sim, a: Entity, st: AttackStats, t: Entity, d
   if (ud) {
     onHit(sim, a, ud, t, dealt, ranged);
     if (ud.bash && t.kind === 'unit' && t.hp > 0 && roll(3) < ud.bash.chance) {
-      t.stun = Math.max(t.stun ?? 0, Math.round(ud.bash.stun * TICK_RATE));
+      if (!isImmune(t)) t.stun = Math.max(t.stun ?? 0, Math.round(ud.bash.stun * TICK_RATE));
       if (ud.bash.dmg) dealDamage(sim, t, ud.bash.dmg * dmgMult, st.attackType, a.owner, false, true);
     }
     if (ud.slam && roll(4) < ud.slam.chance) {
@@ -305,9 +318,9 @@ function explode(sim: Sim, a: Entity, st: AttackStats, t: Entity, dmg: number, r
 /** Lifesteal, poison and thorns after a single-target hit. */
 function onHit(sim: Sim, a: Entity, ud: UnitDef, t: Entity, dealt: number, ranged: 0 | 1) {
   if (ud.lifesteal && dealt > 0 && a.hp > 0) a.hp = Math.min(a.maxHp, a.hp + dealt * ud.lifesteal);
-  if (ud.weaken && t.kind === 'unit' && t.hp > 0) t.weaken = { mult: Math.max(ud.weaken.mult, t.weaken?.mult ?? 0), left: Math.round(ud.weaken.duration * TICK_RATE) };
+  if (ud.weaken && t.kind === 'unit' && t.hp > 0 && !isImmune(t)) t.weaken = { mult: Math.max(ud.weaken.mult, t.weaken?.mult ?? 0), left: Math.round(ud.weaken.duration * TICK_RATE) };
   if (ud.poison && t.kind === 'unit' && t.hp > 0) {
-    t.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: ud.poison.slow, owner: a.owner };
+    t.poison = { dps: ud.poison.dps, left: Math.round(ud.poison.duration * TICK_RATE), slow: isImmune(t) ? 0 : ud.poison.slow, owner: a.owner };
   }
   const thorns = t.kind === 'unit' ? UNITS[t.type].thorns : undefined;
   if (thorns && !ranged && dealt > 0 && a.hp > 0) dealDamage(sim, a, dealt * thorns, 'chaos', t.owner, true);

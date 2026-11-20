@@ -562,10 +562,12 @@ describe('Tidecall mechanics', () => {
   ];
   const simT = () => Sim.create({ countdownTicks: 0, players: ps, bestOf: 1, seed: 16 });
 
-  it('the Oracle of Sirens charms the nearest weak enemy: it changes sides for good', () => {
+  it('the Oracle of Sirens takes control of the nearest enemy that is not immune: it changes sides for good', () => {
     const sim = simT();
-    building(sim, 0, 'tc_oracle', 30, 18);
-    const knight = unit(sim, 1, 'iv_paladin', 33, 19), mil = unit(sim, 1, 'iv_militia', 36, 19);
+    const oracle = building(sim, 0, 'tc_oracle', 30, 18);
+    oracle.hp = oracle.maxHp = 1e6; // the hydra would knock it down before its first cast
+    // The nearer one is an immune legendary (the Ancient Hydra), so the farther one is taken.
+    const knight = unit(sim, 1, 'tc_hydra', 33, 19), mil = unit(sim, 1, Object.values(UNITS).find((u) => !u.immune && !u.air && u.id.startsWith('iv_'))!.id, 36, 19);
     let charmed = false;
     for (let i = 0; i < (BUILDINGS.tc_oracle.power!.cooldown + 1) * TICK_RATE && !charmed; i++) {
       knight.x = 33; knight.y = 19; mil.x = 36; mil.y = 19;

@@ -130,6 +130,10 @@ export interface UnitDef {
   slam?: { chance: number; dmg: number; radius: number };
   /** With probability `chance` an attack calls down lightning that jumps between `jumps` enemies, starting at the target. */
   storm?: { chance: number; dmg: number; jumps: number };
+  /** Cleaving attack: each hit also deals `pct` of its damage to every other enemy ground unit within `radius` tiles of the target. */
+  cleave?: { pct: number; radius: number };
+  /** Immune (map legendaries): stuns, slows, hexes, freezes, weakening and control don't affect it. */
+  immune?: boolean;
   /** Probability that an attack aimed at this unit misses (WC3 Evasion). */
   evade?: number;
   /** Share of damage from ranged attacks that this unit shrugs off (shield wall). */

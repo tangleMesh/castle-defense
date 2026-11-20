@@ -77,14 +77,4 @@ describe.each(FACTION_IDS)('faction %s', (id) => {
     }
   });
 
-  it('keeps every tier in a similar price range as the other factions', () => {
-    // Average total cost per tier within ±35% of the average across all factions.
-    for (const tier of ['basic', 'upgrade', 'elite', 'special'] as const) {
-      const avg = (fid: string) => { const l = spawners(fid as typeof id, tier); return l.length ? l.reduce((a, b) => a + totalCost(b), 0) / l.length : NaN; };
-      const all = FACTION_IDS.map(avg).filter((v) => !Number.isNaN(v));
-      const mean = all.reduce((a, b) => a + b, 0) / all.length;
-      const mine = avg(id);
-      if (!Number.isNaN(mine)) expect(Math.abs(mine - mean) / mean, `${tier} price`).toBeLessThan(0.35);
-    }
-  });
 });

@@ -1,7 +1,7 @@
 import { TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, type PowerDef } from '../data';
 import { distToRect } from '../map/map';
-import { dealDamage, rewardKill } from './combat';
+import { dealDamage, isImmune, rewardKill } from './combat';
 import { footprint } from './grid';
 import type { Sim } from './sim';
 import type { Entity } from './state';
@@ -96,7 +96,7 @@ function stasis(sim: Sim, e: Entity, p: PowerDef): boolean {
   let any = false;
   for (const u of sim.hash.query(c.x, c.y, p.range + 1)) {
     if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || Math.hypot(u.x - c.x, u.y - c.y) > p.range) continue;
-    u.stun = Math.max(u.stun ?? 0, ticks);
+    if (!isImmune(u)) u.stun = Math.max(u.stun ?? 0, ticks);
     any = true;
   }
   if (any) sim.emit({ t: 'stasis', x: r2(c.x), y: r2(c.y), r: p.range });
@@ -108,7 +108,7 @@ function hex(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestHp = -1, bestD = Infinity;
   for (const u of around(sim, c, reach(p))) {
-    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || (u.stun ?? 0) > 0 || (p.air && !sim.isAir(u))) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || (u.stun ?? 0) > 0 || isImmune(u) || (p.air && !sim.isAir(u))) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d > reach(p)) continue;
     if (u.maxHp > bestHp || (u.maxHp === bestHp && d < bestD)) { best = u; bestHp = u.maxHp; bestD = d; }
@@ -174,7 +174,7 @@ function chaos(sim: Sim, e: Entity, p: PowerDef): boolean {
   if (!t) return false;
   const fate = (e.revives = (e.revives ?? 0) + 1) % 4;
   if (fate === 1) { sim.emit({ t: 'beam', a: e.id, b: t.id }); dealDamage(sim, t, p.dmg, 'spells', e.owner); }
-  else if (fate === 2) { t.stun = Math.max(t.stun ?? 0, Math.round((p.duration ?? 4) * TICK_RATE)); sim.emit({ t: 'hex', id: t.id, d: t.stun }); dealDamage(sim, t, p.dmg / 3, 'spells', e.owner); }
+  else if (fate === 2) { if (!isImmune(t)) t.stun = Math.max(t.stun ?? 0, Math.round((p.duration ?? 4) * TICK_RATE)); sim.emit({ t: 'hex', id: t.id, d: t.stun ?? 0 }); dealDamage(sim, t, p.dmg / 3, 'spells', e.owner); }
   else if (fate === 3) {
     sim.emit({ t: 'slay', a: e.id, b: t.id });
     if (t.maxHp <= p.dmg * 1.5) { t.hp = 0; rewardKill(sim, t, e.owner); } else dealDamage(sim, t, p.dmg, 'spells', e.owner);
@@ -203,7 +203,7 @@ function charm(sim: Sim, e: Entity, p: PowerDef): boolean {
   const c = centre(e);
   let best: Entity | undefined, bestD = Infinity;
   for (const u of around(sim, c, reach(p))) {
-    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || u.ttl !== undefined) continue;
+    if (u.team === e.team || u.hp <= 0 || u.hidden || u.kind !== 'unit' || u.maxHp > p.dmg || isImmune(u) || u.ttl !== undefined) continue;
     const d = Math.hypot(u.x - c.x, u.y - c.y);
     if (d <= reach(p) && d < bestD) { best = u; bestD = d; }
   }
@@ -264,7 +264,7 @@ function stepShells(sim: Sim) {
       if (u.team === sh.team || u.hp <= 0 || sim.isAir(u)) continue;
       if (Math.hypot(u.x - sh.x, u.y - sh.y) - sim.radius(u) > sh.radius) continue;
       dealDamage(sim, u, sh.dmg * 0.5, 'siege', sh.owner);
-      if (sh.freeze) u.stun = Math.max(u.stun ?? 0, Math.round(sh.freeze / 3));
+      if (sh.freeze && !isImmune(u)) u.stun = Math.max(u.stun ?? 0, Math.round(sh.freeze / 3));
     }
     sim.emit({ t: 'splash', x: r2(sh.x), y: r2(sh.y), r: sh.radius });
   }

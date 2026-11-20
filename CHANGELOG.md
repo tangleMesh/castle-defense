@@ -7,6 +7,28 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.46.1
+
+- **Tidecall Dominion copied exactly from the map's Naga race:**
+  - **Values:** costs, lumber, HP, armour and armour types, damage, cooldowns, ranges, speeds, spawn times, bounties, regeneration and upgrades are the map's.
+  - **One at a time:** murlocs come one at a time, as in the map.
+  - **Hydras:** the Ancient Hydra (legendary) splits into two Hydras, and each of those splits into two Lesser Hydras (new).
+  - **Abilities with the map's chances:**
+    - Murloc Champions and Assassins cleave, bash, evade and crit.
+    - Naga Guardians and Royal Guards cleave.
+    - Lobsters crit and have a hard shell.
+    - Dragon Turtles bash and reflect 60% of melee damage.
+    - Winged Serpents' bolts bounce.
+  - **Specials:**
+    - Earthquake: 40 spell damage and a 50% slow for 10 s.
+    - Oracle of Sirens: controls any non-immune unit.
+    - Coral Statue: 7.5 HP/s for units, 2.5 HP/s for buildings.
+    - Tidal Guardian (legendary): a 270-damage tsunami.
+    - The Tidal Titan upgrade is gone (the map has none).
+- **New mechanics:**
+  - Cleaving attacks: a share of each hit to enemies around the target.
+  - Immune units: no stuns, slows, hexes, freezes, weakening or control.
+
 ## 0.46.0
 
 - **Game rules copied from the castleFight map** (first step of the exact map copy; the races follow version by version):
