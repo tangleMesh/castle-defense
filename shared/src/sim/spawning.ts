@@ -1,4 +1,4 @@
-import { FIRST_BUILD_BONUS, START_LUMBER, TICK_RATE } from '../constants';
+import { GOLD_FACTOR, FIRST_BUILD_BONUS, START_LUMBER, TICK_RATE } from '../constants';
 import { BUILDINGS, UNITS, teamItemBonus } from '../data';
 import { idx, inBounds, nearestFree } from './grid';
 import type { Sim } from './sim';
@@ -53,7 +53,7 @@ export function stepBuildings(sim: Sim) {
         // Lumber for every finished building and upgrade: its value (gold invested so far), as in the map.
         const gain = def.lumberGain ?? (def.special || def.attack || def.treasure || def.lumber ? 0 : 1);
         const owner = sim.state.players[e.owner];
-        if (owner && gain > 0) owner.lumber = (owner.lumber ?? START_LUMBER) + Math.round((e.value ?? def.cost) * gain);
+        if (owner && gain > 0) owner.lumber = (owner.lumber ?? START_LUMBER) + Math.round(((e.value ?? def.cost) / GOLD_FACTOR) * gain);
         if (fresh) firstBuildBonus(sim, e);
         // Each building runs its own training cycle, starting from zero when it is finished.
         if (def.spawn) e.spawnTimer = Math.round(def.spawn.interval * TICK_RATE);

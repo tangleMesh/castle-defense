@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  BUILDINGS, CASTLE_CLEARANCE, CASTLE_SIZE, MAP, RESCUE_RADIUS, TICK_RATE, UNITS, inRescueArea, itemEffect, type SimEvent,
+  BUILDINGS, FX_HIDDEN, CASTLE_CLEARANCE, CASTLE_SIZE, MAP, RESCUE_RADIUS, TICK_RATE, UNITS, inRescueArea, itemEffect, type SimEvent,
 } from '@bc/shared';
 import { DPR, TEAM_COLORS, TX, toTile } from '../iso';
 import { UNIT_TEX } from '../textures';
@@ -59,7 +59,12 @@ export class Renderer3D {
     ring: new THREE.RingGeometry(0.82, 1, 32),
     disc: new THREE.CircleGeometry(1, 32),
     sphere: new THREE.SphereGeometry(1, 10, 8),
+    auraRing: new THREE.RingGeometry(0.96, 1, 64),
   };
+  /** Ground rings of aura carriers (fill, edge, travelling wave), kept per entity. */
+  private auras = new Map<number, { g: THREE.Group; fill: THREE.Mesh; edge: THREE.Mesh; wave: THREE.Mesh }>();
+  /** Cosmetic hit effects alive right now (extras are skipped above a budget). */
+  private fxLive = 0;
   private onResize = () => this.resize();
 
   constructor(private gs: GameScene, private container: HTMLElement) {
@@ -307,6 +312,7 @@ export class Renderer3D {
     for (const [id, o] of this.units) if (!seenU.has(id)) { this.scene.remove(o.sprite, o.ring, o.shadow); (o.sprite.material as THREE.Material).dispose(); (o.ring.material as THREE.Material).dispose(); (o.shadow.material as THREE.Material).dispose(); this.units.delete(id); }
     for (const [id, o] of this.structs) if (!seenS.has(id)) { this.removeStruct(o); this.structs.delete(id); }
     this.updateFog();
+    this.updateAuras(time);
     this.drawFrameOverlays(time);
     this.stepFx(time);
     this.renderer.render(this.scene, this.camera);
@@ -347,7 +353,8 @@ export class Renderer3D {
     const mat = o.sprite.material as THREE.SpriteMaterial;
     mat.opacity = v.sprite.alpha;
     const tint = v.sprite.isTinted ? v.sprite.tintTopLeft : 0xffffff;
-    mat.color.setHex(tint);
+    // Hit flash: a warm brightening for a moment, then the 2D sprite's red tint.
+    if (v.flash > 70) mat.color.setRGB(1.7, 1.35, 1.25); else mat.color.setHex(tint);
     o.ring.position.set(v.x, 0.03, v.y);
     o.shadow.position.set(v.x, 0.02, v.y);
     o.shadow.visible = v.sprite.alpha > 0.5;
@@ -665,6 +672,61 @@ export class Renderer3D {
     this.addFx(s, dur, (k) => { s.scale.setScalar(size * (0.6 + k)); (s.material as THREE.SpriteMaterial).opacity = 1 - k; });
   }
 
+  /** Cosmetic extras only while few are running (big fights stay readable). */
+  private budget(): boolean {
+    if (this.fxLive > 140) return false;
+    this.fxLive++;
+    setTimeout(() => { this.fxLive--; }, 300);
+    return true;
+  }
+
+  /**
+   * Auras as faint pulsing rings on the ground: gold for ally buffs, green for regeneration,
+   * violet for curses on enemies (their wave runs inwards). Map-wide auras only glow at their building.
+   */
+  private updateAuras(time: number) {
+    const seen = new Set<number>();
+    const pulse = 0.5 + 0.5 * Math.sin(time / 480);
+    // A pack of carriers of the same aura shows one ring, not a stack of them.
+    const drawn: Array<{ type: string; team: number; x: number; y: number; r: number }> = [];
+    for (const v of this.gs.views.values()) {
+      const def = v.kind === KIND_UNIT ? UNITS[v.type] : v.kind === KIND_BUILDING ? BUILDINGS[v.type] : undefined;
+      const aura = def?.aura;
+      if (!aura || v.ruined || v.hp <= 0 || ((v.fx ?? 0) & FX_HIDDEN) || (v.kind === KIND_BUILDING && v.extra >= 0 && v.extra < 100)) continue;
+      if (drawn.some((d) => d.type === v.type && d.team === v.team && Math.hypot(d.x - v.x, d.y - v.y) < d.r * 0.6)) continue;
+      drawn.push({ type: v.type, team: v.team, x: v.x, y: v.y, r: aura.radius });
+      seen.add(v.id);
+      let o = this.auras.get(v.id);
+      const curse = aura.target === 'enemy';
+      const col = curse ? 0xb060ff : aura.stat === 'regen' ? 0x60ff90 : 0xffd060;
+      if (!o) {
+        const mat = (op: number) => new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
+        const fill = new THREE.Mesh(this.shared.disc, mat(0.04)), edge = new THREE.Mesh(this.shared.auraRing, mat(0.25)), wave = new THREE.Mesh(this.shared.auraRing, mat(0.2));
+        const g = new THREE.Group();
+        for (const m of [fill, edge, wave]) { m.rotation.x = -Math.PI / 2; g.add(m); }
+        g.position.y = 0.05;
+        this.scene.add(g);
+        o = { g, fill, edge, wave };
+        this.auras.set(v.id, o);
+      }
+      const size = v.kind === KIND_UNIT ? 0 : BUILDINGS[v.type].size;
+      const r = aura.radius > 20 ? size * 0.9 : aura.radius + size / 2;
+      o.g.position.x = v.x; o.g.position.z = v.y;
+      o.fill.scale.setScalar(r); o.edge.scale.setScalar(r);
+      (o.fill.material as THREE.MeshBasicMaterial).opacity = aura.radius > 20 ? 0.08 + 0.08 * pulse : v.kind === KIND_UNIT ? 0.03 : 0.045;
+      (o.edge.material as THREE.MeshBasicMaterial).opacity = aura.radius > 20 ? 0 : 0.1 + 0.1 * pulse;
+      const t = (time / 1600 + v.id * 0.37) % 1, k = curse ? 1 - t : t;
+      o.wave.scale.setScalar(Math.max(0.05, r * (0.3 + 0.7 * k)));
+      (o.wave.material as THREE.MeshBasicMaterial).opacity = aura.radius > 20 ? 0 : 0.14 * (1 - Math.abs(0.5 - t) * 2);
+    }
+    for (const [id, o] of this.auras) {
+      if (seen.has(id)) continue;
+      this.scene.remove(o.g);
+      for (const m of [o.fill, o.edge, o.wave]) (m.material as THREE.Material).dispose();
+      this.auras.delete(id);
+    }
+  }
+
   /** An expanding ring on the ground. */
   private shock(x: number, y: number, r: number, color: number, dur = 420) {
     const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
@@ -723,8 +785,18 @@ export class Renderer3D {
       case 'atk': {
         const a = this.posOf(ev.a), b = this.posOf(ev.b);
         if (!a || !b) return;
-        if (ev.r) this.missile(a, b, 0xffe0a0, 0.35, Math.min(320, 60 + a.distanceTo(b) * 45), 0.15, () => this.burst(b.x, b.y, b.z, 0xffd080, 0.45, 160));
-        else this.burst(b.x, b.y, b.z, 0xfff0c0, 0.4, 140);
+        const u = this.gs.views.get(ev.a);
+        const ud = u?.kind === KIND_UNIT ? UNITS[u.type] : undefined;
+        const col = ud?.attackType === 'magic' ? ud.model.accent : ud?.attackType === 'siege' ? 0xffa060 : 0xffe0a0;
+        const extra = this.budget();
+        if (ev.r) this.missile(a, b, col, ud?.attackType === 'magic' ? 0.55 : 0.42, Math.min(320, 60 + a.distanceTo(b) * 45), ud?.attackType === 'siege' ? 0.5 : 0.15, () => {
+          this.burst(b.x, b.y, b.z, col, 0.6, 180);
+          if (extra) this.shock(b.x, b.z, ud?.attackType === 'siege' ? 0.9 : 0.45, col, 260);
+        });
+        else {
+          this.burst(b.x, b.y, b.z, 0xfff0c0, (ud?.dmg ?? 20) >= 60 ? 0.75 : 0.55, 160);
+          if (extra) this.shock(b.x, b.z, 0.4, 0xffd8a0, 220);
+        }
         return;
       }
       case 'chain': {

@@ -10,15 +10,16 @@ This file is generated from the data: `npm run docs:factions`.
 
 | Map value | Castle Defense |
 |---|---|
-| Hit points, armour, gold, lumber, cooldown, spawn time | 1 : 1 |
+| Hit points, armour, lumber, cooldown, spawn time | 1 : 1 |
+| Gold (prices, bounties, start gold, income, bonuses) | × 1.2 (`GOLD_FACTOR`); the faction files keep the map's values |
 | Damage | base + average of the dice (`ua1b + d × (s + 1) / 2`) |
 | Range, movement speed, areas | ÷ 100 (500 range → 5 tiles, 270 speed → 2.7); melee (≤ 128) keeps our melee reach |
 | Bounty | base + average of the dice |
 | Armour and attack types | the map's damage table (normal, pierce, siege, magic, chaos, hero, spells × light, medium, heavy, fortified, hero, divine, unarmored) |
 | Chance abilities (crit, bash, evade, …) | real random chance, seeded and side-symmetric |
-| Buildings without hit points / armour in the map | 1200 HP / 5 armour (the editor default of their base building); missing gold is 140 |
+| Buildings without hit points / armour in the map | 1200 HP / 5 armour (the editor default of their base building); missing gold is 140 (× 1.2) |
 | Legendaries (food 1) | need a sapphire (one per round; more can be bought) |
-| Income | 5 + 2% of every building's value (some buildings other rates) every 10 s; Treasure Boxes +25%, each further one 15% less |
+| Income | 6 + 2% of every building's value (some buildings other rates) every 10 s; Treasure Boxes +25%, each further one 15% less |
 | Lumber | 125 at the start; a finished building or upgrade gives its value in lumber (most buildings) |
 
 Abilities that rely on Warcraft's mana and spell system were turned into our closest mechanic: a cooldown spell of
@@ -39,22 +40,22 @@ The human kingdom: footmen and evasive defenders, crusaders, paladins and the le
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Sun Citadel | 550 + 1500 lumber · legendary |  |  | Call to arms: whenever your team trains a unit, a 16% chance that an extra one is trained for you (a second shrine stacks once; not legendaries) |
-| Chapel | 265 | Lancer every 28 s | Cathedral |  |
-| → Cathedral | 260 | Vow Knight every 41 s | Paladin Chapter |  |
-| → → Paladin Chapter | 200 + 500 lumber · legendary | Paladin every 51 s |  |  |
-| Thunderhawk Roost | 250 | Thunderhawk every 27 s |  |  |
-| War Horn | 225 + 750 lumber |  |  | Aura: +66% haste for allies within 8 tiles |
-| Hall of Warlocks | 300 | Warlock every 30 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Bastion Tower | 150 + 300 lumber |  |  | Attack: 45 pierce every 0.5 s, range 9.5 |
-| Siege Yard | 210 | Mangonel every 25 s |  |  |
-| Crossbow Lodge | 140 | Crossbowman every 22 s | Arbalest Range, Powder Range |  |
-| → Arbalest Range | 160 | Arbalester every 30 s |  |  |
-| → Powder Range | 180 | Grenadier every 31 s |  |  |
-| Militia Hall | 100 | Militia every 20 s | Shield Hall |  |
-| → Shield Hall | 175 | Shieldbearer every 28 s |  |  |
-| Siege Battery | 200 + 360 lumber |  |  | Bombard: every 15s a shell hits the nearest enemy building anywhere on the map (350 siege damage in radius 3.2, half to units) |
+| Militia Hall | 120 | Militia every 20 s | Shield Hall |  |
+| → Shield Hall | 210 | Shieldbearer every 28 s |  |  |
+| Crossbow Lodge | 168 | Crossbowman every 22 s | Arbalest Range, Powder Range |  |
+| → Arbalest Range | 192 | Arbalester every 30 s |  |  |
+| → Powder Range | 216 | Grenadier every 31 s |  |  |
+| Siege Yard | 252 | Mangonel every 25 s |  |  |
+| Thunderhawk Roost | 300 | Thunderhawk every 27 s |  |  |
+| Chapel | 318 | Lancer every 28 s | Cathedral |  |
+| → Cathedral | 312 | Vow Knight every 41 s | Paladin Chapter |  |
+| → → Paladin Chapter | 240 + 500 lumber · legendary | Paladin every 51 s |  |  |
+| Hall of Warlocks | 360 | Warlock every 30 s |  |  |
+| Bastion Tower | 180 + 300 lumber |  |  | Attack: 45 pierce every 0.5 s, range 9.5 |
+| Siege Battery | 240 + 360 lumber |  |  | Bombard: every 15s a shell hits the nearest enemy building anywhere on the map (350 siege damage in radius 3.2, half to units) |
+| War Horn | 270 + 750 lumber |  |  | Aura: +66% haste for allies within 8 tiles |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Sun Citadel | 660 + 1500 lumber · legendary |  |  | Call to arms: whenever your team trains a unit, a 16% chance that an extra one is trained for you (a second shrine stacks once; not legendaries) |
 
 ### Units
 
@@ -86,23 +87,23 @@ The wild forest: poisonous spiders that split when they die, furbolg shamans, dr
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Spider Clutch | 170 | Black Spider every 23 s | Spider Nest |  |
-| → Spider Nest | 200 | Giant Spider every 33 s | Brood Hatchery |  |
-| → → Brood Hatchery | 210 | Brood Mother every 44 s |  |  |
-| Furbolg Hut | 200 | Furbolg Shaman every 25 s | Furbolg Abode |  |
-| → Furbolg Abode | 200 | Furbolg Elder every 35 s |  |  |
-| Ancient of Growth | 220 | Dryad every 26 s | Ancient of Life |  |
-| → Ancient of Life | 220 | Keeper of the Grove every 37 s | Ancient of Eternity |  |
-| → → Ancient of Eternity | 400 + 400 lumber · legendary | Ancient Keeper every 57 s |  |  |
-| Ancient of Slumber | 260 | Bear every 28 s | Ancient of Hibernation |  |
-| → Ancient of Hibernation | 220 | Ancient Bear every 39 s |  |  |
-| Emerald Dragon Roost | 310 | Jade Wyrm every 30 s |  |  |
-| Monolith | 440 | Stonehide Giant every 37 s |  |  |
-| Ancient Protector | 210 + 300 lumber |  |  | Attack: 105 siege every 1.5 s, range 7, splash 1.8 |
-| Ancient of Gale | 350 + 650 lumber |  |  | Cyclone: every 14s a storm settles on the nearest enemy anywhere on the map for 7s (40 damage/s and 25% slow in radius 2.5) |
-| Ancient Guardian | 250 + 500 lumber |  |  | Banish: every 12s a random enemy unit anywhere on the map turns ethereal for 12s: it can't attack and takes 66% more magic and spell damage |
-| Ancient of Wonders | 650 + 1800 lumber · legendary | 4× Forest Spirit every 40 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
+| Spider Clutch | 204 | Black Spider every 23 s | Spider Nest |  |
+| → Spider Nest | 240 | Giant Spider every 33 s | Brood Hatchery |  |
+| → → Brood Hatchery | 252 | Brood Mother every 44 s |  |  |
+| Furbolg Hut | 240 | Furbolg Shaman every 25 s | Furbolg Abode |  |
+| → Furbolg Abode | 240 | Furbolg Elder every 35 s |  |  |
+| Ancient of Growth | 264 | Dryad every 26 s | Ancient of Life |  |
+| → Ancient of Life | 264 | Keeper of the Grove every 37 s | Ancient of Eternity |  |
+| → → Ancient of Eternity | 480 + 400 lumber · legendary | Ancient Keeper every 57 s |  |  |
+| Ancient of Slumber | 312 | Bear every 28 s | Ancient of Hibernation |  |
+| → Ancient of Hibernation | 264 | Ancient Bear every 39 s |  |  |
+| Emerald Dragon Roost | 372 | Jade Wyrm every 30 s |  |  |
+| Monolith | 528 | Stonehide Giant every 37 s |  |  |
+| Ancient Protector | 252 + 300 lumber |  |  | Attack: 105 siege every 1.5 s, range 7, splash 1.8 |
+| Ancient Guardian | 300 + 500 lumber |  |  | Banish: every 12s a random enemy unit anywhere on the map turns ethereal for 12s: it can't attack and takes 66% more magic and spell damage |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Ancient of Gale | 420 + 650 lumber |  |  | Cyclone: every 14s a storm settles on the nearest enemy anywhere on the map for 7s (40 damage/s and 25% slow in radius 2.5) |
+| Ancient of Wonders | 780 + 1800 lumber · legendary | 4× Forest Spirit every 40 s |  |  |
 
 ### Units
 
@@ -138,27 +139,27 @@ Elementals: water spirits that most attacks pass through, wind elementals that g
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Elemental Guard Tower | 240 + 300 lumber |  |  | Attack: 95 chaos every 1.2 s, range 9 |
-| Rock Pile | 250 | Stone Elemental every 27 s | Greater Fissure |  |
-| → Greater Fissure | 260 | Mountain Elemental every 40 s |  |  |
-| Gale Cage | 120 | Breeze Wisp every 21 s | Wind Monument |  |
-| → Wind Monument | 180 | Gust Elemental every 30 s | Zephyr Spire |  |
-| → → Zephyr Spire | 200 | Zephyr Lord every 40 s |  |  |
-| Ember Altar | 200 | Ember Elemental every 25 s | Blaze Altar |  |
-| → Blaze Altar | 220 | Blaze Elemental every 39 s | Spire of Elder Lore |  |
-| → → Spire of Elder Lore | 300 + 400 lumber · legendary | Master of Elements every 54 s |  |  |
-| Codex of Conjuration | 340 + 650 lumber |  | Codex of Storms, Codex of Meteors | Cyclone: every 15s a storm settles on the nearest enemy anywhere on the map for 5s (15 damage/s and 0% slow in radius 2.5) |
+| Gale Cage | 144 | Breeze Wisp every 21 s | Wind Monument |  |
+| → Wind Monument | 216 | Gust Elemental every 30 s | Zephyr Spire |  |
+| → → Zephyr Spire | 240 | Zephyr Lord every 40 s |  |  |
+| Tidewell | 168 | Rill Spirit every 22 s | Tide Fountain |  |
+| → Tide Fountain | 216 | Tide Spirit every 31 s | Deepwater Fountain |  |
+| → → Deepwater Fountain | 222 | Deepwater Spirit every 40 s |  |  |
+| Ember Altar | 240 | Ember Elemental every 25 s | Blaze Altar |  |
+| → Blaze Altar | 264 | Blaze Elemental every 39 s | Spire of Elder Lore |  |
+| → → Spire of Elder Lore | 360 + 400 lumber · legendary | Master of Elements every 54 s |  |  |
+| Storm Pillar | 276 | Spark Elemental every 26 s | St. Elmo's Pillar |  |
+| → St. Elmo's Pillar | 252 | Thunder Elemental every 37 s |  |  |
+| Rock Pile | 300 | Stone Elemental every 27 s | Greater Fissure |  |
+| → Greater Fissure | 312 | Mountain Elemental every 40 s |  |  |
+| Mana Well | 240 + 250 lumber |  |  | Mana transfusion: your team's ability buildings recharge 15% faster (half for non-elemental buildings; up to 3 generators) |
+| Elemental Guard Tower | 288 + 300 lumber |  |  | Attack: 95 chaos every 1.2 s, range 9 |
+| Obelisk of Elements | 294 + 550 lumber |  |  | Enchantment: every 10s a random unit of yours (one without it first) gets a forged weapon (50% splash), a rock shield (+15 armor), haste (+75% attack speed) or rejuvenation (+450 HP) |
+| Codex of Conjuration | 408 + 650 lumber |  | Codex of Storms, Codex of Meteors | Cyclone: every 15s a storm settles on the nearest enemy anywhere on the map for 5s (15 damage/s and 0% slow in radius 2.5) |
 | → Codex of Storms | 0 |  |  | Cyclone: every 15s a storm settles on the nearest enemy anywhere on the map for 7s (30 damage/s and 0% slow in radius 2.5) |
 | → Codex of Meteors | 0 |  |  | Meteor shower: every 15s meteors rain on the nearest enemy flyer anywhere on the map for 3s (100 damage/s to flyers in radius 2.5) |
-| Linker | 700 + 1600 lumber · legendary |  |  | Link: whenever a unit of your team dies, 50% of its life heals your wounded units |
-| Obelisk of Elements | 245 + 550 lumber |  |  | Enchantment: every 10s a random unit of yours (one without it first) gets a forged weapon (50% splash), a rock shield (+15 armor), haste (+75% attack speed) or rejuvenation (+450 HP) |
-| Mana Well | 200 + 250 lumber |  |  | Mana transfusion: your team's ability buildings recharge 15% faster (half for non-elemental buildings; up to 3 generators) |
-| Storm Pillar | 230 | Spark Elemental every 26 s | St. Elmo's Pillar |  |
-| → St. Elmo's Pillar | 210 | Thunder Elemental every 37 s |  |  |
-| Tidewell | 140 | Rill Spirit every 22 s | Tide Fountain |  |
-| → Tide Fountain | 180 | Tide Spirit every 31 s | Deepwater Fountain |  |
-| → → Deepwater Fountain | 185 | Deepwater Spirit every 40 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Linker | 840 + 1600 lumber · legendary |  |  | Link: whenever a unit of your team dies, 50% of its life heals your wounded units |
 
 ### Units
 
@@ -192,26 +193,26 @@ Goblin engineering: flamegunners, armoured tanks that shrug off small hits, mine
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Power Plant | 340 + 650 lumber |  |  | Power plant: your buildings within 1.8 tiles get +2 armor and can't be frozen; towers deal +25% damage; units trained there get +100 HP, +2 armor and +20% damage |
-| Spare Part Heap | 250 + 350 lumber |  |  | Mends your team's buildings and castle within 7 tiles by 6 HP/s |
-| Shield Generator | 190 + 270 lumber |  | Greater Shield Generator | Energy shield: every 7s a random unit of yours (one without it first) gains +2 armor and a shield that blocks the next 1 hostile building ability |
-| → Greater Shield Generator | 140 + 130 lumber |  |  | Energy shield: every 7s a random unit of yours (one without it first) gains +4 armor and a shield that blocks the next 2 hostile building abilities (the first block heals 100) |
-| Gun Smith | 220 | Flamegunner every 26 s | Arsenal |  |
-| → Arsenal | 140 | Flame Sergeant every 33 s |  |  |
-| Shredder Works | 375 | Goblin Shredder every 33 s | Goliath Works |  |
-| → Goliath Works | 425 + 400 lumber · legendary | Goliath every 55 s |  |  |
-| Demolition Lab | 200 | Lunatic Goblin every 22 s |  |  |
-| Aircraft Factory | 160 | Rotorcopter every 23 s | Bomber Factory |  |
-| → Bomber Factory | 180 | Gyrocopter every 32 s |  |  |
-| Golem Factory | 270 | Iron Golem every 28 s | Adamant Forge |  |
-| → Adamant Forge | 500 + 385 lumber · legendary | Adamant Golem every 53 s |  |  |
-| Tank Factory | 180 | Light Tank every 24 s | Mine Layer Factory, Assault Tank Factory, Heavy Tank Factory |  |
-| → Mine Layer Factory | 150 | Mine Layer every 31 s |  |  |
-| → Assault Tank Factory | 200 | Assault Tank every 34 s |  |  |
-| → Heavy Tank Factory | 200 | Heavy Tank every 34 s | Rocket Tank Factory |  |
-| → → Rocket Tank Factory | 150 | Rocket Tank every 41 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Energy Tower | 240 + 300 lumber |  |  | Attack: 75 chaos every 1.2 s, range 6; Bouncing shot: each shot jumps between 3 enemies |
+| Aircraft Factory | 192 | Rotorcopter every 23 s | Bomber Factory |  |
+| → Bomber Factory | 216 | Gyrocopter every 32 s |  |  |
+| Tank Factory | 216 | Light Tank every 24 s | Mine Layer Factory, Assault Tank Factory, Heavy Tank Factory |  |
+| → Mine Layer Factory | 180 | Mine Layer every 31 s |  |  |
+| → Assault Tank Factory | 240 | Assault Tank every 34 s |  |  |
+| → Heavy Tank Factory | 240 | Heavy Tank every 34 s | Rocket Tank Factory |  |
+| → → Rocket Tank Factory | 180 | Rocket Tank every 41 s |  |  |
+| Demolition Lab | 240 | Lunatic Goblin every 22 s |  |  |
+| Gun Smith | 264 | Flamegunner every 26 s | Arsenal |  |
+| → Arsenal | 168 | Flame Sergeant every 33 s |  |  |
+| Golem Factory | 324 | Iron Golem every 28 s | Adamant Forge |  |
+| → Adamant Forge | 600 + 385 lumber · legendary | Adamant Golem every 53 s |  |  |
+| Shredder Works | 450 | Goblin Shredder every 33 s | Goliath Works |  |
+| → Goliath Works | 510 + 400 lumber · legendary | Goliath every 55 s |  |  |
+| Shield Generator | 228 + 270 lumber |  | Greater Shield Generator | Energy shield: every 7s a random unit of yours (one without it first) gains +2 armor and a shield that blocks the next 1 hostile building ability |
+| → Greater Shield Generator | 168 + 130 lumber |  |  | Energy shield: every 7s a random unit of yours (one without it first) gains +4 armor and a shield that blocks the next 2 hostile building abilities (the first block heals 100) |
+| Energy Tower | 288 + 300 lumber |  |  | Attack: 75 chaos every 1.2 s, range 6; Bouncing shot: each shot jumps between 3 enemies |
+| Spare Part Heap | 300 + 350 lumber |  |  | Mends your team's buildings and castle within 7 tiles by 6 HP/s |
+| Power Plant | 408 + 650 lumber |  |  | Power plant: your buildings within 1.8 tiles get +2 armor and can't be frozen; towers deal +25% damage; units trained there get +100 HP, +2 armor and +20% damage |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
 
 ### Units
 
@@ -246,22 +247,22 @@ The night elves: huntresses, multishot rangers and the legendary Amazon, druids 
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Obelisk of the Wild | 220 + 300 lumber |  |  | Resistance of the wilderness: every 7s a random unit of yours (one without it first) permanently gains 50% spell resistance and a 40% chance to take 40 less damage from an attack |
-| Silver Glade | 225 + 600 lumber |  |  | Moonshine blessing: every 20s everything within 3 tiles of a random wounded unit of yours heals 175 HP and gains +6 armor for 6s |
-| Elune's Lantern | 210 + 300 lumber |  |  | Attack: 70 magic every 0.8 s, range 8.5 |
-| Starfall Obelisk | 650 + 1350 lumber · legendary |  |  | Cyclone: every 30s a storm settles on the nearest enemy anywhere on the map for 11s (50 damage/s and 0% slow in radius 3.5) |
-| Moon Shrine | 190 | Druid every 24 s | Moon Altar |  |
-| → Moon Altar | 210 | Sage Druid every 35 s |  |  |
-| House of Shadows | 200 | Assassin every 30 s | Guild of Shadows |  |
-| → Guild of Shadows | 175 | Royal Assassin every 33 s |  |  |
-| Pillaged Hut | 230 | Avenging Spirit every 26 s | Scorched Mansion |  |
-| → Scorched Mansion | 240 | Avatar of Vengeance every 38 s |  |  |
-| Glaive Works | 285 | Glaive Thrower every 29 s |  |  |
-| Hunters' Hall | 150 | Huntress every 22 s | Rangers' Hall |  |
-| → Rangers' Hall | 200 | Ranger every 32 s | Amazons' Hall |  |
-| → → Amazons' Hall | 400 + 375 lumber · legendary | Amazon every 52 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Fountain of Wonders | 260 | Faerie Dragon every 28 s |  |  |
+| Hunters' Hall | 180 | Huntress every 22 s | Rangers' Hall |  |
+| → Rangers' Hall | 240 | Ranger every 32 s | Amazons' Hall |  |
+| → → Amazons' Hall | 480 + 375 lumber · legendary | Amazon every 52 s |  |  |
+| Moon Shrine | 228 | Druid every 24 s | Moon Altar |  |
+| → Moon Altar | 252 | Sage Druid every 35 s |  |  |
+| House of Shadows | 240 | Assassin every 30 s | Guild of Shadows |  |
+| → Guild of Shadows | 210 | Royal Assassin every 33 s |  |  |
+| Pillaged Hut | 276 | Avenging Spirit every 26 s | Scorched Mansion |  |
+| → Scorched Mansion | 288 | Avatar of Vengeance every 38 s |  |  |
+| Fountain of Wonders | 312 | Faerie Dragon every 28 s |  |  |
+| Glaive Works | 342 | Glaive Thrower every 29 s |  |  |
+| Elune's Lantern | 252 + 300 lumber |  |  | Attack: 70 magic every 0.8 s, range 8.5 |
+| Obelisk of the Wild | 264 + 300 lumber |  |  | Resistance of the wilderness: every 7s a random unit of yours (one without it first) permanently gains 50% spell resistance and a 40% chance to take 40 less damage from an attack |
+| Silver Glade | 270 + 600 lumber |  |  | Moonshine blessing: every 20s everything within 3 tiles of a random wounded unit of yours heals 175 HP and gains +6 armor for 6s |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Starfall Obelisk | 780 + 1350 lumber · legendary |  |  | Cyclone: every 30s a storm settles on the nearest enemy anywhere on the map for 11s (50 damage/s and 0% slow in radius 3.5) |
 
 ### Units
 
@@ -293,25 +294,25 @@ Orcs, trolls and war beasts: critical axes, berserk trolls that ensnare flyers, 
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Ceremonial Totem | 250 + 540 lumber |  |  | Tribal blessing: every 10s a random unit of yours permanently gains +20 damage, +200 HP, +3 armor and 20% attack speed, plus a 25% critical strike, 30% evasion or 1.5× damage against buildings |
-| Wyvern Roost | 220 | Wyvern Rider every 26 s |  |  |
-| Kodo Pen | 260 | Kodo every 28 s | Spellbreaker Pen, War Drum Pen, Shield Bearer Pen |  |
-| → Spellbreaker Pen | 100 | Spellbreaker Kodo every 33 s |  |  |
-| → War Drum Pen | 100 | War Drum Kodo every 33 s |  |  |
-| → Shield Bearer Pen | 100 | Shield Bearer Kodo every 33 s |  |  |
-| Stasis Totem | 475 + 1350 lumber · legendary |  |  | Stasis: every 40s all enemy units anywhere on the map are frozen for 4.5s |
-| Serpent Rock | 270 + 640 lumber |  |  | Cyclone: every 12s a storm settles on the nearest enemy anywhere on the map for 5s (30 damage/s and 20% slow in radius 2.4) |
-| Fighters' Hall | 110 | Grunt every 20 s | Veterans' Hall |  |
-| → Veterans' Hall | 100 | Veteran Grunt every 25 s | Axemasters' Hall |  |
-| → → Axemasters' Hall | 240 | Axemaster every 37 s |  |  |
-| Shaman Tent | 170 | Shaman every 23 s | Spirit Lodge |  |
-| → Spirit Lodge | 170 | Spirit Walker every 32 s |  |  |
-| Orc Siege Works | 380 | Catapult every 34 s |  |  |
-| Spear Tower | 175 + 300 lumber |  |  | Attack: 23 normal every 0.6 s, range 7; 4.7× damage against flyers |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Troll Hut | 200 | Troll Berserker every 25 s | Trappers' Hut |  |
-| → Trappers' Hut | 80 | Troll Trapper every 29 s | Forest Trappers' Hole |  |
-| → → Forest Trappers' Hole | 490 + 390 lumber · legendary | Forest Trapper every 53 s |  |  |
+| Fighters' Hall | 132 | Grunt every 20 s | Veterans' Hall |  |
+| → Veterans' Hall | 120 | Veteran Grunt every 25 s | Axemasters' Hall |  |
+| → → Axemasters' Hall | 288 | Axemaster every 37 s |  |  |
+| Shaman Tent | 204 | Shaman every 23 s | Spirit Lodge |  |
+| → Spirit Lodge | 204 | Spirit Walker every 32 s |  |  |
+| Troll Hut | 240 | Troll Berserker every 25 s | Trappers' Hut |  |
+| → Trappers' Hut | 96 | Troll Trapper every 29 s | Forest Trappers' Hole |  |
+| → → Forest Trappers' Hole | 588 + 390 lumber · legendary | Forest Trapper every 53 s |  |  |
+| Wyvern Roost | 264 | Wyvern Rider every 26 s |  |  |
+| Kodo Pen | 312 | Kodo every 28 s | Spellbreaker Pen, War Drum Pen, Shield Bearer Pen |  |
+| → Spellbreaker Pen | 120 | Spellbreaker Kodo every 33 s |  |  |
+| → War Drum Pen | 120 | War Drum Kodo every 33 s |  |  |
+| → Shield Bearer Pen | 120 | Shield Bearer Kodo every 33 s |  |  |
+| Orc Siege Works | 456 | Catapult every 34 s |  |  |
+| Spear Tower | 210 + 300 lumber |  |  | Attack: 23 normal every 0.6 s, range 7; 4.7× damage against flyers |
+| Ceremonial Totem | 300 + 540 lumber |  |  | Tribal blessing: every 10s a random unit of yours permanently gains +20 damage, +200 HP, +3 armor and 20% attack speed, plus a 25% critical strike, 30% evasion or 1.5× damage against buildings |
+| Serpent Rock | 324 + 640 lumber |  |  | Cyclone: every 12s a storm settles on the nearest enemy anywhere on the map for 5s (30 damage/s and 20% slow in radius 2.4) |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Stasis Totem | 570 + 1350 lumber · legendary |  |  | Stasis: every 40s all enemy units anywhere on the map are frozen for 4.5s |
 
 ### Units
 
@@ -346,20 +347,20 @@ The high elves: evasive archers with headshots, critical-striking blademasters, 
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Golden Shrine of Grace | 650 + 1800 lumber · legendary |  |  | Grace: every own unit that falls anywhere on the map has a 20% chance to rise again (a second shrine stacks once; not legendaries) |
-| City of Magic | 240 + 420 lumber |  |  | Hex: every 10s the toughest enemy unit anywhere on the map is turned into a harmless critter for 45s |
-| Arcane Tower | 250 + 300 lumber |  |  | Attack: 58 magic every 1.2 s, range 6.8; Multi-shot: each volley strikes 5 enemies |
-| School of Wizardry | 360 | Sorceress every 33 s | Tower of Supreme Magic |  |
-| → Tower of Supreme Magic | 440 + 400 lumber · legendary | Wizard every 55 s |  |  |
-| Blood Mage Academy | 275 | Bloodthirster every 28 s |  |  |
-| Hall of Honor | 220 | Blademaster every 26 s | Hall of the Eldest |  |
-| → Hall of the Eldest | 230 | Elder Blademaster every 37 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Archery Range | 180 | Archer every 24 s | Archery Tower |  |
-| → Archery Tower | 200 | Master Archer every 34 s |  |  |
-| Ballista Works | 350 | Ballista every 32 s |  |  |
-| Dragonhawk Portal | 310 | Dragonhawk Rider every 30 s |  |  |
-| Obelisk of Light | 235 + 450 lumber |  |  | Light beam: every 4s a ray hits the nearest enemy unit anywhere on the map for 160 magic damage |
+| Archery Range | 216 | Archer every 24 s | Archery Tower |  |
+| → Archery Tower | 240 | Master Archer every 34 s |  |  |
+| Hall of Honor | 264 | Blademaster every 26 s | Hall of the Eldest |  |
+| → Hall of the Eldest | 276 | Elder Blademaster every 37 s |  |  |
+| Blood Mage Academy | 330 | Bloodthirster every 28 s |  |  |
+| Dragonhawk Portal | 372 | Dragonhawk Rider every 30 s |  |  |
+| Ballista Works | 420 | Ballista every 32 s |  |  |
+| School of Wizardry | 432 | Sorceress every 33 s | Tower of Supreme Magic |  |
+| → Tower of Supreme Magic | 528 + 400 lumber · legendary | Wizard every 55 s |  |  |
+| Obelisk of Light | 282 + 450 lumber |  |  | Light beam: every 4s a ray hits the nearest enemy unit anywhere on the map for 160 magic damage |
+| City of Magic | 288 + 420 lumber |  |  | Hex: every 10s the toughest enemy unit anywhere on the map is turned into a harmless critter for 45s |
+| Arcane Tower | 300 + 300 lumber |  |  | Attack: 58 magic every 1.2 s, range 6.8; Multi-shot: each volley strikes 5 enemies |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Golden Shrine of Grace | 780 + 1800 lumber · legendary |  |  | Grace: every own unit that falls anywhere on the map has a 20% chance to rise again (a second shrine stacks once; not legendaries) |
 
 ### Units
 
@@ -389,23 +390,23 @@ Beasts and trolls of the frozen north: wolves, bears and magnataurs, pulverizing
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Chilling Mushroom | 190 + 350 lumber |  |  | Freezing blast: every 6s the toughest enemy flyer within 10 tiles is frozen for 6s and takes 200 magic damage |
-| Frost Launcher | 210 + 475 lumber |  | Greater Frost Launcher | Frost bolt: every 12s a bolt hits the nearest enemy building anywhere on the map (50 damage in radius 1) and freezes it for 10s: no training, shooting or casting |
-| → Greater Frost Launcher | 290 + 575 lumber |  |  | Frost bolt: every 15s a bolt hits the nearest enemy building anywhere on the map (100 damage in radius 2.5) and freezes it for 12s: no training, shooting or casting |
-| World Freezer | 600 + 1350 lumber · legendary |  |  | Cyclone: every 35s a storm settles on the nearest enemy anywhere on the map for 10s (60 damage/s and 50% slow in radius 4.5) |
-| Snowy Rocks | 115 | Frost Wolf every 20 s | Icy Rocks |  |
-| → Icy Rocks | 125 | Polar Bear every 27 s | Glacier |  |
-| → → Glacier | 250 | Magnataur every 39 s |  |  |
-| Ice Claws | 275 | Wendigo every 28 s | Frost Claws |  |
-| → Frost Claws | 225 | Ancient Wendigo every 40 s |  |  |
-| Crystal Palace | 400 | Ice Queen every 35 s |  |  |
-| Ice Troll Hut | 175 | Ice Troll Priest every 23 s | Voodoo Lounge |  |
-| → Voodoo Lounge | 150 | Ice Troll Witch Doctor every 31 s |  |  |
-| Icy Tower | 230 + 300 lumber |  |  | Attack: 100 normal every 1.2 s, range 7.5, splash 1.5 |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Igloo | 160 | Rime Thrower every 23 s | Great Igloo |  |
-| → Great Igloo | 580 + 460 lumber · legendary | Raging Rime Thrower every 52 s |  |  |
-| Azure Nest | 280 | Azure Drake every 29 s |  |  |
+| Snowy Rocks | 138 | Frost Wolf every 20 s | Icy Rocks |  |
+| → Icy Rocks | 150 | Polar Bear every 27 s | Glacier |  |
+| → → Glacier | 300 | Magnataur every 39 s |  |  |
+| Igloo | 192 | Rime Thrower every 23 s | Great Igloo |  |
+| → Great Igloo | 696 + 460 lumber · legendary | Raging Rime Thrower every 52 s |  |  |
+| Ice Troll Hut | 210 | Ice Troll Priest every 23 s | Voodoo Lounge |  |
+| → Voodoo Lounge | 180 | Ice Troll Witch Doctor every 31 s |  |  |
+| Ice Claws | 330 | Wendigo every 28 s | Frost Claws |  |
+| → Frost Claws | 270 | Ancient Wendigo every 40 s |  |  |
+| Azure Nest | 336 | Azure Drake every 29 s |  |  |
+| Crystal Palace | 480 | Ice Queen every 35 s |  |  |
+| Chilling Mushroom | 228 + 350 lumber |  |  | Freezing blast: every 6s the toughest enemy flyer within 10 tiles is frozen for 6s and takes 200 magic damage |
+| Frost Launcher | 252 + 475 lumber |  | Greater Frost Launcher | Frost bolt: every 12s a bolt hits the nearest enemy building anywhere on the map (50 damage in radius 1) and freezes it for 10s: no training, shooting or casting |
+| → Greater Frost Launcher | 348 + 575 lumber |  |  | Frost bolt: every 15s a bolt hits the nearest enemy building anywhere on the map (100 damage in radius 2.5) and freezes it for 12s: no training, shooting or casting |
+| Icy Tower | 276 + 300 lumber |  |  | Attack: 100 normal every 1.2 s, range 7.5, splash 1.5 |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| World Freezer | 720 + 1350 lumber · legendary |  |  | Cyclone: every 35s a storm settles on the nearest enemy anywhere on the map for 10s (60 damage/s and 50% slow in radius 4.5) |
 
 ### Units
 
@@ -437,23 +438,23 @@ The restless dead: rotting zombies and plague bearers, necromancers raising skel
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Temple of Bone | 210 | Necromancer every 25 s | Temple of Necromancy |  |
-| → Temple of Necromancy | 170 | Mighty Necromancer every 34 s | Lich Citadel |  |
-| → → Lich Citadel | 370 + 375 lumber · legendary | Lich King every 52 s |  |  |
-| Turret of Souls | 200 + 300 lumber |  |  | Attack: 90 chaos every 1.2 s, range 8 |
-| City of Decay | 650 + 1800 lumber · legendary |  |  | Aura: -10 regen for enemies within 200 tiles |
-| Slaughterhouse | 370 | Flesh Golem every 33 s |  |  |
-| Skull Pile | 160 | Skeleton every 12 s | Skull Shrine |  |
-| → Skull Shrine | 140 | Skeleton (random kind) every 15 s |  |  |
-| Crypt | 230 | Vampire every 26 s | Graveyard |  |
-| → Graveyard | 265 | Vampire Lord every 40 s |  |  |
-| Haunted Mine | 290 | Banshee every 29 s |  |  |
-| Dragon Cemetery | 500 | Bone Wyrm every 40 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Death Pit | 360 + 625 lumber |  |  | Sudden death: every 15s a random enemy unit anywhere on the map dies at once (not immune legendaries) |
-| Rotting Hay Cart | 120 | Zombie every 21 s | Tainted Farm |  |
-| → Tainted Farm | 100 | Suffocated Zombie every 26 s | Defiled Granary |  |
-| → → Defiled Granary | 205 | Plague Bearer every 36 s |  |  |
+| Rotting Hay Cart | 144 | Zombie every 21 s | Tainted Farm |  |
+| → Tainted Farm | 120 | Suffocated Zombie every 26 s | Defiled Granary |  |
+| → → Defiled Granary | 246 | Plague Bearer every 36 s |  |  |
+| Skull Pile | 192 | Skeleton every 12 s | Skull Shrine |  |
+| → Skull Shrine | 168 | Skeleton (random kind) every 15 s |  |  |
+| Temple of Bone | 252 | Necromancer every 25 s | Temple of Necromancy |  |
+| → Temple of Necromancy | 204 | Mighty Necromancer every 34 s | Lich Citadel |  |
+| → → Lich Citadel | 444 + 375 lumber · legendary | Lich King every 52 s |  |  |
+| Crypt | 276 | Vampire every 26 s | Graveyard |  |
+| → Graveyard | 318 | Vampire Lord every 40 s |  |  |
+| Haunted Mine | 348 | Banshee every 29 s |  |  |
+| Slaughterhouse | 444 | Flesh Golem every 33 s |  |  |
+| Dragon Cemetery | 600 | Bone Wyrm every 40 s |  |  |
+| Turret of Souls | 240 + 300 lumber |  |  | Attack: 90 chaos every 1.2 s, range 8 |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Death Pit | 432 + 625 lumber |  |  | Sudden death: every 15s a random enemy unit anywhere on the map dies at once (not immune legendaries) |
+| City of Decay | 780 + 1800 lumber · legendary |  |  | Aura: -10 regen for enemies within 200 tiles |
 
 ### Units
 
@@ -489,22 +490,22 @@ Chaos demons: cleaving chaos warriors, satyrs and quill demons, the immune twins
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Magic Tower Ruin | 200 + 330 lumber |  |  | Present of chaos: every 10s a random enemy unit anywhere on the map suffers one of eight fates: it explodes, dies (you get the bounty), turns into a Mutation fighting for you, is hexed, takes 500 damage, is stunned for 6s with 200 damage, is strengthened (+400 HP, +25 damage), or nothing happens |
-| Fountain of Blood | 280 | Blood Fiend every 29 s |  |  |
-| Eraser | 350 + 1000 lumber · legendary |  | Eraser II | Erase: every 50s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared) |
-| → Eraser II | 175 + 350 lumber · legendary |  | Eraser III | Erase: every 38s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared) |
-| → → Eraser III | 175 + 350 lumber · legendary |  |  | Erase: every 25s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared) |
-| Lesser Demon Cage | 120 | Satyr every 21 s | Greater Demon Cage |  |
-| → Greater Demon Cage | 230 | Quill Demon every 32 s | Serenity |  |
-| → → Serenity | 550 + 1600 lumber · legendary | Twin Smiley every 60 s |  |  |
-| Volcano | 340 + 660 lumber |  |  | Cyclone: every 12s a storm settles on the nearest enemy anywhere on the map for 2.8s (100 damage/s and 0% slow in radius 2.5) |
-| Shrine of Destruction | 850 + 1800 lumber · legendary |  |  | Frost bolt: every 40s a bolt hits the nearest enemy building anywhere on the map (400 damage in radius 1) and freezes it for 360s: no training, shooting or casting |
-| Altar of Greed | 230 | Succubus every 26 s |  |  |
-| Chaos Citadel | 160 | Chaos Warrior every 23 s | Greater Chaos Citadel |  |
-| → Greater Chaos Citadel | 190 | Chaos Champion every 32 s |  |  |
-| Dragon Nest | 350 | Red Dragon every 32 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Demon Gate | 500 | Infernal every 40 s |  |  |
+| Lesser Demon Cage | 144 | Satyr every 21 s | Greater Demon Cage |  |
+| → Greater Demon Cage | 276 | Quill Demon every 32 s | Serenity |  |
+| → → Serenity | 660 + 1600 lumber · legendary | Twin Smiley every 60 s |  |  |
+| Chaos Citadel | 192 | Chaos Warrior every 23 s | Greater Chaos Citadel |  |
+| → Greater Chaos Citadel | 228 | Chaos Champion every 32 s |  |  |
+| Altar of Greed | 276 | Succubus every 26 s |  |  |
+| Fountain of Blood | 336 | Blood Fiend every 29 s |  |  |
+| Dragon Nest | 420 | Red Dragon every 32 s |  |  |
+| Demon Gate | 600 | Infernal every 40 s |  |  |
+| Magic Tower Ruin | 240 + 330 lumber |  |  | Present of chaos: every 10s a random enemy unit anywhere on the map suffers one of eight fates: it explodes, dies (you get the bounty), turns into a Mutation fighting for you, is hexed, takes 500 damage, is stunned for 6s with 200 damage, is strengthened (+400 HP, +25 damage), or nothing happens |
+| Volcano | 408 + 660 lumber |  |  | Cyclone: every 12s a storm settles on the nearest enemy anywhere on the map for 2.8s (100 damage/s and 0% slow in radius 2.5) |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Eraser | 420 + 1000 lumber · legendary |  | Eraser II | Erase: every 50s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared) |
+| → Eraser II | 210 + 350 lumber · legendary |  | Eraser III | Erase: every 38s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared) |
+| → → Eraser III | 210 + 350 lumber · legendary |  |  | Erase: every 25s every enemy unit of a random type dies, anywhere on the map (immune legendaries are spared) |
+| Shrine of Destruction | 1020 + 1800 lumber · legendary |  |  | Frost bolt: every 40s a bolt hits the nearest enemy building anywhere on the map (400 damage in radius 1) and freezes it for 360s: no training, shooting or casting |
 
 ### Units
 
@@ -536,21 +537,21 @@ Serpent folk of the deep and their murloc thralls: regenerating murlocs, cleavin
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Naga Spring | 350 | Naga Siren every 32 s |  |  |
-| Tidal Guardian | 750 + 1500 lumber · legendary |  |  | Tsunami: every 15s a wave rolls 20 tiles towards the enemy, 270 damage to every ground unit in its path |
-| Oracle of Sirens | 310 + 625 lumber |  |  | Control: every 16s the nearest enemy unit anywhere on the map with at most 100000 HP joins your side |
-| Swamp Well | 175 | Swamp Spitter every 23 s | Lernaean Fountain |  |
-| → Lernaean Fountain | 725 + 1000 lumber · legendary | Ancient Hydra every 60 s |  |  |
-| Reptile Pool | 280 | Dragon Turtle every 29 s |  |  |
-| Ancient Pyramid | 360 + 600 lumber |  |  | Cyclone: every 10s a storm settles on the nearest enemy anywhere on the map for 10s (4 damage/s and 50% slow in radius 3) |
-| Coral Statue | 250 + 480 lumber |  |  | Aura: +7.5 regen for allies within 7 tiles; Mends your team's buildings and castle within 7 tiles by 2.5 HP/s |
-| Murloc Camp | 170 | Murloc Warrior every 23 s | Murloc Village |  |
-| → Murloc Village | 180 | Murloc Champion every 32 s | Murloc Fortress |  |
-| → → Murloc Fortress | 190 | Murloc Assassin every 42 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Temple of Snakes | 230 | Winged Serpent every 26 s |  |  |
-| Spawning Grounds | 250 | Naga Guardian every 27 s | Royal Spawning Grounds |  |
-| → Royal Spawning Grounds | 200 | Naga Royal Guard every 37 s |  |  |
+| Murloc Camp | 204 | Murloc Warrior every 23 s | Murloc Village |  |
+| → Murloc Village | 216 | Murloc Champion every 32 s | Murloc Fortress |  |
+| → → Murloc Fortress | 228 | Murloc Assassin every 42 s |  |  |
+| Swamp Well | 210 | Swamp Spitter every 23 s | Lernaean Fountain |  |
+| → Lernaean Fountain | 870 + 1000 lumber · legendary | Ancient Hydra every 60 s |  |  |
+| Temple of Snakes | 276 | Winged Serpent every 26 s |  |  |
+| Spawning Grounds | 300 | Naga Guardian every 27 s | Royal Spawning Grounds |  |
+| → Royal Spawning Grounds | 240 | Naga Royal Guard every 37 s |  |  |
+| Reptile Pool | 336 | Dragon Turtle every 29 s |  |  |
+| Naga Spring | 420 | Naga Siren every 32 s |  |  |
+| Coral Statue | 300 + 480 lumber |  |  | Aura: +7.5 regen for allies within 7 tiles; Mends your team's buildings and castle within 7 tiles by 2.5 HP/s |
+| Oracle of Sirens | 372 + 625 lumber |  |  | Control: every 16s the nearest enemy unit anywhere on the map with at most 100000 HP joins your side |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Ancient Pyramid | 432 + 600 lumber |  |  | Cyclone: every 10s a storm settles on the nearest enemy anywhere on the map for 10s (4 damage/s and 50% slow in radius 3) |
+| Tidal Guardian | 900 + 1500 lumber · legendary |  |  | Tsunami: every 15s a wave rolls 20 tiles towards the enemy, 270 damage to every ground unit in its path |
 
 ### Units
 
@@ -584,22 +585,22 @@ Corrupted ancients and fel demons: weakening treants, incinerating void walkers 
 
 | Building | Cost | Trains | Upgrades into | Abilities |
 |---|---|---|---|---|
-| Corrupted Protector | 200 + 300 lumber |  |  | Attack: 65 chaos every 1.5 s, range 8, splash 2.3 |
-| Corrupted Ancient of Battle | 125 | Corrupted Ent every 21 s | Corrupted Ancient of War |  |
-| → Corrupted Ancient of War | 125 | Corrupted Treant every 27 s | Ancient of Annihilation |  |
-| → → Ancient of Annihilation | 500 + 375 lumber · legendary | Corrupted Annihilator every 52 s |  |  |
-| Demonic Statue | 520 | Incubus every 41 s |  |  |
-| Treasure Chest | 350 + 500 lumber |  |  |  |
-| Eye of Corruption | 500 + 1350 lumber · legendary |  |  | Aura: -6 armor for enemies within 200 tiles |
-| Felhound Shrine | 240 | Felhound every 27 s |  |  |
-| Forgotten One | 260 + 420 lumber |  |  | Tentacle prison: every 12s 6 tentacles burst from the ground around the nearest enemy anywhere on the map (they last 30s) |
-| Hell's Gate | 300 | Infernal Machine every 30 s | Hell's Portal |  |
-| → Hell's Portal | 150 | Infernal Tank every 37 s |  |  |
-| Nether Ancient | 235 | Nether Drake every 26 s | Shadow Ancient |  |
-| → Shadow Ancient | 165 | Shadow Drake every 35 s |  |  |
-| Void Portal | 190 | Void Walker every 24 s | Portal of the Abyss |  |
-| → Portal of the Abyss | 190 | Void Keeper every 34 s |  |  |
-| Well of Pain | 275 + 480 lumber |  |  | Light beam: every 4s a ray hits the nearest enemy unit anywhere on the map for 200 magic damage |
+| Corrupted Ancient of Battle | 150 | Corrupted Ent every 21 s | Corrupted Ancient of War |  |
+| → Corrupted Ancient of War | 150 | Corrupted Treant every 27 s | Ancient of Annihilation |  |
+| → → Ancient of Annihilation | 600 + 375 lumber · legendary | Corrupted Annihilator every 52 s |  |  |
+| Void Portal | 228 | Void Walker every 24 s | Portal of the Abyss |  |
+| → Portal of the Abyss | 228 | Void Keeper every 34 s |  |  |
+| Nether Ancient | 282 | Nether Drake every 26 s | Shadow Ancient |  |
+| → Shadow Ancient | 198 | Shadow Drake every 35 s |  |  |
+| Felhound Shrine | 288 | Felhound every 27 s |  |  |
+| Hell's Gate | 360 | Infernal Machine every 30 s | Hell's Portal |  |
+| → Hell's Portal | 180 | Infernal Tank every 37 s |  |  |
+| Demonic Statue | 624 | Incubus every 41 s |  |  |
+| Corrupted Protector | 240 + 300 lumber |  |  | Attack: 65 chaos every 1.5 s, range 8, splash 2.3 |
+| Forgotten One | 312 + 420 lumber |  |  | Tentacle prison: every 12s 6 tentacles burst from the ground around the nearest enemy anywhere on the map (they last 30s) |
+| Well of Pain | 330 + 480 lumber |  |  | Light beam: every 4s a ray hits the nearest enemy unit anywhere on the map for 200 magic damage |
+| Treasure Chest | 420 + 500 lumber |  |  |  |
+| Eye of Corruption | 600 + 1350 lumber · legendary |  |  | Aura: -6 armor for enemies within 200 tiles |
 
 ### Units
 

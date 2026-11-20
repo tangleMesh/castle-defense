@@ -63,6 +63,10 @@ export class GameScene extends Phaser.Scene {
   views = new Map<number, View>();
   private bars!: Phaser.GameObjects.Graphics;
   private overlay!: Phaser.GameObjects.Graphics;
+  /** Aura rings on the ground under units and buildings (redrawn every frame). */
+  private auraG!: Phaser.GameObjects.Graphics;
+  /** Cosmetic hit effects alive right now: extras are skipped above a budget so big fights stay readable. */
+  private fxLive = 0;
   private ghost!: Phaser.GameObjects.Image;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private mouse = { x: -1, y: -1, inside: false, overControl: false };
@@ -143,6 +147,7 @@ export class GameScene extends Phaser.Scene {
 
     this.fog = this.add.graphics().setDepth(4.5e6);
     this.overlay = this.add.graphics().setDepth(5e6);
+    this.auraG = this.add.graphics().setDepth(-7.5e6);
     this.bars = this.add.graphics().setDepth(9e6);
     this.ghost = this.img(0, 0, '__WHITE').setVisible(false).setDepth(8e6).setAlpha(0.65);
 
@@ -525,7 +530,8 @@ export class GameScene extends Phaser.Scene {
       const breathe = !v.moving && !v.air ? 1 + 0.018 * Math.sin(time / 520 + v.id) : 1;
       if (v.kind === KIND_UNIT) v.sprite.setScale(sc(UNIT_SCALE), sc(UNIT_SCALE * breathe));
       else v.sprite.setScale(sc(1.1), sc(1.1 * breathe));
-      if (v.flash > 0) v.sprite.setTint(0xffaaaa);
+      // Hit: a short red tint (a white pop flickers all over a big fight).
+      if (v.flash > 0) v.sprite.setTint(0xff8a78);
       else if ((v.fx ?? 0) & FX_SHEEP) v.sprite.clearTint();
       else if ((v.fx ?? 0) & FX_STUN) v.sprite.setTint(0xb8c0ff);
       else if ((v.fx ?? 0) & FX_POISON) v.sprite.setTint(0xa8f080);
@@ -621,7 +627,7 @@ export class GameScene extends Phaser.Scene {
       const src = nb ?? row;
       v.fx = src[11] ?? 0;
       // Damage flash (not for the steady tick of poison: poisoned units get a green tint instead).
-      if (src[7] < v.hp - (v.fx & FX_POISON ? 3 : 0)) v.flash = 90;
+      if (src[7] < v.hp - (v.fx & FX_POISON ? 3 : 0)) v.flash = 110;
       v.hp = src[7]; v.maxHp = src[8]; v.extra = src[9];
       // Spawn countdown, interpolated between snapshots (unless a unit spawned in between).
       v.spawn = nb && nb[10] <= row[10] ? row[10] + (nb[10] - row[10]) * alpha : src[10];
@@ -650,6 +656,7 @@ export class GameScene extends Phaser.Scene {
         && !entityVisible(this.vision, v.kind, v.type, v.x, v.y)) this.toGhost(v);
       else this.destroyView(v);
     }
+    this.drawAuras(time);
     this.drawOverlay(time);
     this.drawBars();
     this.r3d?.frame(time);
@@ -935,7 +942,8 @@ export class GameScene extends Phaser.Scene {
     if (u?.attackType === 'magic') { key = 'orb'; tint = u.model.accent; }
     if (u?.attackType === 'siege') key = 'boulder';
     const obj = this.img(a.x, ay, key).setTint(tint).setDepth(8e6);
-    if (key === 'orb') obj.setBlendMode(Phaser.BlendModes.ADD).setScale(sc(1.3));
+    if (key === 'orb') obj.setBlendMode(Phaser.BlendModes.ADD).setScale(sc(1.6));
+    else obj.setScale(sc(key === 'boulder' ? 1.25 : 1.3));
     const dist = Math.hypot(b.x - a.x, by - ay);
     const dur = Math.min(500, 120 + dist * 0.9);
     const arc = key === 'boulder' ? 60 : 12;
@@ -957,10 +965,84 @@ export class GameScene extends Phaser.Scene {
       },
       onComplete: () => {
         obj.destroy();
-        this.spark(b.x, by, tint === 0xffffff ? 0xffe0a0 : tint, key === 'orb' ? 6 : 3, key === 'orb' ? 0.5 : 0.35);
+        this.spark(b.x, by, tint === 0xffffff ? 0xffe0a0 : tint, key === 'orb' ? 7 : 4, key === 'orb' ? 0.6 : 0.42);
+        this.impactRing(b.x, by, tint === 0xffffff ? 0xffe8b0 : tint, key === 'boulder' ? 1.6 : key === 'orb' ? 1.2 : 0.8);
         if (key === 'boulder') this.puff(b.x, b.y - 4, 0x8a7a62, 10, 26);
       },
     });
+  }
+
+  /** Runs a cosmetic effect only while the effect budget allows it (big fights stay readable). */
+  private budget(cost = 1): boolean {
+    if (this.fxLive > 160) return false;
+    this.fxLive += cost;
+    this.time.delayedCall(320, () => { this.fxLive -= cost; });
+    return true;
+  }
+
+  /** A melee blow: a bright crescent swept across the hit point (wider and warmer for heavy hitters). */
+  private slash(x: number, y: number, facing: 1 | -1, u?: (typeof UNITS)[string]) {
+    if (!this.budget(1)) return;
+    const heavy = (u?.dmg ?? 20) >= 60;
+    const r = heavy ? 13 : 9;
+    const g = this.add.graphics().setDepth(8.1e6).setBlendMode(Phaser.BlendModes.ADD);
+    const a0 = facing > 0 ? -1.9 : Math.PI + 1.9, sweep = facing > 0 ? 1.9 : -1.9;
+    for (const [w, c, al] of [[5, heavy ? 0xff9a40 : 0xffd8a0, 0.35], [2, 0xffffff, 0.95]] as const) {
+      g.lineStyle(w, c, al);
+      g.beginPath();
+      g.arc(x - facing * 3, y + 2, r, Math.min(a0, a0 + sweep), Math.max(a0, a0 + sweep));
+      g.strokePath();
+    }
+    this.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
+  }
+
+  /** A small shock ring where a missile lands. */
+  private impactRing(x: number, y: number, color: number, size: number) {
+    if (!this.budget(1)) return;
+    const ring = this.img(x, y + 4, 'ringthin').setDepth(7.9e6).setTint(color).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(6 * size, 3.5 * size).setAlpha(0.9);
+    this.tweens.add({ targets: ring, displayWidth: 26 * size, displayHeight: 14 * size, alpha: 0, duration: 260, onComplete: () => ring.destroy() });
+  }
+
+  /**
+   * Auras as faint pulsing rings on the ground: gold for buffs of allies, violet for curses on
+   * enemies. Map-wide auras get only a soft glow at their building (a ring across the whole map
+   * would hide everything else).
+   */
+  private drawAuras(time: number) {
+    const g = this.auraG;
+    g.clear();
+    if (this.r3d) return;
+    const pulse = 0.5 + 0.5 * Math.sin(time / 480);
+    // A pack of carriers of the same aura shows one ring, not a stack of them.
+    const drawn: Array<{ type: string; team: number; x: number; y: number; r: number }> = [];
+    for (const v of this.views.values()) {
+      if (v.ruined || v.hp <= 0) continue;
+      const def = v.kind === KIND_UNIT ? UNITS[v.type] : v.kind === KIND_BUILDING ? BUILDINGS[v.type] : undefined;
+      const aura = def?.aura;
+      if (!aura || (v.kind === KIND_BUILDING && v.extra >= 0 && v.extra < 100)) continue;
+      if (((v.fx ?? 0) & FX_HIDDEN) !== 0) continue;
+      if (drawn.some((d) => d.type === v.type && d.team === v.team && Math.hypot(d.x - v.x, d.y - v.y) < d.r * 0.6)) continue;
+      drawn.push({ type: v.type, team: v.team, x: v.x, y: v.y, r: aura.radius });
+      const curse = aura.target === 'enemy';
+      const col = curse ? 0xb060ff : aura.stat === 'regen' ? 0x60ff90 : 0xffd060;
+      const size = v.kind === KIND_UNIT ? 0 : BUILDINGS[v.type].size;
+      const c = toScreen(v.x + (v.kind === KIND_UNIT ? 0 : 0), v.y);
+      if (aura.radius > 20) {
+        const e = isoEllipse(size * 0.9);
+        g.fillStyle(col, 0.08 + 0.06 * pulse); g.fillEllipse(c.x, c.y, e.w, e.h);
+        continue;
+      }
+      const e = isoEllipse(aura.radius + size / 2);
+      g.fillStyle(col, v.kind === KIND_UNIT ? 0.03 : 0.045);
+      g.fillEllipse(c.x, c.y, e.w, e.h);
+      g.lineStyle(1.5, col, 0.12 + 0.12 * pulse);
+      g.strokeEllipse(c.x, c.y, e.w, e.h);
+      // a second ring expanding outwards now and then shows which way the aura works
+      const t = ((time / 1600 + v.id * 0.37) % 1);
+      const k = curse ? 1 - t : t;
+      g.lineStyle(1, col, 0.18 * (1 - Math.abs(0.5 - t) * 2));
+      g.strokeEllipse(c.x, c.y, e.w * (0.3 + 0.7 * k), e.h * (0.3 + 0.7 * k));
+    }
   }
 
   private spark(x: number, y: number, color: number, n: number, size = 0.5) {
@@ -1107,7 +1189,8 @@ export class GameScene extends Phaser.Scene {
         else {
           a.lunge = 160;
           const h = this.hitPoint(a, b);
-          this.spark(h.x, h.y, 0xffd8a0, 2, 0.32);
+          this.slash(h.x, h.y, a.facing, a.kind === KIND_UNIT ? UNITS[a.type] : undefined);
+          this.spark(h.x, h.y, 0xffd8a0, 3, 0.4);
         }
         return;
       }

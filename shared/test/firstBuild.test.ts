@@ -12,21 +12,22 @@ const almostBuilt = (sim: Sim, owner: number, upgrading = false) => sim.add({
 const firsts = (ev: SimEvent[]) => ev.filter((e) => e.t === 'first') as Extract<SimEvent, { t: 'first' }>[];
 
 describe('first-building bonus', () => {
-  it('pays 20/15/10/5 gold to the first four players (as in the map) to finish a building, once each per round', () => {
+  it('pays 24/18/12/6 gold (20/15/10/5 × the gold factor) to the first four players to finish a building, once each per round', () => {
     const sim = Sim.create({ countdownTicks: 0, players, bestOf: 3, seed: 1 });
-    expect(FIRST_BUILD_BONUS).toEqual([20, 15, 10, 5]);
+    // The map's 20/15/10/5 × the gold factor.
+    expect(FIRST_BUILD_BONUS).toEqual([24, 18, 12, 6]);
     const gold = () => sim.state.players.map((p) => p.gold);
     const g0 = gold();
     // Player 2 finishes first, then player 2 again (no second bonus), then 0, upgrade of 3 (no), then 1 and 3 on the same tick (both third).
     almostBuilt(sim, 2);
-    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[2, 20]]);
+    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[2, 24]]);
     almostBuilt(sim, 2); almostBuilt(sim, 3, true);
     expect(firsts(sim.step([]))).toEqual([]);
     almostBuilt(sim, 0);
-    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[0, 15]]);
+    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[0, 18]]);
     almostBuilt(sim, 1); almostBuilt(sim, 3);
-    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[1, 10], [3, 10]]);
-    expect(gold().map((g, i) => g - g0[i])).toEqual([15, 10, 20, 10]);
+    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[1, 12], [3, 12]]);
+    expect(gold().map((g, i) => g - g0[i])).toEqual([18, 12, 24, 12]);
     // Nobody else gets a bonus after the third place.
     almostBuilt(sim, 0);
     expect(firsts(sim.step([]))).toEqual([]);
@@ -40,7 +41,7 @@ describe('first-building bonus', () => {
     startRound(sim);
     expect(sim.state.firstBuilds).toEqual([]);
     almostBuilt(sim, 0);
-    expect(firsts(sim.step([])).map((e) => e.g)).toEqual([20]);
+    expect(firsts(sim.step([])).map((e) => e.g)).toEqual([24]);
   });
 });
 
@@ -48,6 +49,6 @@ describe('first-building bonus ties', () => {
   it('players finishing on the same tick share the place', () => {
     const sim = Sim.create({ countdownTicks: 0, players: players.slice(0, 2), bestOf: 1, seed: 1 });
     almostBuilt(sim, 0); almostBuilt(sim, 1);
-    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[0, 20], [1, 20]]);
+    expect(firsts(sim.step([])).map((e) => [e.p, e.g])).toEqual([[0, 24], [1, 24]]);
   });
 });

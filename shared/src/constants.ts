@@ -17,19 +17,26 @@ export const SNAPSHOT_EVERY = 2;
 
 // The economy follows the castleFight map (war3map.j): 250 gold and 125 lumber to start, income
 // every 10 s of 5 gold plus a share of every building's value, Treasure Boxes on top.
-export const START_GOLD = 250;
+/**
+ * Every gold amount is the map's × this factor: building and item prices (applied when the data
+ * loads), start gold, base income, bounties, the sapphire price and first-build bonuses. Lumber
+ * stays as in the map.
+ */
+export const GOLD_FACTOR = 1.2;
+const gold = (v: number) => Math.round(v * GOLD_FACTOR);
+export const START_GOLD = gold(250);
 /** Lumber at the start of a round; finishing buildings (and upgrades) earns more. */
 export const START_LUMBER = 125;
 export const INCOME_INTERVAL_TICKS = 10 * TICK_RATE;
 /** Base income per tick. */
-export const BASE_INCOME = 5;
+export const BASE_INCOME = gold(5);
 /** Default share of a building's value (gold invested, upgrades included) paid out each income tick (the map's 0.2%·10). */
 export const INCOME_PCT = 0.02;
 /** Treasure Boxes: the first adds +25% income, each further one 15% less than the one before. */
 export const TREASURE_BONUS = 0.25;
 export const TREASURE_DECAY = 0.85;
-/** Multiplier on unit kill bounties (the map pays them in full). */
-export const BOUNTY_MULT = 1;
+/** Multiplier on unit kill bounties (the map pays them in full, × the gold factor). */
+export const BOUNTY_MULT = GOLD_FACTOR;
 /** Share of a destroyed building's value paid to the killer. */
 export const BUILDING_BOUNTY = 0.03;
 /** Income buildings stack up to this total bonus (+30%). */
@@ -40,9 +47,9 @@ export const MAX_BOUNTY_BONUS = 1;
 /** Sapphires: the rare resource for special buildings and elite upgrades. Every round starts with this many. */
 export const START_SAPPHIRES = 1;
 /** Gold price of one more sapphire in the castle shop. */
-export const SAPPHIRE_GOLD = 1500;
+export const SAPPHIRE_GOLD = gold(1500);
 /** Bonus gold for the first, second and third player to finish a building each round. */
-export const FIRST_BUILD_BONUS = [20, 15, 10, 5];
+export const FIRST_BUILD_BONUS = [20, 15, 10, 5].map(gold);
 
 export const CASTLE_HP = 5000;
 export const CASTLE_ARMOR = 5;

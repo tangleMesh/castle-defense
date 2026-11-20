@@ -26,15 +26,16 @@ This file is generated from the data: \`npm run docs:factions\`.
 
 | Map value | Castle Defense |
 |---|---|
-| Hit points, armour, gold, lumber, cooldown, spawn time | 1 : 1 |
+| Hit points, armour, lumber, cooldown, spawn time | 1 : 1 |
+| Gold (prices, bounties, start gold, income, bonuses) | × 1.2 (\`GOLD_FACTOR\`); the faction files keep the map's values |
 | Damage | base + average of the dice (\`ua1b + d × (s + 1) / 2\`) |
 | Range, movement speed, areas | ÷ 100 (500 range → 5 tiles, 270 speed → 2.7); melee (≤ 128) keeps our melee reach |
 | Bounty | base + average of the dice |
 | Armour and attack types | the map's damage table (normal, pierce, siege, magic, chaos, hero, spells × light, medium, heavy, fortified, hero, divine, unarmored) |
 | Chance abilities (crit, bash, evade, …) | real random chance, seeded and side-symmetric |
-| Buildings without hit points / armour in the map | 1200 HP / 5 armour (the editor default of their base building); missing gold is 140 |
+| Buildings without hit points / armour in the map | 1200 HP / 5 armour (the editor default of their base building); missing gold is 140 (× 1.2) |
 | Legendaries (food 1) | need a sapphire (one per round; more can be bought) |
-| Income | 5 + 2% of every building's value (some buildings other rates) every 10 s; Treasure Boxes +25%, each further one 15% less |
+| Income | 6 + 2% of every building's value (some buildings other rates) every 10 s; Treasure Boxes +25%, each further one 15% less |
 | Lumber | 125 at the start; a finished building or upgrade gives its value in lumber (most buildings) |
 
 Abilities that rely on Warcraft's mana and spell system were turned into our closest mechanic: a cooldown spell of

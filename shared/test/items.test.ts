@@ -19,8 +19,9 @@ const later = (sim: Sim, seconds: number) => { sim.state.roundStartTick = sim.st
 describe('castle shop (map items)', () => {
   it('sells the map items with their prices', () => {
     expect(ITEMS.map((i) => [i.id, i.cost, i.lumber ?? 0])).toEqual([
-      ['spark_staff', 150, 300], ['stone_scroll', 150, 0], ['mason_rune', 100, 0], ['storm_orb', 550, 0],
-      ['rhythm_engine', 600, 0], ['thunder_drums', 650, 0], ['fury_shard', 600, 0], ['rage_heart', 1400, 0],
+      // The map's prices × the gold factor (1.2); lumber unchanged.
+      ['spark_staff', 180, 300], ['stone_scroll', 180, 0], ['mason_rune', 120, 0], ['storm_orb', 660, 0],
+      ['rhythm_engine', 720, 0], ['thunder_drums', 780, 0], ['fury_shard', 720, 0], ['rage_heart', 1680, 0],
     ]);
     expect(MAX_ITEMS).toBe(6);
   });

@@ -7,6 +7,25 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.47.0
+
+- **Gold × 1.2:** every gold amount is the map's × 1.2 (`GOLD_FACTOR`). That covers:
+  - building and upgrade prices, item prices and the sapphire (1,800)
+  - start gold (300) and base income (6 per tick)
+  - unit bounties, building bounties and the first-build bonuses (24 / 18 / 12 / 6)
+  - sell refunds, which follow the prices
+
+  Lumber stays as in the map, and lumber earned from buildings is unchanged.
+- **Builder menu order:** unit spawn buildings come first, from cheapest to most expensive; towers, ability buildings, the Treasure Chest and legendaries follow, also by price.
+- **Rescue strike on the builder:** the command card is now 5 × 3 (Q W E R T / A S D F G / Z X C V B). The rescue strike sits on the builder's card at T and is gone from the castle shop and building cards.
+- **Clearer combat visuals, kept light:**
+  - Melee blows sweep a bright crescent, wider and warmer for heavy hitters.
+  - Missiles are a bit bigger and land with a small shock ring.
+  - Hit units flash a stronger red.
+  - In 3D, impacts are brighter and hit units briefly light up.
+- **Aura rings:** auras show as faint pulsing rings on the ground: gold for buffs, green for regeneration, violet for curses. A wave runs outwards for buffs and inwards for curses. A pack of carriers of the same aura shows one ring, and map-wide auras only glow at their building.
+- **Effects budget:** the extra effects pause while too many are running, so big fights stay readable.
+
 ## 0.46.13
 
 - **Builders:** they move at the map's builder speed (550 → 5.5 tiles per second, was 7).

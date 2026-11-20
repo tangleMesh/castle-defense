@@ -1,3 +1,4 @@
+import { GOLD_FACTOR } from '../constants';
 import type { AttackType } from './types';
 
 /**
@@ -86,6 +87,9 @@ export const ITEMS: ItemDef[] = [
     use: { dmg: 3, duration: 30 },
   },
 ];
+
+// Gold prices are the map's × GOLD_FACTOR (lumber stays).
+for (const i of ITEMS) i.cost = Math.round(i.cost * GOLD_FACTOR);
 
 export const ITEM_BY_ID: Record<string, ItemDef> = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 

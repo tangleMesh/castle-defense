@@ -4,7 +4,7 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
 
 - **Spawn buildings** train one unit at a time on a timer. Many of them can be upgraded (some offer a choice of two upgrades).
 - **Aura and utility buildings** add damage or regeneration auras, slow enemies, defend with towers, or raise your income.
-- **Sapphires** (the map's legendary limit): every player starts each round with 1 and can buy more in the castle shop for 1,500 gold. Each legendary building needs one.
+- **Sapphires** (the map's legendary limit): every player starts each round with 1 and can buy more in the castle shop for 1,800 gold. Each legendary building needs one.
 - **Twelve factions, copied from the castleFight map** (the author's Warcraft III map): every race with the map's build list, upgrade trees, costs, hit points, damage, ranges, spawn times, bounties and abilities, under our own names and looks. See [docs/factions.md](docs/factions.md) for every number:
   - *Ironvow* (Human): footmen and evasive defenders, crusaders, paladins and the legendary Holy Warrior, gryphon riders, warlocks, snipers, marksmen and heavy gunners, mortars, the Gjallarhorn, long-range artillery and the Heroic Shrine.
   - *Thornwild* (Nature): poisonous spiders that split when they die, furbolg shamans, dryads and keepers of the grove with their treants, slumbering bears, emerald dragons, mountain giants, the Ancient of Gale, the Ancient Guardian and the Ancient of Wonders.
@@ -19,20 +19,20 @@ A multiplayer browser game in the style of the classic WC3 *castle* custom maps.
   - *Tidecall* (Naga): regenerating murlocs, cleaving naga, hydras that split, turtles, sirens, earthquakes, mind control and tsunamis, but no tower.
   - *Blightroot* (Corrupted): weakening treants, incinerating void walkers with armour-breaking auras, felhounds, infernal machines, drakes, an overtaking incubus, tentacles, the Well of Pain and the Eye of Corruption.
 - **Repair**: select a damaged building of yours and press Repair (R), or right-click it. Your builder walks over and repairs it, one building at a time: it's free, but slow (a full repair takes 120 s). The builder can also repair your castle (select it or right-click it): 11 HP/s per builder (teammates' builders stack). It slows down snowballing: a base that holds can mend itself.
-- **Rescue strike**: once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Giant Spider's Forest Spiders.
+- **Rescue strike** (on your builder's command card, or `T`): once per round, call down sunfire anywhere in your own build zone. It kills every enemy unit in a large circle (7 tiles), including whatever would hatch from them, such as a Giant Spider's Forest Spiders.
 - **Castle shop** (the castleFight map's items, our names; press `B` or click your castle). Permanent items stay with your builder until the round ends (six slots); consumables work the moment you buy them. Some unlock later in the round and each restocks a while after you buy it:
-  - *Spark Staff* (150 gold, 300 lumber): your builder shoots a spark at a nearby enemy every second (60 spell damage).
-  - *Stoneskin Scroll* (150): allies near your builder heal 400 HP and get +8 armor for 30 s.
-  - *Mason's Rune* (100): buildings near your builder regain 5 HP/s; runes stack.
-  - *Storm Orb* (550, from minute 15): every 60 s your builder throws a chain lightning (10 targets, 1000 damage to the first).
-  - *Rhythm Engine* (600): your team's units move 15% faster and attack 30% faster.
-  - *Thunder Drums* (650): +33% damage for your team's units.
-  - *Fury Shard* (600, from minute 5) / *Rage Heart* (1400, from minute 10): double / quadruple team damage for 30 s.
-  - *Sapphire* (1500, the map's Cheese): one more legendary building.
+  - *Spark Staff* (180 gold, 300 lumber): your builder shoots a spark at a nearby enemy every second (60 spell damage).
+  - *Stoneskin Scroll* (180): allies near your builder heal 400 HP and get +8 armor for 30 s.
+  - *Mason's Rune* (120): buildings near your builder regain 5 HP/s; runes stack.
+  - *Storm Orb* (660, from minute 15): every 60 s your builder throws a chain lightning (10 targets, 1000 damage to the first).
+  - *Rhythm Engine* (720): your team's units move 15% faster and attack 30% faster.
+  - *Thunder Drums* (780): +33% damage for your team's units.
+  - *Fury Shard* (720, from minute 5) / *Rage Heart* (1680, from minute 10): double / quadruple team damage for 30 s.
+  - *Sapphire* (1800, the map's Cheese): one more legendary building.
 
   The team-wide items don't stack within a team. Normal and Hard bots buy items too.
 
-- **Economy (as in the castleFight map)**: every round starts with 250 gold and 125 lumber. Income comes every 10 s: 5 gold plus 2% of the value of your spawn buildings (towers and legendaries pay less), raised by Treasure Chests (+25% for the first, each further one 15% less). Kills pay the unit's bounty. **Lumber** is earned by finishing buildings and upgrades (their value) and pays for towers, Treasure Chests and legendary buildings.
+- **Economy (the castleFight map's, with every gold amount × 1.2)**: every round starts with 300 gold and 125 lumber. All gold prices, bounties and bonuses are the map's × 1.2 (`GOLD_FACTOR`); lumber stays as in the map. Income comes every 10 s: 6 gold plus 2% of the value of your spawn buildings (towers and legendaries pay less), raised by Treasure Chests (+25% for the first, each further one 15% less). Kills pay the unit's bounty. **Lumber** is earned by finishing buildings and upgrades (their value) and pays for towers, Treasure Chests and legendary buildings.
 - **Fast rounds** (about 5–7 minutes): castles have 5000 HP but no attack of their own, so units, towers and the rescue strike are the only defence. You can build behind your castle, but a 2-tile ring around it stays free so nothing hides behind it or blocks the path. Income buildings stack up to +30%. Your last hits show a small floating "+gold" popup.
 - **Fog of war**: you always see your own base area. Beyond it you only see a 24×24 tile area around each unit on your team. The server only sends each team what it can see. Enemy buildings you've spotted stay on the map as greyed-out "last seen" ghosts. Between rounds the whole map is revealed.
 - **Map**: 110×40 tiles, castle to castle from left to right. Each team builds in a 30-tile-wide zone at its end; the 48-tile neutral middle is split into three lanes by rock outcrops.

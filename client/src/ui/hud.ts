@@ -38,6 +38,9 @@ interface CardButton {
   run: () => void;
 }
 
+/** Position in the 4 × 3 block of the 5 × 3 command card (the fifth column is for builder actions). */
+const g = (i: number) => i + Math.floor(i / 4);
+
 const SVG = {
   rescue: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><radialGradient id="rg"><stop offset="0" stop-color="#fff8c0"/><stop offset="1" stop-color="#e0a020"/></radialGradient></defs><rect width="48" height="48" fill="#3a2a10"/><g stroke="#ffd860" stroke-width="3">${Array.from({ length: 8 }, (_, i) => { const a = (i * Math.PI) / 4; return `<line x1="${24 + Math.cos(a) * 12}" y1="${24 + Math.sin(a) * 12}" x2="${24 + Math.cos(a) * 21}" y2="${24 + Math.sin(a) * 21}"/>`; }).join('')}</g><circle cx="24" cy="24" r="10" fill="url(#rg)"/></svg>`,
   stop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2a1a1a"/><rect x="13" y="13" width="22" height="22" rx="3" fill="#c84040" stroke="#ffb0a0" stroke-width="2"/></svg>`,
@@ -375,7 +378,8 @@ export class Hud {
     const s = this.session;
     const me = s.latest.players[s.you];
     const faction = FACTIONS[me.faction as keyof typeof FACTIONS];
-    const out: CardButton[] = faction.build.map((id, slot) => {
+    const out: CardButton[] = faction.build.map((id, i) => {
+      const slot = g(i);
       const def = BUILDINGS[id];
       const gemsOk = (me.sapphires ?? 1) >= (def.sapphires ?? 0);
       const lumberOk = (me.lumber ?? START_LUMBER) >= (def.lumber ?? 0);
@@ -392,9 +396,9 @@ export class Hud {
         },
       };
     });
-    // The builder has eleven buildings (as in the map); the rescue strike is in the top bar and on T.
-    out.push({
-      slot: 11, icon: svgUrl(SVG.stop), name: 'Stop', tip: 'Cancel queued construction (refunds gold and lumber).',
+    // Eleven buildings (as in the map) in the 4 × 3 block; the last column holds the rescue strike (T).
+    out.push(this.rescueButton(), {
+      slot: g(11), icon: svgUrl(SVG.stop), name: 'Stop', tip: 'Cancel queued construction (refunds gold and lumber).',
       run: () => s.send({ c: 'stop' }),
     });
     return out;
@@ -404,7 +408,7 @@ export class Hud {
     const s = this.session;
     const used = s.latest.players[s.you].rescueUsed;
     return {
-      slot: 10, icon: svgUrl(SVG.rescue), name: 'Rescue Strike',
+      slot: 4, icon: svgUrl(SVG.rescue), name: 'Rescue Strike',
       tip: '<b>Rescue Strike</b> (T)<br>Calls down sunfire that slays <i>every</i> enemy unit in a large circle.<br>Must target near your own castle. Once per round.',
       disabled: used, active: s.mode.kind === 'rescue',
       run: () => used ? this.error('Rescue strike already used this round') : s.setMode({ kind: 'rescue' }),
@@ -416,7 +420,8 @@ export class Hud {
     const me = s.latest.players[s.you];
     const def = BUILDINGS[row[2]];
     const busy = row[9] !== 100;
-    const out: CardButton[] = (def.upgrades ?? []).map((id, slot) => {
+    const out: CardButton[] = (def.upgrades ?? []).map((id, i) => {
+      const slot = g(i);
       const up = BUILDINGS[id];
       const gemsOk = (me.sapphires ?? 1) >= (up.sapphires ?? 0);
       const lumberOk = (me.lumber ?? START_LUMBER) >= (up.lumber ?? 0);
@@ -437,7 +442,7 @@ export class Hud {
     const repairing = builder?.[10] === row[0];
     const damaged = row[7] < row[8];
     out.push({
-      slot: 3, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing…' : 'Repair',
+      slot: g(3), icon: svgUrl(SVG.repair), name: repairing ? 'Repairing…' : 'Repair',
       tip: `<b>Repair</b> (R, or right-click the building)<br>Your builder walks over and repairs it: free, but slow (a full repair takes ${REPAIR_FULL_SECONDS} s).`
         + (damaged && !busy ? `<br>This one: about ${Math.ceil(((row[8] - row[7]) / row[8]) * REPAIR_FULL_SECONDS)} s.` : '') + '<br>One building at a time; any other builder order stops it.',
       disabled: busy || !damaged, active: repairing,
@@ -447,8 +452,8 @@ export class Hud {
         s.send({ c: 'repair', id: row[0] });
       },
     });
-    out.push(this.rescueButton(), {
-      slot: 11, icon: svgUrl(SVG.sell), name: this.sellArmed === row[0] ? 'Confirm sell' : 'Sell',
+    out.push({
+      slot: g(11), icon: svgUrl(SVG.sell), name: this.sellArmed === row[0] ? 'Confirm sell' : 'Sell',
       tip: busy && row[9] >= 0 ? 'Cancel construction: full refund.' : 'Sell for 50% of the gold invested. Press twice to confirm.',
       active: this.sellArmed === row[0],
       run: () => {
@@ -463,7 +468,7 @@ export class Hud {
   private currentCard(): CardButton[] {
     const s = this.session;
     if (s.mode.kind !== 'none') {
-      return [{ slot: 11, icon: svgUrl(SVG.cancel), name: 'Cancel', tip: 'Cancel (Esc / right click)', run: () => s.setMode({ kind: 'none' }) }];
+      return [{ slot: g(11), icon: svgUrl(SVG.cancel), name: 'Cancel', tip: 'Cancel (Esc / right click)', run: () => s.setMode({ kind: 'none' }) }];
     }
     const row = s.selection !== null ? s.latestById.get(s.selection) : undefined;
     if (row && row[1] === 1 && row[3] === s.you) return this.buildingCard(row);
@@ -480,7 +485,7 @@ export class Hud {
     this.lastCardKey = key;
     this.buttons = btns;
     clear(this.card);
-    for (let slot = 0; slot < 12; slot++) {
+    for (let slot = 0; slot < GRID_HOTKEYS.length; slot++) {
       const b = btns.find((x) => x.slot === slot);
       if (!b) { this.card.append(h('div', { class: 'cbtn empty' })); continue; }
       const tip = h('div', { class: 'tip' });
@@ -526,7 +531,8 @@ export class Hud {
     const s = this.session;
     const me = s.latest.players[s.you];
     const bag = me.items ?? [];
-    const out: CardButton[] = ITEMS.map((it, slot) => {
+    const out: CardButton[] = ITEMS.map((it, i) => {
+      const slot = g(i);
       const consumable = !!it.use;
       const owned = !consumable && bag.includes(it.id);
       const full = !consumable && bag.length >= MAX_ITEMS;
@@ -554,12 +560,12 @@ export class Hud {
       };
     });
     out.push({
-      slot: 8, icon: svgUrl(SVG.sapphire), name: 'Sapphire', cost: SAPPHIRE_GOLD, afford: me.gold >= SAPPHIRE_GOLD,
+      slot: g(8), icon: svgUrl(SVG.sapphire), name: 'Sapphire', cost: SAPPHIRE_GOLD, afford: me.gold >= SAPPHIRE_GOLD,
       tip: `<span class="tip-desc">A rare gem: each legendary building needs one (the map's legendary limit; buying one is the map's Cheese).</span><br><span class="tip-meta">You start every round with ${START_SAPPHIRES}. You have ${me.sapphires ?? START_SAPPHIRES}.</span>`,
       disabled: me.gold < SAPPHIRE_GOLD,
       run: () => me.gold < SAPPHIRE_GOLD ? this.error('Not enough gold') : s.send({ c: 'buySapphire' }),
-    }, this.castleRepairButton(), this.rescueButton(), {
-      slot: 11, icon: svgUrl(SVG.cancel), name: 'Close shop', tip: 'Back to your builder (B / Esc).',
+    }, this.castleRepairButton(), {
+      slot: g(11), icon: svgUrl(SVG.cancel), name: 'Close shop', tip: 'Back to your builder (B / Esc).',
       run: () => s.select(s.me.builderId),
     });
     return out;
@@ -572,7 +578,7 @@ export class Hud {
     const repairing = !!castle && s.latestById.get(me.builderId)?.[10] === castle[0];
     const damaged = !!castle && castle[7] < castle[8];
     return {
-      slot: 9, icon: svgUrl(SVG.repair), name: repairing ? 'Repairing castle…' : 'Repair castle',
+      slot: g(9), icon: svgUrl(SVG.repair), name: repairing ? 'Repairing castle…' : 'Repair castle',
       tip: `<b>Repair castle</b> (or right-click it)<br>Your builder repairs the castle for free, ${CASTLE_REPAIR_HPS} HP per second; every builder on it adds another ${CASTLE_REPAIR_HPS}.<br>Any other builder order stops it.`,
       disabled: !damaged, active: repairing,
       run: () => (!castle || !damaged ? this.error('Castle is undamaged') : s.send({ c: 'repair', id: castle[0] })),

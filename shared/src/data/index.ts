@@ -1,3 +1,4 @@
+import { GOLD_FACTOR } from '../constants';
 import type { BuildingDef, FactionDef, FactionId, UnitDef } from './types';
 import { IRONVOW } from './factions/ironvow';
 import { THORNWILD } from './factions/thornwild';
@@ -44,6 +45,15 @@ for (const b of COMMON_BUILDINGS) {
   BUILDINGS[b.id] = b;
   for (const f of Object.values(FACTIONS)) if (!f.build.includes(b.id)) f.build.push(b.id);
 }
+// Gold prices: the faction files hold the map's values; the game charges them × GOLD_FACTOR.
+for (const b of Object.values(BUILDINGS)) b.cost = Math.round(b.cost * GOLD_FACTOR);
+// Builder menu: unit spawners from cheapest to most expensive, then everything else (towers,
+// ability buildings, Treasure Box, legendaries), also by price.
+for (const f of Object.values(FACTIONS)) {
+  const spawner = (id: string) => !!BUILDINGS[id].spawn && !BUILDINGS[id].special;
+  const byCost = (a: string, b: string) => BUILDINGS[a].cost - BUILDINGS[b].cost || (BUILDINGS[a].lumber ?? 0) - (BUILDINGS[b].lumber ?? 0);
+  f.build = [...f.build.filter(spawner).sort(byCost), ...f.build.filter((id) => !spawner(id)).sort(byCost)];
+}
 
 /** Hand-written values of every unit, before tuning. */
 const BASE = new Map(Object.values(UNITS).map((u) => [u.id, { hp: u.hp, dmg: u.dmg, heal: u.heal && { ...u.heal }, poison: u.poison && { ...u.poison } }]));
@@ -87,7 +97,8 @@ export function applyUnitTuning(t: Tuning) {
 applyUnitTuning(TUNING);
 
 /** Command-card hotkeys in WC3-grid order (row by row). */
-export const GRID_HOTKEYS = ['Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V'];
+/** Command card: 5 × 3 buttons, hotkeys by position (T is the rescue strike, B the castle shop). */
+export const GRID_HOTKEYS = ['Q', 'W', 'E', 'R', 'T', 'A', 'S', 'D', 'F', 'G', 'Z', 'X', 'C', 'V', 'B'];
 
 export function isFactionId(v: unknown): v is FactionId {
   return typeof v === 'string' && v in FACTIONS;
