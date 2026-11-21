@@ -7,6 +7,21 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.53.0
+
+- **Ranked matchmaking:** queue for 1v1, 2v2, 3v3 or 4v4 from the lobby's new "Ranked match" box.
+  - **Format:** always random factions, best of 3, counts for Elo.
+  - **Parties:** queue alone or with friends. "+ Invite friends" makes a party with an invite code and link (the same `?join=` links as games); friends who open it land in your party. The leader picks the size and starts the search; the size can't be smaller than the party.
+  - **The search:** a clock shows how long you've been searching, and you can cancel it.
+  - **Matching:** the matchmaker looks for real players first, at a similar rating (the accepted gap widens the longer you wait). Parties always stay on one team; humans prefer to play against humans.
+  - **Bots fill in:** only after a semi-random wait (about 25–70 s, plus a bit per extra player) do bots fill the free slots. They play as regular-looking accounts with names, ratings and a history, at the strength that makes the match fair. Their Elo moves like anyone's.
+  - **No save & exit:** ranked matches can't be saved and left.
+- **No bot ever cheats:**
+  - every level, Brutal included, has exactly a player's income (the old bot income bonus and malus are gone)
+  - no bot sees through the fog of war
+  - stealthed enemy units are invisible to bots too: for scouting, rescue strikes, saving buildings and the models
+  - Brutal is now simply Hard's plans with faster decisions
+
 ## 0.52.1
 
 - **The bots' learner runs non-stop:** it now plays one self-play game right after another, all the time (`LEARNER=always` by default), still in a single worker thread at the lowest CPU priority. There is no limit on games per hour any more. `LEARNER_GAMES_PER_HOUR` can still set a cap, and `LEARNER=idle` brings back "only when the server is quiet".

@@ -165,9 +165,10 @@ export class Bot {
     }
     if (pending >= 2) return;
     const hasSpecial = mine.some((e) => BUILDINGS[e[2]].special) || s.orders.some(([p, b]) => p === this.you && BUILDINGS[b].special);
-    const special = faction.build.find((id) => BUILDINGS[id].special)!;
+    // Some races (Cogspark) have legendaries only as upgrades.
+    const special = faction.build.find((id) => BUILDINGS[id].special);
     let choice: string | undefined;
-    if (!hasSpecial && mine.length >= 6 && me.gold >= BUILDINGS[special].cost) choice = special;
+    if (special && !hasSpecial && mine.length >= 6 && me.gold >= BUILDINGS[special].cost) choice = special;
     else {
       const options = faction.build.filter((id) => !BUILDINGS[id].special && BUILDINGS[id].cost <= me.gold);
       const spawners = options.filter((id) => BUILDINGS[id].spawn);

@@ -1,4 +1,3 @@
-import { AI_INCOME, AI_LEVELS } from '../ai/ai';
 import { BUILDINGS, UNITS, applyUnitTuning, type Tuning } from '../data';
 import { TUNING } from '../data/tuning';
 
@@ -16,7 +15,6 @@ export function applyPatch(patch: Record<string, unknown>) {
   }
 }
 
-const DEFAULT_INCOME = { easy: 1, normal: 1, hard: 1, brutal: 1.3 };
 
 /** The committed tuning (shared/src/data/tuning.ts). */
 export const COMMITTED_TUNING: Tuning = TUNING;
@@ -26,5 +24,6 @@ export const NEUTRAL_TUNING: Tuning = { factions: {}, units: {}, aiIncome: {} };
 /** Applies a tuning (unit multipliers and bot incomes) from the hand-written base values. */
 export function applyTuning(t: Tuning) {
   applyUnitTuning(t);
-  for (const l of AI_LEVELS) if (l !== 'auto') AI_INCOME[l] = t.aiIncome[l] ?? DEFAULT_INCOME[l];
+  // Bot incomes are not tunable any more: every bot earns exactly like a player (AI_INCOME is all 1).
+  void t.aiIncome;
 }

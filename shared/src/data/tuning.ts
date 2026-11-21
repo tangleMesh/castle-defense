@@ -7,5 +7,6 @@ export const TUNING: Tuning = {
   revision: 9,
   factions: {},
   units: {},
-  aiIncome: { easy: 0.915, normal: 0.864, brutal: 1.181 },
+  // Bots get no income bonus or malus (no unnatural advantages): kept empty.
+  aiIncome: {},
 };

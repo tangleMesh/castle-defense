@@ -17,6 +17,8 @@ export interface ServerOptions {
   tickMs: number;
   clientDist?: string;
   logger?: boolean;
+  /** Matchmaking: how long parties wait for humans before bots fill the match (seconds; tests use short waits). */
+  matchmaking?: { botWait?: [number, number]; botWaitPerPlayer?: number };
   /** Background bot learner (default: env LEARNER, else 'always'; tests: 'off'). */
   learner?: LearnerMode;
 }
@@ -45,7 +47,7 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
     app.log.warn(`client build not found at ${o.clientDist}; run "npm run build" or use the Vite dev server`);
   }
 
-  const lobby = new Lobby(db, o.tickMs);
+  const lobby = new Lobby(db, o.tickMs, o.matchmaking);
   const mode = o.learner ?? ((process.env.LEARNER as LearnerMode | undefined) ?? (process.env.VITEST ? 'off' : 'always'));
   const learner = new Learner(db, { mode, busy: () => lobby.liveMatches() > 0, gamesPerHour: Number(process.env.LEARNER_GAMES_PER_HOUR) || undefined /* unset or 0: unlimited */ });
   await learner.start();
@@ -114,6 +116,7 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   return {
     app, lobby, port,
     async close() {
+      lobby.matchmaker.stop();
       await lobby.shutdown();
       await learner.stop();
       for (const c of wss.clients) c.terminate();

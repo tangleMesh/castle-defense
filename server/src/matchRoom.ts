@@ -25,6 +25,10 @@ export interface MatchRoomOptions {
   botElo?: Record<string, number>;
   /** Learns from the result (bots' plans, their strength against the humans' ratings). */
   learner?: Learner | null;
+  /** Ranked matchmaking match: can't be saved and left by the host. */
+  ranked?: boolean;
+  /** Matchmaking bot accounts → skill: played by the AI, but rated and recorded like any account. */
+  disguised?: Record<string, number>;
   /** Called once the match is over (finished, saved, or abandoned). */
   onClose: (reason: 'finished' | 'saved') => void;
 }
@@ -55,10 +59,16 @@ export class MatchRoom {
     this.sim = o.sim;
     // Human build choices count (winners' a bit more); bots' choices in real matches don't.
     this.recorder = new GameRecorder((player, won) => {
-      const human = !isBotId(this.sim.state.players[player]?.userId ?? '');
+      const human = !this.isAi(this.sim.state.players[player]?.userId ?? '');
       return { w: human ? (won ? 1.5 : 1) : 0, human };
     });
     for (const p of o.players) {
+      // Matchmaking bot accounts: an Auto bot at the skill picked for a fair match.
+      const disguised = o.disguised?.[p.userId];
+      if (disguised !== undefined) {
+        this.ais.push(new AiPlayer(p.i, 'auto', o.sim.state.tick + p.i * 7919 + 1, undefined, { skill: disguised, human: true }));
+        continue;
+      }
       const level = botLevel(p.userId);
       if (!level) continue;
       // Real matches: human-like timing and chat; Auto bots at the skill of their target Elo.
@@ -66,6 +76,11 @@ export class MatchRoom {
       const skill = level === 'auto' ? skillForElo(elo ?? START_RATING) : undefined;
       this.ais.push(new AiPlayer(p.i, level, o.sim.state.tick + p.i * 7919 + 1, undefined, { skill, human: true }));
     }
+  }
+
+  /** Played by the AI: lobby bots and matchmaking bot accounts. */
+  private isAi(userId: string): boolean {
+    return isBotId(userId) || this.o.disguised?.[userId] !== undefined;
   }
 
   get players() {
@@ -77,7 +92,7 @@ export class MatchRoom {
   }
 
   start() {
-    for (const p of this.sim.state.players) p.connected = isBotId(p.userId) || this.conns.has(p.userId);
+    for (const p of this.sim.state.players) p.connected = this.isAi(p.userId) || this.conns.has(p.userId);
     this.startedAt = Date.now();
     this.timer = setInterval(() => this.tick(), this.o.tickMs);
     void this.persist('live');
@@ -129,6 +144,7 @@ export class MatchRoom {
         this.broadcastPause(true);
         return;
       case 'game.saveAndExit':
+        if (this.o.ranked) return conn.send({ type: 'error', message: 'Ranked matches can\'t be saved: play them to the end' });
         if (conn.userId !== this.o.hostId) return conn.send({ type: 'error', message: 'Only the host can save & exit' });
         void this.saveAndClose();
         return;
@@ -162,7 +178,7 @@ export class MatchRoom {
       return { team: p.team, rating: ratings.get(p.userId) ?? START_RATING };
     });
     const plans = this.ais.flatMap((ai) => ai.roundLog.map(({ faction, opening, plan, enemy, won }) => ({ faction, opening, plan, enemy, won })));
-    const humans = s.players.filter((p) => !isBotId(p.userId)).length;
+    const humans = s.players.filter((p) => !this.isAi(p.userId)).length;
     this.recorder.observe(this.sim, []);
     try { learner.recordMatch(players, winner, plans, humans, { value: this.recorder.value, policy: this.recorder.policy }); } catch (err) { console.error('[match] learner', err); }
   }

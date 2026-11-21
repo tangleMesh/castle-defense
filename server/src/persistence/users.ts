@@ -25,9 +25,23 @@ export class UserRepo {
     return { ...doc, _id: res.insertedId };
   }
 
+  /**
+   * A matchmaking bot account: a normal-looking player (name, rating, some history) that can't sign
+   * in. Throws on a taken name (unique index), like register.
+   */
+  async createBot(username: string, stats: UserStats): Promise<UserDoc> {
+    const doc: UserDoc = { username, usernameLower: username.toLowerCase(), passwordHash: '!', createdAt: new Date(Date.now() - Math.random() * 200 * 86400_000), stats, bot: true };
+    const res = await this.c.users.insertOne(doc);
+    return { ...doc, _id: res.insertedId };
+  }
+
+  async listBots(): Promise<UserDoc[]> {
+    return this.c.users.find({ bot: true }).toArray();
+  }
+
   async verify(username: string, password: string): Promise<UserDoc | null> {
     const u = await this.c.users.findOne({ usernameLower: username.toLowerCase() });
-    if (!u || !(await bcrypt.compare(password, u.passwordHash))) return null;
+    if (!u || u.bot || !(await bcrypt.compare(password, u.passwordHash))) return null;
     return u;
   }
 

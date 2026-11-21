@@ -212,3 +212,50 @@ export async function aiMatchScenario(base: string, opts: { prefix: string; time
   human.disconnect();
   return { log };
 }
+
+/**
+ * Ranked matchmaking: two solo players queueing 1v1 meet each other; a party of two queueing 2v2
+ * gets filled with bot accounts after its wait, and those look like any player (no bot ids, rated).
+ * Needs a server with short bot waits (startServer({ matchmaking: { botWait: [2, 3] } })).
+ */
+export async function rankedScenario(base: string, opts: { prefix: string; timeoutMs: number }): Promise<ScenarioResult> {
+  const log: string[] = [];
+  const mk = async (n: string, seed: number) => { const b = new Bot(base, `${opts.prefix}${n}`, 'ironvow', seed); await b.register(); await b.connect(); return b; };
+
+  // 1v1: the second searcher is matched with the first, no bot.
+  const a = await mk('a', 301), b = await mk('b', 302);
+  const ia = a.waitFor('match.init', () => true, 20_000), ib = b.waitFor('match.init', () => true, 20_000);
+  a.send({ type: 'mm.queue', size: 1 });
+  await a.waitFor('mm.status', (m) => !!m.status.search);
+  b.send({ type: 'mm.queue', size: 1 });
+  const [ma, mb] = await Promise.all([ia, ib]);
+  assert(ma.matchId === mb.matchId && ma.players.length === 2, '1v1: the two searchers play each other');
+  assert(ma.players.every((p) => !p.userId.startsWith('bot:')), '1v1: no bot');
+  log.push('1v1: two queued players were matched together');
+  await waitEnd([a, b], opts.timeoutMs);
+  log.push(`1v1 finished ${a.ended!.score?.join(':')}`);
+
+  // A party of two in 2v2: after its wait, bot accounts fill the other team.
+  const c = await mk('c', 303), d = await mk('d', 304);
+  c.send({ type: 'party.create' });
+  const party = await c.waitFor('mm.status', (m) => !!m.status.party);
+  d.send({ type: 'lobby.joinCode', code: party.status.party!.code });
+  await c.waitFor('mm.status', (m) => m.status.party?.members.length === 2);
+  d.send({ type: 'mm.queue', size: 2 });
+  await d.waitFor('error', (m) => m.message.includes('leader'));
+  const ic = c.waitFor('match.init', () => true, 30_000);
+  c.send({ type: 'mm.queue', size: 2 });
+  const mc = await ic;
+  assert(mc.players.length === 4, '2v2: four players');
+  const mine = mc.players.find((p) => p.userId === c.userId)!, mate = mc.players.find((p) => p.userId === d.userId)!;
+  assert(mine.team === mate.team, '2v2: the party plays on one team');
+  const foes = mc.players.filter((p) => p.team !== mine.team);
+  assert(foes.every((p) => !p.userId.startsWith('bot:') && !/\bAI\b/.test(p.name)), '2v2: the bot accounts look like players');
+  log.push(`2v2: party vs ${foes.map((p) => p.name).join(' & ')}`);
+  await waitEnd([c, d], opts.timeoutMs);
+  const end = c.ended!;
+  assert(end.stats!.players.every((p) => !!p.rating && !p.bot), '2v2: everyone is rated on the result screen');
+  log.push(`2v2 finished ${end.score?.join(':')}; ratings ${end.stats!.players.map((p) => `${p.name} ${p.rating!.before}→${p.rating!.after}`).join(', ')}`);
+  for (const x of [a, b, c, d]) x.disconnect();
+  return { log };
+}

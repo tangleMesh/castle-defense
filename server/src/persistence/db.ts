@@ -8,6 +8,8 @@ export interface UserDoc {
   passwordHash: string;
   createdAt: Date;
   stats: UserStats;
+  /** A matchmaking bot account (played by the AI; can't sign in). Never sent to clients. */
+  bot?: boolean;
 }
 
 export interface SessionDoc {
@@ -60,6 +62,10 @@ export interface SavedGameDoc {
   simState?: SimState;
   startedAt: Date;
   updatedAt: Date;
+  /** Ranked match (matchmaking). */
+  ranked?: boolean;
+  /** Matchmaking bot accounts in this match → their skill (they rejoin as AI on resume). */
+  disguised?: Record<string, number>;
 }
 
 /** The bots' learned knowledge (one document), kept by the background learner. */

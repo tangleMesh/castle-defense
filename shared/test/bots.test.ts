@@ -179,3 +179,29 @@ describe('learned models', () => {
     } finally { setModels(null); }
   }, 120_000);
 });
+
+describe('fair bots', () => {
+  it('no bot level gets an income bonus or sees through the fog of war', async () => {
+    const { AI_INCOME, BOT_LEVELS } = await import('../src/index');
+    for (const l of BOT_LEVELS) {
+      expect(AI_INCOME[l], l).toBe(1);
+      expect(PROFILES[l].fullVision, l).toBeFalsy();
+    }
+  });
+  it('a stealthed enemy in the base is invisible to the bot (no rescue strike on it)', () => {
+    const sim = Sim.create({ countdownTicks: 0, bestOf: 1, seed: 3, players: [
+      { userId: makeBotId('hard', 'a'), name: 'a', team: 0, faction: 'ironvow' },
+      { userId: makeBotId('hard', 'b'), name: 'b', team: 1, faction: 'duskmoon' },
+    ] });
+    const ai = new AiPlayer(0, 'hard', 5);
+    const castle = sim.castle(0)!;
+    // A pack of hidden assassins right next to the castle.
+    for (let i = 0; i < 12; i++) {
+      const u = sim.add({ kind: 'unit', type: 'dm_assassin', owner: 1, team: 1, x: castle.tx! + 6 + (i % 4) * 0.4, y: castle.ty! + 2 + Math.floor(i / 4) * 0.4, hp: 375, maxHp: 375, cd: 0, healCd: 0 });
+      u.hidden = true;
+    }
+    let struck = false;
+    for (let t = 0; t < 3 * TICK_RATE; t++) if (ai.update(sim).some((c) => c.c === 'rescue')) struck = true;
+    expect(struck).toBe(false);
+  });
+});

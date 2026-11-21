@@ -13,12 +13,13 @@ describe('balance tuning', () => {
     expect(UNITS.tw_spider.hp).toBeCloseTo(hp * 1.1);
     expect(UNITS.tw_spider.dmg).toBeCloseTo(dmg * 1.1 * 0.5);
     expect(UNITS.iv_militia.hp).toBeCloseTo(ivHp);
-    expect(AI_INCOME.easy).toBe(0.8);
+    // Bot incomes can't be tuned: bots earn exactly like players.
+    expect(AI_INCOME.easy).toBe(1);
     applyTuning(NEUTRAL_TUNING);
     expect(UNITS.tw_spider.hp).toBe(hp);
     expect(UNITS.tw_spider.dmg).toBe(dmg);
     expect(AI_INCOME.easy).toBe(1);
-    expect(AI_INCOME.brutal).toBe(1.3);
+    expect(AI_INCOME.brutal).toBe(1);
   });
 
   it('scales heals and poison with damage', () => {

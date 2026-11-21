@@ -1,5 +1,5 @@
 import { INCOME_INTERVAL_TICKS, INCOME_PCT, MAX_INCOME_BONUS, RESCUE_RADIUS, SAPPHIRE_GOLD, START_LUMBER, START_SAPPHIRES, TICK_RATE, TREASURE_BONUS, TREASURE_DECAY } from '../constants';
-import { ACTIVE_TUNING, BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, teammateCarries, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
+import { BUILDINGS, DAMAGE_TABLE, FACTIONS, ITEM_BY_ID, teammateCarries, MAX_ITEMS, UNITS, abilityFactors, itemsOf, type ArmorType, type AttackType, type BuildingDef, type FactionId, type ItemDef, type UnitDef } from '../data';
 import { MAP, clampToRescueArea, inRescueArea, rectCenter } from '../map/map';
 import { incomeFor } from '../sim/economy';
 import { placementError } from '../sim/placement';
@@ -27,7 +27,11 @@ export const AI_LEVEL_NAMES: Record<AiLevel, string> = { auto: 'Auto', easy: 'Ea
  * Income multiplier per level, set by the balancer (shared/src/data/tuning.ts). Brutal openly
  * cheats (it also sees through the fog of war); easier levels may get less than a player.
  */
-export const AI_INCOME: Record<AiLevel, number> = { auto: 1, easy: 1, normal: 1, hard: 1, brutal: 1.3, ...ACTIVE_TUNING.aiIncome };
+/**
+ * Bots' income multiplier: always 1. Bots never get resources (or anything else) a player can't
+ * have; their difficulty comes only from how well they play.
+ */
+export const AI_INCOME: Record<AiLevel, number> = { auto: 1, easy: 1, normal: 1, hard: 1, brutal: 1 };
 
 /** Bot players use synthetic user ids of the form `ai:<level>:<suffix>`. */
 export function isBotId(userId: string): boolean {
@@ -150,11 +154,11 @@ export const PROFILES: Record<AiLevel, Profile> = {
     // around it, and striking early at small waves (rescueAt 3 instead of 8) another ~70%.
     place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4,
   },
-  // Hard's brain, faster, without fog of war and with +30% income (AI_INCOME): openly cheating.
+  // The sharpest preset: Hard's brain with faster decisions. No cheats (same income, same fog of war).
   brutal: {
     think: 3, maxQueue: 3, idle: 0, upgradeAfter: 3, specialAt: 5, planner: true, counter: true,
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
-    itemsAfterMin: 5, items: ['thunder_drums', 'rhythm_engine', 'fury_shard', 'mason_rune'], repairBelow: 0.75, place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
+    itemsAfterMin: 5, items: ['thunder_drums', 'rhythm_engine', 'fury_shard', 'mason_rune'], repairBelow: 0.75, place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4,
   },
   // Placeholder: Auto bots get a persona-built profile (personaProfile) in the AiPlayer constructor.
   get auto(): Profile { return PROFILES.normal; },
@@ -292,7 +296,8 @@ export class AiPlayer {
     // Every difficulty: never let a building of our team fall if a strike can still save it.
     const save = this.saveBuilding(sim);
     if (save) return save;
-    const threats = s.entities.filter((e) => e.kind === 'unit' && e.team !== me.team && e.hp > 0
+    // Only what the player could see: stealthed (hidden) enemy units don't count.
+    const threats = s.entities.filter((e) => e.kind === 'unit' && e.team !== me.team && e.hp > 0 && !e.hidden
       && (() => { const q = clampToRescueArea(me.team, e.x, e.y); return Math.hypot(e.x - q.x, e.y - q.y) < 1; })());
     if (!threats.length) { this.rescueSeenAt = -1; return null; }
 
@@ -337,7 +342,7 @@ export class AiPlayer {
       if (frac > (b.kind === 'castle' ? 0.25 : 0.45)) continue;
       const bx = b.tx! + b.size! / 2, by = b.ty! + b.size! / 2;
       // Enemy units close enough to be hitting it.
-      const attackers = s.entities.filter((e) => e.kind === 'unit' && e.team !== me.team && e.hp > 0
+      const attackers = s.entities.filter((e) => e.kind === 'unit' && e.team !== me.team && e.hp > 0 && !e.hidden
         && sim.edgeDist(b, e) <= (UNITS[e.type]?.range ?? 1) + 1.5);
       if (!attackers.length) continue;
       // Aim at the attackers' centre, pulled into the rescue area (our build zone).
@@ -789,6 +794,8 @@ export class AiPlayer {
     const alive = new Set<number>();
     for (const e of sim.state.entities) {
       if (e.team === me.team || e.hp <= 0) continue;
+      // Stealthed enemies are invisible to players, and so to bots.
+      if (e.kind === 'unit' && e.hidden) continue;
       if (e.kind === 'building') alive.add(e.id);
       if (!this.profile.fullVision && e.kind !== 'castle' && !entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
       if (e.kind === 'unit') {

@@ -36,7 +36,7 @@ export function observedFeatures(sim: Sim, player: number): number[] {
       }
       continue;
     }
-    if (!entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
+    if (e.hidden || !entityVisible(vision, KIND_CODES.indexOf(e.kind), e.type, e.x, e.y)) continue;
     if (e.kind === 'unit') {
       foes++; foeHp += e.hp;
       if (UNITS[e.type]?.air) foeAir++;

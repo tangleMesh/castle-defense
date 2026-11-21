@@ -50,6 +50,11 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('game.leave') }),
   // In a match: `all` reaches every player (enemies too); otherwise only the own team.
   z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(300), all: z.boolean().optional() }),
+  // Ranked matchmaking: a party (alone or with friends who joined by its invite code) queues for a size.
+  z.object({ type: z.literal('party.create') }),
+  z.object({ type: z.literal('party.leave') }),
+  z.object({ type: z.literal('mm.queue'), size: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]) }),
+  z.object({ type: z.literal('mm.cancel') }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -118,10 +123,25 @@ export function parseInviteCode(input: string): string | null {
   return raw.length === INVITE_LENGTH && [...raw].every((c) => INVITE_ALPHABET.includes(c)) ? raw : null;
 }
 
+/** Ranked matches: always random factions; best of this many rounds. */
+export const RANKED_BEST_OF = 3;
+
+/** The player's matchmaking state: their party and whether it is searching. */
+export interface MatchmakingStatus {
+  /** The party (absent: not in a party; queueing alone creates a one-person party). */
+  party: { code: string; leaderId: string; members: Array<{ userId: string; name: string; rating: number }> } | null;
+  /** Searching for a match of this size (players per team) since this time (ms epoch). */
+  search: { size: 1 | 2 | 3 | 4; since: number } | null;
+  /** A match was found and is starting. */
+  found?: boolean;
+}
+
 export interface RoomInfo {
   id: string;
   /** Short invite code (e.g. K7QX2M) for `?join=` links and the join-by-code box. */
   code: string;
+  /** A ranked matchmaking match (not listed as an open game). */
+  ranked?: boolean;
   name: string;
   hostId: string;
   bestOf: number;
@@ -151,4 +171,5 @@ export type ServerMessage =
   | { type: 'match.paused'; paused: boolean; reason: string; waitingFor: string[]; votes: string[]; resumeIn?: number }
   | { type: 'match.end'; reason: 'finished' | 'saved' | 'left'; winner?: 0 | 1; score?: [number, number]; stats?: MatchStats }
   | { type: 'chat'; from: string; text: string; scope: 'lobby' | 'match' | 'team' }
+  | { type: 'mm.status'; status: MatchmakingStatus }
   | { type: 'error'; message: string };

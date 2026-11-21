@@ -1,12 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import {
-  AI_INCOME, AI_LEVEL_NAMES, BOT_RATING, START_RATING, botTargets, FACTION_IDS, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
-  INVITE_ALPHABET, INVITE_LENGTH, parseInviteCode,
+  AI_LEVEL_NAMES, BOT_RATING, START_RATING, botTargets, FACTION_IDS, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
+  INVITE_ALPHABET, INVITE_LENGTH, RANKED_BEST_OF, parseInviteCode,
   type AiLevel, type ClientMessage, type GameMode, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
 } from '@bc/shared';
 import type { Conn } from './conn';
 import { MatchRoom } from './matchRoom';
 import type { Learner } from './learner';
+import { Matchmaker, type RankedPlayer } from './matchmaking';
 import type { Persistence } from './persistence';
 
 interface Room {
@@ -23,6 +24,10 @@ interface Room {
   roster?: RoomInfo['roster'];
   score?: [number, number];
   match?: MatchRoom;
+  /** Ranked matchmaking match (not listed, not saved by the host). */
+  ranked?: boolean;
+  /** Matchmaking bot accounts → the AI's skill for them. */
+  disguised?: Record<string, number>;
 }
 
 const newId = () => randomBytes(8).toString('hex');
@@ -40,7 +45,17 @@ export class Lobby {
   /** The bots' background learner (real matches feed it). */
   learner: Learner | null = null;
 
-  constructor(private db: Persistence, private tickMs: number) {}
+  readonly matchmaker: Matchmaker;
+
+  constructor(private db: Persistence, private tickMs: number, mm: { botWait?: [number, number]; botWaitPerPlayer?: number } = {}) {
+    this.matchmaker = new Matchmaker(db, {
+      send: (userId, msg) => this.conns.get(userId)?.send(msg),
+      inRoom: (userId) => this.membership.has(userId),
+      online: (userId) => this.conns.has(userId),
+      newCode: () => this.newCode(),
+      startRanked: (size, players) => this.startRanked(size, players),
+    }, mm);
+  }
 
   /** Matches being played right now (the learner pauses its self-play meanwhile). */
   liveMatches(): number {
@@ -66,12 +81,14 @@ export class Lobby {
       conn.send({ type: 'lobby.room', room: null });
     }
     conn.send({ type: 'lobby.list', rooms: this.listRooms() });
+    conn.send({ type: 'mm.status', status: this.matchmaker.statusOf(conn.userId) });
     if (room) this.broadcastRoom(room);
   }
 
   disconnect(conn: Conn) {
     if (this.conns.get(conn.userId) !== conn) return; // replaced by a newer connection
     this.conns.delete(conn.userId);
+    this.matchmaker.disconnect(conn.userId);
     const room = this.roomOf(conn.userId);
     if (!room) return;
     if (room.match) {
@@ -95,8 +112,13 @@ export class Lobby {
     }
 
     switch (msg.type) {
+      case 'party.create': return void (await this.matchmaker.create(conn.userId, conn.username));
+      case 'party.leave': return this.matchmaker.leave(conn.userId);
+      case 'mm.queue': return void (await this.matchmaker.queue(conn.userId, conn.username, msg.size));
+      case 'mm.cancel': return this.matchmaker.cancel(conn.userId);
       case 'lobby.create': {
         if (room) return err('Leave your current room first');
+        if (this.matchmaker.isBusy(conn.userId)) return err('Cancel your match search first');
         const r: Room = { id: newId(), code: this.newCode(), name: msg.name, hostId: conn.userId, bestOf: msg.bestOf, mode: msg.mode ?? 'standard', status: 'lobby', slots: [] };
         this.rooms.set(r.id, r);
         this.addSlot(r, conn, 0, 'ironvow');
@@ -114,11 +136,14 @@ export class Lobby {
         let r: Room | undefined;
         if (msg.type === 'lobby.joinCode') {
           const code = parseInviteCode(msg.code);
+          // A friend's ranked party?
+          if (code && await this.matchmaker.joinByCode(conn.userId, conn.username, code)) return;
           r = code ? [...this.rooms.values()].find((x) => x.code === code) : undefined;
           if (!r) return err(code ? `No open game with the code ${code}` : 'That is not a valid invite code');
           if (room === r) return; // already in it (e.g. opened the own invite link)
         } else r = this.rooms.get(msg.roomId);
         if (room) return err('Leave your current room first');
+        if (this.matchmaker.isBusy(conn.userId)) return err('Cancel your match search first');
         if (!r) return err('Room not available');
         if (r.status !== 'lobby') return err('That game has already started');
         if (r.roster) {
@@ -221,6 +246,7 @@ export class Lobby {
         const r: Room = {
           id: newId(), code: this.newCode(), name: `${saved.name} (resumed)`, hostId: conn.userId, bestOf: saved.bestOf, mode: saved.mode ?? 'standard', status: 'lobby',
           slots: [], savedGameId: saved._id, roster: saved.players, score: saved.score,
+          ranked: saved.ranked, disguised: saved.disguised,
         };
         this.rooms.set(r.id, r);
         const me = saved.players.find((p) => p.userId === conn.userId)!;
@@ -229,6 +255,8 @@ export class Lobby {
         for (const p of saved.players) {
           const level = botLevel(p.userId);
           if (level) r.slots.push({ userId: p.userId, name: p.name, team: p.team, faction: p.faction, ready: true, connected: true, bot: level });
+          // Matchmaking bot accounts too (they look like players).
+          else if (saved.disguised?.[p.userId] !== undefined) r.slots.push({ userId: p.userId, name: p.name, team: p.team, faction: p.faction, ready: true, connected: true });
         }
         return this.changed(r);
       }
@@ -310,6 +338,22 @@ export class Lobby {
     return null;
   }
 
+  /** Matchmaking found a match: a room straight into battle (random factions, ranked). */
+  private async startRanked(size: number, players: RankedPlayer[]) {
+    const humans = players.filter((p) => p.botSkill === undefined);
+    const disguised: Record<string, number> = {};
+    for (const p of players) if (p.botSkill !== undefined) disguised[p.userId] = p.botSkill;
+    const r: Room = {
+      id: newId(), code: this.newCode(), name: `Ranked ${size}v${size}`, hostId: humans[0].userId, bestOf: RANKED_BEST_OF, mode: 'random',
+      status: 'lobby', ranked: true, disguised,
+      slots: players.map((p) => ({ userId: p.userId, name: p.name, team: p.team, faction: p.faction, ready: true, connected: p.botSkill !== undefined || this.conns.has(p.userId) })),
+    };
+    this.rooms.set(r.id, r);
+    for (const h of humans) this.membership.set(h.userId, r.id);
+    for (const h of humans) this.conns.get(h.userId)?.send({ type: 'lobby.room', room: this.info(r) });
+    await this.startMatch(r);
+  }
+
   private async startMatch(r: Room) {
     let sim: Sim;
     let players: MatchInitPlayer[];
@@ -337,10 +381,7 @@ export class Lobby {
       const ordered = [...r.slots.filter((s) => s.team === 0), ...r.slots.filter((s) => s.team === 1)];
       players = ordered.map((s, i) => ({ i, userId: s.userId, name: s.name, team: s.team, faction: s.faction }));
       sim = Sim.create({
-        players: players.map((p) => {
-          const level = botLevel(p.userId);
-          return { userId: p.userId, name: p.name, team: p.team, faction: p.faction, incomeMult: level ? AI_INCOME[level] : 1 };
-        }),
+        players: players.map((p) => ({ userId: p.userId, name: p.name, team: p.team, faction: p.faction })),
         bestOf: r.bestOf,
         mode: r.mode,
         seed: randomBytes(4).readUInt32LE(0),
@@ -350,6 +391,7 @@ export class Lobby {
         _id: matchId, status: 'live', name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode,
         players: players.map(({ userId, name, team, faction }) => ({ userId, name, team, faction })),
         userIds: players.map((p) => p.userId), score: [0, 0], round: 1, tick: 0, startedAt,
+        ...(r.ranked ? { ranked: true } : {}), ...(r.disguised ? { disguised: r.disguised } : {}),
       });
     }
 
@@ -370,7 +412,7 @@ export class Lobby {
     r.status = 'playing';
     const match = new MatchRoom({
       matchId, name: r.name, sim, players, hostId: r.hostId, resumed, startedAt, botElo,
-      persistence: this.db, tickMs: this.tickMs, learner: this.learner,
+      persistence: this.db, tickMs: this.tickMs, learner: this.learner, ranked: r.ranked, disguised: r.disguised,
       onClose: () => this.closeRoom(r),
     });
     r.match = match;
@@ -403,7 +445,7 @@ export class Lobby {
 
   private info(r: Room): RoomInfo {
     return {
-      id: r.id, code: r.code, name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode, status: r.status,
+      id: r.id, code: r.code, ranked: r.ranked, name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode, status: r.status,
       savedGameId: r.savedGameId, roster: r.roster, score: r.score, slots: r.slots,
     };
   }
@@ -413,12 +455,12 @@ export class Lobby {
     for (;;) {
       const bytes = randomBytes(INVITE_LENGTH);
       const code = [...bytes].map((b) => INVITE_ALPHABET[b % INVITE_ALPHABET.length]).join('');
-      if (![...this.rooms.values()].some((r) => r.code === code)) return code;
+      if (![...this.rooms.values()].some((r) => r.code === code) && !this.matchmaker?.hasCode(code)) return code;
     }
   }
 
   private listRooms(): RoomInfo[] {
-    return [...this.rooms.values()].map((r) => this.info(r));
+    return [...this.rooms.values()].filter((r) => !r.ranked).map((r) => this.info(r));
   }
 
   private changed(r: Room) {

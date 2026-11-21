@@ -14,6 +14,24 @@
 
 `shared/src/elo.ts` `botTargets()` gives each Auto bot the Elo that makes the teams' averages equal.
 
+## Fair play
+
+Bots never get advantages a player can't have:
+- **Economy:** income is the same for every level (`AI_INCOME` is all 1, not tunable).
+- **Vision:** bots see what a player of their team would see. That means the fog of war, and no stealthed enemy units, for scouting, rescue strikes, saving buildings and the models' features alike.
+- **Commands:** they send the same commands a client sends.
+- **Speed:** in real matches they react with human reaction times and a limited number of actions per minute.
+
+Difficulty comes only from how well they play.
+
+## Matchmaking bots (`server/src/matchmaking.ts`)
+
+When a ranked search doesn't find enough real players within its semi-random wait, the free slots go to bot accounts.
+- **Accounts:** these are regular-looking players (`users` with `bot: true`, which can't sign in) with names, ratings and a match history, and their Elo moves with results.
+- **Choice:** the matchmaker picks an account whose rating is near the target Elo that makes the match fair (`botTargets`), or creates one.
+- **Play:** the AI plays it at that target's skill.
+- **Visibility:** to clients they are ordinary accounts.
+
 ## The learner (`server/src/learner/`)
 
 - **Self-play worker:** a worker thread at the lowest CPU priority plays one bot game after another: 1v1 or 2v2, random factions, skills and personalities.

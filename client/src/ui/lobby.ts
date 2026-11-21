@@ -1,4 +1,4 @@
-import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
+import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage, type MatchmakingStatus, RANKED_BEST_OF } from '@bc/shared';
 import { builderPortrait } from './portraits';
 import { getGraphics, setGraphicsMode } from '../settings';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
@@ -12,7 +12,7 @@ const AI_HINTS: Record<AiLevel, string> = {
   easy: 'Slow, builds at random, sloppy rescue strikes.',
   normal: 'Steady builder that upgrades and uses auras and towers.',
   hard: 'Counters your army, builds a safe base behind its castle, plans its economy, saves the rescue strike for big waves.',
-  brutal: 'Hard, but cheating: +30% income, no fog of war, instant reactions. For veterans.',
+  brutal: 'The sharpest fixed level: Hard\'s plans with faster decisions. No cheats: same income and fog of war as you.',
 };
 
 /** Lobby: room list, room view (teams/factions/ready), saved games, history, chat. */
@@ -26,6 +26,10 @@ export class LobbyView {
   private botLevel: AiLevel = 'auto';
   /** Short confirmation next to the invite buttons ("Link copied"). */
   private copied = '';
+  /** Ranked matchmaking: party and search state. */
+  private mm: MatchmakingStatus = { party: null, search: null };
+  private mmSize: 1 | 2 | 3 | 4 = 1;
+  private mmTimer: ReturnType<typeof setInterval> | null = null;
   /** The first room state from the server arrived (a waiting invite is used then). */
   private synced = false;
   private root = $('#screen-lobby');
@@ -64,6 +68,15 @@ export class LobbyView {
           if (code && m.room?.code !== code) this.socket.send({ type: 'lobby.joinCode', code });
         }
         if (left) void this.refreshData();
+        break;
+      }
+      case 'mm.status': {
+        this.mm = m.status;
+        if (m.status.party && m.status.party.members.length > this.mmSize) this.mmSize = Math.min(4, m.status.party.members.length) as 1 | 2 | 3 | 4;
+        if (m.status.search) this.mmSize = m.status.search.size;
+        // Tick the search clock without re-rendering the whole lobby.
+        if (m.status.search && !this.mmTimer) this.mmTimer = setInterval(() => this.tickSearch(), 1000);
+        if (!m.status.search && this.mmTimer) { clearInterval(this.mmTimer); this.mmTimer = null; }
         break;
       }
       case 'chat': if (m.scope === 'lobby') { this.chat.push({ from: m.from, text: m.text }); this.chat = this.chat.slice(-50); } break;
@@ -111,6 +124,7 @@ export class LobbyView {
     const mode = h('select', { title: 'Game mode' }, (Object.keys(GAME_MODES) as GameMode[]).map((m) => h('option', { value: m, title: GAME_MODES[m].desc }, GAME_MODES[m].name)));
     const code = h('input', { placeholder: 'Invite code or link', maxLength: 200, class: 'code-input', autocomplete: 'off', spellcheck: false });
     return h('section', { class: 'panel-box' },
+      this.renderRanked(),
       h('form', { class: 'join-code', onsubmit: (e: Event) => {
         e.preventDefault();
         if (code.value.trim()) this.socket.send({ type: 'lobby.joinCode', code: code.value });
@@ -148,6 +162,56 @@ export class LobbyView {
           h('li', null, 'Destroy the enemy castle to win the round. Each round starts fresh.'),
         ),
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------- ranked
+
+  private tickSearch() {
+    const el = this.root.querySelector('.mm-clock');
+    const since = this.mm.search?.since;
+    if (el && since) el.textContent = clock(Date.now() - since);
+  }
+
+  /** Ranked matchmaking: party (alone or with friends), size, search. */
+  private renderRanked() {
+    const { party, search, found } = this.mm;
+    const me = this.user.id;
+    const leader = !party || party.leaderId === me;
+    const members = party?.members ?? [{ userId: me, name: this.user.username, rating: this.user.stats.rating ?? START_RATING }];
+    const sizeBtn = (n: 1 | 2 | 3 | 4) => h('button', {
+      class: `mode size ${this.mmSize === n ? 'selected' : ''}`, disabled: !!search || members.length > n || !leader,
+      title: members.length > n ? `Your party has ${members.length} players` : `${n} player${n > 1 ? 's' : ''} per team`,
+      onclick: () => { this.mmSize = n; this.render(); },
+    }, h('b', null, `${n}v${n}`));
+    return h('div', { class: 'ranked' },
+      h('div', { class: 'ranked-head' },
+        h('h2', null, 'Ranked match'),
+        h('span', { class: 'dim' }, `Random factions · best of ${RANKED_BEST_OF} · counts for your Elo`)),
+      h('div', { class: 'party' },
+        members.map((m) => h('span', { class: `member ${m.userId === me ? 'me' : ''}` },
+          party && m.userId === party.leaderId && members.length > 1 ? h('i', { class: 'crown', title: 'Party leader' }, '♛') : null,
+          h('b', null, m.name), h('span', { class: 'dim' }, ` ${Math.round(m.rating)}`))),
+        party
+          ? h('span', { class: 'party-invite' },
+            h('code', { class: 'invite-code small' }, party.code),
+            h('button', { class: 'btn small ghost', disabled: !!search, onclick: () => void this.copy(inviteLink(party.code), 'Invite link copied') }, 'Copy invite link'),
+            h('button', { class: 'btn small ghost', disabled: !!search, onclick: () => this.socket.send({ type: 'party.leave' }) }, members.length > 1 ? 'Leave party' : 'Close party'))
+          : h('button', { class: 'btn small ghost', onclick: () => this.socket.send({ type: 'party.create' }), title: 'Queue together with friends: they join with your party\'s invite code or link' }, '+ Invite friends'),
+        this.copied ? h('span', { class: 'copied' }, this.copied) : null,
+      ),
+      h('div', { class: 'sizes' }, ([1, 2, 3, 4] as const).map(sizeBtn)),
+      found
+        ? h('div', { class: 'mm-search found' }, h('b', null, 'Match found!'), h('span', { class: 'dim' }, ' Get ready…'))
+        : search
+          ? h('div', { class: 'mm-search' },
+            h('span', { class: 'spinner' }),
+            h('b', null, `Searching for a ${search.size}v${search.size} match`),
+            h('span', { class: 'mm-clock' }, clock(Date.now() - search.since)),
+            h('button', { class: 'btn ghost', onclick: () => this.socket.send({ type: 'mm.cancel' }) }, 'Cancel'))
+          : leader
+            ? h('button', { class: 'btn big find', disabled: !!this.room, onclick: () => this.socket.send({ type: 'mm.queue', size: this.mmSize }) }, `Find ${this.mmSize}v${this.mmSize} match`)
+            : h('div', { class: 'dim' }, `Waiting for ${members.find((m) => m.userId === party?.leaderId)?.name ?? 'the leader'} to start the search…`),
     );
   }
 
@@ -348,4 +412,10 @@ export class LobbyView {
       } }, input),
     );
   }
+}
+
+/** m:ss of a duration in ms. */
+function clock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }

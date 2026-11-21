@@ -29,9 +29,16 @@ export function createMemoryPersistence(): Persistence {
         users.set(doc._id.toHexString(), doc);
         return cloneUser(doc);
       },
+      async createBot(username: string, stats: UserStats) {
+        if ([...users.values()].some((u) => u.usernameLower === username.toLowerCase())) throw Object.assign(new Error('dup'), { code: 11000 });
+        const doc = { _id: new ObjectId(), username, usernameLower: username.toLowerCase(), passwordHash: '!', password: '\u0000', createdAt: new Date(), stats, bot: true };
+        users.set(doc._id.toHexString(), doc);
+        return cloneUser(doc);
+      },
+      async listBots() { return [...users.values()].filter((u) => u.bot).map(cloneUser); },
       async verify(username: string, password: string) {
         const u = [...users.values()].find((x) => x.usernameLower === username.toLowerCase());
-        return u && u.password === password ? cloneUser(u) : null;
+        return u && !u.bot && u.password === password ? cloneUser(u) : null;
       },
       async byId(id: string) { const u = users.get(id); return u ? cloneUser(u) : null; },
       async createSession(userId: string) { const t = randomBytes(12).toString('hex'); sessions.set(t, userId); return t; },
