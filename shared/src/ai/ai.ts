@@ -10,6 +10,8 @@ import type { Command, Entity, PlayerState } from '../sim/state';
 import { Humanizer } from './human';
 import { drawPersona, personaProfile, type Persona } from './persona';
 import { COUNTER_PLAN, PLANS, choosePlan, recognisePlan, type PlanId } from './strategy';
+import { CATEGORIES, observedFeatures } from './features';
+import { policyModel, valueModel } from './models';
 
 /**
  * Bot levels: 'auto' plays as strong as the humans in the match (its skill follows a target Elo,
@@ -196,12 +198,16 @@ export class AiPlayer {
    * `opts.skill` sets an Auto bot's skill (from its target Elo); `opts.human` adds human-like
    * reaction times, attention and chat (off by default: the lab stays deterministic).
    */
-  constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17, overrides?: Partial<Profile>, opts: { skill?: number; human?: boolean; persona?: Persona } = {}) {
+  /** Uses the learned models (Auto bots; the learner compares bots with and without them). */
+  readonly useModels: boolean;
+
+  constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17, overrides?: Partial<Profile>, opts: { skill?: number; human?: boolean; persona?: Persona; useModels?: boolean } = {}) {
     const presetSkill: Record<AiLevel, number> = { easy: 0, normal: 0.5, hard: 1, brutal: 1.2, auto: 0.5 };
     this.persona = opts.persona ?? drawPersona(seed, opts.skill ?? presetSkill[level]);
     const base = level === 'auto' ? personaProfile(this.persona, PROFILES) : PROFILES[level];
     this.profile = { ...base, ...overrides };
     this.human = opts.human ? new Humanizer(this.persona, seed) : null;
+    this.useModels = level === 'auto' && (opts.useModels ?? true);
     let s = seed >>> 0 || 1;
     this.rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
     // Spread bots over different ticks so they don't all think at once (set from the team slot on
@@ -462,12 +468,17 @@ export class AiPlayer {
     // All gold is spent sooner or later, so what an option really costs in time is the wait on top of
     // the soonest affordable one (right after a purchase, everything is far away).
     const soonest = Math.min(...options.map((o) => o.def.cost));
+    // Learned prior: what good players build in a situation like this (skilled bots trust it more).
+    const pm = this.useModels ? policyModel() : null;
+    const prior = pm ? pm.predict(observedFeatures(sim, this.player)) : null;
+    const trust = 0.6 * Math.min(1, this.persona.skill / 1.2);
     const rank = (o: Option) => {
       const cat = buildCategory(o.def, o.kind === 'upgrade');
+      const learned = prior ? (Math.max(0.02, prior[CATEGORIES.indexOf(cat)]) * CATEGORIES.length) ** trust : 1;
       const extra = Math.max(0, o.def.cost - me.gold) - Math.max(0, soonest - me.gold);
       // A strategy bias (sparring partners) is worth saving up for longer.
       if (extra / perSec > maxWait * ((P.bias?.[cat] ?? 1) >= 2 ? 2.5 : 1)) return 0;
-      return Math.sqrt(Math.max(0, o.score)) * (doctrine[cat] ?? 1) / (1 + (waitCost * extra) / o.def.cost);
+      return Math.sqrt(Math.max(0, o.score)) * (doctrine[cat] ?? 1) * learned / (1 + (waitCost * extra) / o.def.cost);
     };
     const ranked = options.map((o) => ({ o, r: rank(o) })).filter((x) => x.r > 0);
     if (!ranked.length) return undefined;
@@ -538,7 +549,11 @@ export class AiPlayer {
     const enemy = recognisePlan(this.sightings(sim));
     // Clearly behind (our castle much lower than theirs): tilted players go all-in, calm ones turtle.
     const mine = sim.castle(me.team), theirs = sim.castle((1 - me.team) as 0 | 1);
-    if (!st.desperate && mine && theirs && mine.hp / mine.maxHp < 0.45 && mine.hp / mine.maxHp < theirs.hp / theirs.maxHp - 0.25) {
+    // The value model sees a lost position coming earlier than the castle's HP does.
+    const vm = this.useModels ? valueModel() : null;
+    const minutes = (s.tick - s.roundStartTick) / TICK_RATE / 60;
+    const hopeless = !!vm && minutes > 4 && vm.predict(observedFeatures(sim, this.player))[0] < 0.15;
+    if (!st.desperate && mine && theirs && (hopeless || (mine.hp / mine.maxHp < 0.45 && mine.hp / mine.maxHp < theirs.hp / theirs.maxHp - 0.25))) {
       st.desperate = true;
       st.plan = P.tilt > 0.6 ? 'rush' : 'turtle';
       st.switches++;
@@ -859,7 +874,7 @@ export class AiPlayer {
 
 /** Vision grid per simulation, team and tick: teammates share it (it's a whole-map pass). */
 const VISION = new WeakMap<Sim, Map<number, { tick: number; grid: Uint8Array }>>();
-function teamVision(sim: Sim, team: number): Uint8Array {
+export function teamVision(sim: Sim, team: number): Uint8Array {
   const m = VISION.get(sim) ?? new Map<number, { tick: number; grid: Uint8Array }>();
   VISION.set(sim, m);
   const c = m.get(team);

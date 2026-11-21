@@ -563,7 +563,7 @@ export class Renderer3D {
     for (const v of this.gs.views.values()) {
       if (v.kind === KIND_BUILDER || v.ruined) continue;
       const constructing = v.kind === KIND_BUILDING && v.extra !== 100;
-      if (v.kind !== KIND_UNIT && !(v.hp < v.maxHp || v.id === sel || constructing || this.gs.showAllBars)) continue;
+      if (v.kind !== KIND_UNIT && !((v.shownHp ?? v.hp) < v.maxHp || v.id === sel || constructing || this.gs.showAllBars)) continue;
       let p: { x: number; y: number } | null, w: number;
       if (v.kind === KIND_UNIT) {
         const o = this.units.get(v.id);
@@ -579,7 +579,7 @@ export class Renderer3D {
       }
       if (!p) continue;
       const x = p.x - w / 2, y = p.y;
-      const r = Math.max(0, v.hp / v.maxHp);
+      const r = Math.max(0, (v.shownHp ?? v.hp) / v.maxHp);
       g.fillStyle = 'rgba(12,10,8,0.85)'; g.fillRect(x - 1.5, y - 1.5, w + 3, 6);
       g.fillStyle = 'rgba(42,34,24,0.9)'; g.fillRect(x, y, w, 3);
       g.fillStyle = v.team !== s.team ? BAR_ENEMY : v.owner === s.you ? BAR_OWN : BAR_ALLY; g.fillRect(x, y, w * r, 3);

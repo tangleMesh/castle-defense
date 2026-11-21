@@ -19,6 +19,10 @@ services:
       DB_NAME: bastion_clash
       PORT: "3000"
       TICK_MS: ${TICK_MS:-50}
+      # Background bot learner (docs/bots.md): off | idle | always
+      LEARNER: ${LEARNER:-idle}
+      LEARNER_GAMES_PER_HOUR: ${LEARNER_GAMES_PER_HOUR:-400}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
     ports:
       - "${HOST_PORT:-5173}:3000"
     depends_on:

@@ -540,3 +540,7 @@ button.mode { cursor: pointer; }
 .join-code { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .join-code .code-input { flex: 1; min-width: 160px; letter-spacing: 1px; }
 .invite-note { color: var(--gold); font-size: 14px; margin: 0 0 10px; }
+
+.start-wrap { display: inline-flex; flex-direction: column; gap: 4px; }
+.start-hint { font-size: 12px; color: var(--gold-2); max-width: 320px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.5); }

@@ -51,6 +51,17 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   await learner.start();
   lobby.learner = learner;
   app.get('/api/learner', async () => learner.status());
+  // Admin (header x-admin-token = env ADMIN_TOKEN): roll the bots' models back, or switch them off/on.
+  const admin = (req: { headers: Record<string, unknown> }) => !!process.env.ADMIN_TOKEN && req.headers['x-admin-token'] === process.env.ADMIN_TOKEN;
+  app.post<{ Body: { version?: number } }>('/api/learner/rollback', async (req, reply) => {
+    if (!admin(req)) return reply.code(403).send({ error: 'forbidden' });
+    return learner.rollback(Number(req.body?.version)) ? { ok: true } : reply.code(404).send({ error: 'unknown version' });
+  });
+  app.post<{ Body: { enabled?: boolean } }>('/api/learner/models', async (req, reply) => {
+    if (!admin(req)) return reply.code(403).send({ error: 'forbidden' });
+    learner.setModelsEnabled(!!req.body?.enabled);
+    return { ok: true };
+  });
   const wss = new WebSocketServer({ noServer: true, perMessageDeflate: { threshold: 1024 }, maxPayload: 64 * 1024 });
 
   app.server.on('upgrade', (req, socket, head) => {

@@ -2,6 +2,7 @@ import { START_RATING, expectedScore } from '../elo';
 import type { FactionId } from '../data';
 import { DEFAULT_SKILL_CURVE, MAX_SKILL, eloForSkill, type SkillCurve } from './calibration';
 import { statKey, type PlanId, type StrategyStats } from './strategy';
+import type { MlpJson } from './mlp';
 
 /**
  * What the bots learn from every game (self-play in idle time and real matches), as pure functions
@@ -18,13 +19,25 @@ export interface LearnedState {
   strategy: StrategyStats;
   /** Elo of each skill bucket (SKILL_BUCKETS), measured from results. */
   skillElo: number[];
+  /** Learned models in use (value: P(win), policy: next building category) and their version. */
+  models: { value?: MlpJson; policy?: MlpJson };
+  modelVersion: number;
+  /** Off when bots with the models kept losing to bots without them (until the next model). */
+  modelsEnabled: boolean;
+  /** Self-play games of model users against non-users: [model side wins, games] (slowly forgetting). */
+  modelEdge: [number, number];
+  /** Earlier model versions (newest last) for rollback. */
+  history: Array<{ version: number; at: string; models: { value?: MlpJson; policy?: MlpJson } }>;
 }
 
 /** Skill levels whose strength is measured (0, 0.1, … 1.5). */
 export const SKILL_BUCKETS = Array.from({ length: Math.round(MAX_SKILL / 0.1) + 1 }, (_, i) => i / 10);
 
 export function freshLearnedState(): LearnedState {
-  return { version: 1, selfPlayGames: 0, realGames: 0, strategy: {}, skillElo: SKILL_BUCKETS.map((s) => Math.round(eloForSkill(s, DEFAULT_SKILL_CURVE))) };
+  return {
+    version: 1, selfPlayGames: 0, realGames: 0, strategy: {}, skillElo: SKILL_BUCKETS.map((s) => Math.round(eloForSkill(s, DEFAULT_SKILL_CURVE))),
+    models: {}, modelVersion: 0, modelsEnabled: true, modelEdge: [0, 0], history: [],
+  };
 }
 
 /** One bot's round, as the bot logged it. */

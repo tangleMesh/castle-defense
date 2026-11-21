@@ -1,5 +1,5 @@
 import {
-  AiPlayer, skillForElo, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats, BOT_RATING, START_RATING, eloDelta,
+  AiPlayer, GameRecorder, skillForElo, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats, BOT_RATING, START_RATING, eloDelta,
   type ClientMessage, type FactionId, type MatchInitPlayer, type MatchStats, type PlayerCommand, type ServerMessage, type Sim, type SimEvent,
 } from '@bc/shared';
 import type { Conn } from './conn';
@@ -44,6 +44,8 @@ export class MatchRoom {
   private ticksSinceSave = 0;
   private closed = false;
   private ais: AiPlayer[] = [];
+  /** Training samples from this match (humans' choices teach the bots to play like people). */
+  private recorder: GameRecorder;
   /** Players whose client has the battlefield on screen (see `loading`). */
   private loaded = new Set<string>();
   private startedAt = Date.now();
@@ -51,6 +53,11 @@ export class MatchRoom {
   constructor(private o: MatchRoomOptions) {
     this.id = o.matchId;
     this.sim = o.sim;
+    // Human build choices count (winners' a bit more); bots' choices in real matches don't.
+    this.recorder = new GameRecorder((player, won) => {
+      const human = !isBotId(this.sim.state.players[player]?.userId ?? '');
+      return { w: human ? (won ? 1.5 : 1) : 0, human };
+    });
     for (const p of o.players) {
       const level = botLevel(p.userId);
       if (!level) continue;
@@ -156,7 +163,8 @@ export class MatchRoom {
     });
     const plans = this.ais.flatMap((ai) => ai.roundLog.map(({ faction, opening, plan, enemy, won }) => ({ faction, opening, plan, enemy, won })));
     const humans = s.players.filter((p) => !isBotId(p.userId)).length;
-    try { learner.recordMatch(players, winner, plans, humans); } catch (err) { console.error('[match] learner', err); }
+    this.recorder.observe(this.sim, []);
+    try { learner.recordMatch(players, winner, plans, humans, { value: this.recorder.value, policy: this.recorder.policy }); } catch (err) { console.error('[match] learner', err); }
   }
 
   // ---------------------------------------------------------------- loop
@@ -221,6 +229,7 @@ export class MatchRoom {
     this.queue = [];
     for (const ai of this.ais) for (const cmd of ai.update(this.sim)) cmds.push({ player: ai.player, cmd });
     this.botChat();
+    if (this.o.learner) this.recorder.observe(this.sim, cmds);
     const events = this.sim.step(cmds);
     for (const ev of events) this.pendingEvents.push(ev);
 

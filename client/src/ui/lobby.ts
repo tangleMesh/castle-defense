@@ -245,7 +245,16 @@ export class LobbyView {
       ) : null,
       h('div', { class: 'room-actions' },
         me ? h('button', { class: `btn ${me.ready ? 'ghost' : ''}`, onclick: () => this.socket.send({ type: 'lobby.ready', ready: !me.ready }) }, me.ready ? 'Not ready' : 'Ready') : null,
-        isHost ? h('button', { class: 'btn big', onclick: () => this.socket.send({ type: 'lobby.start' }) }, 'Start battle') : h('span', { class: 'dim' }, 'Waiting for the host to start…'),
+        isHost ? (() => {
+          // The host is ready by starting; everyone else has to press Ready first.
+          const waiting = r.slots.filter((x) => !x.ready && x.userId !== this.user.id);
+          const empty = !r.roster && ([0, 1] as const).some((t) => !r.slots.some((x) => x.team === t));
+          const hint = empty ? 'Each team needs at least one player (add an AI?)'
+            : waiting.length ? `All players must be ready first · waiting for ${waiting.map((x) => x.name).join(', ')}` : '';
+          return h('span', { class: 'start-wrap' },
+            h('button', { class: 'btn big', disabled: !!hint, title: hint || 'Start the battle', onclick: () => this.socket.send({ type: 'lobby.start' }) }, 'Start battle'),
+            hint ? h('span', { class: 'start-hint' }, hint) : null);
+        })() : h('span', { class: 'dim' }, me?.ready ? 'Waiting for the host to start…' : 'Press Ready when you are set — the host starts once everyone is ready'),
         h('button', { class: 'btn ghost', onclick: () => this.socket.send({ type: 'lobby.leave' }) }, 'Leave'),
       ),
     );

@@ -46,6 +46,12 @@ export interface View {
   /** ms left in the attack pose (melee and ranged). */
   atk: number;
   flash: number;
+  /** HP as shown (bars, hit flash): lags the simulation until the blow or missile actually lands. */
+  shownHp?: number;
+  /** Time (ms) until which the shown HP holds: an attack on this entity is still on its way. */
+  holdUntil?: number;
+  /** It died, but the killing blow is still in the air: its death plays when the hold ends. */
+  pendingDie?: SimEvent;
   /** Ticks until the next spawn (spawn buildings). */
   spawn: number;
   /** Castle that has collapsed (shows the ruin texture). */
@@ -53,6 +59,9 @@ export interface View {
 }
 
 import { AIR_LIFT, KIND_BUILDER, KIND_BUILDING, KIND_CASTLE, KIND_UNIT, UNIT_SCALE, WALK } from './viewTypes';
+
+/** When a melee blow lands after the attack animation starts (the height of the lunge). */
+const MELEE_IMPACT_MS = 110;
 /** Logical scale → image scale for TEX_RES× textures. */
 const sc = (v: number) => v / TEX_RES;
 
@@ -627,8 +636,15 @@ export class GameScene extends Phaser.Scene {
       const src = nb ?? row;
       v.fx = src[11] ?? 0;
       // Damage flash (not for the steady tick of poison: poisoned units get a green tint instead).
-      if (src[7] < v.hp - (v.fx & FX_POISON ? 3 : 0)) v.flash = 110;
       v.hp = src[7]; v.maxHp = src[8]; v.extra = src[9];
+      // The simulation deals damage on the attack tick; on screen the hit lands when the swing or
+      // the missile arrives, so the shown HP (and the hit flash) wait until then. Heals show at once.
+      const now = this.time.now;
+      if (v.shownHp === undefined || v.hp >= v.shownHp || !v.holdUntil || now >= v.holdUntil) {
+        // Damage flash (not for the steady tick of poison: poisoned units get a green tint instead).
+        if (v.shownHp !== undefined && v.hp < v.shownHp - (v.fx & FX_POISON ? 3 : 0)) v.flash = 110;
+        v.shownHp = v.hp;
+      }
       // Spawn countdown, interpolated between snapshots (unless a unit spawned in between).
       v.spawn = nb && nb[10] <= row[10] ? row[10] + (nb[10] - row[10]) * alpha : src[10];
       // A building changing type means an upgrade completed / started.
@@ -651,6 +667,9 @@ export class GameScene extends Phaser.Scene {
     }
     for (const v of [...this.views.values()]) {
       if (seen.has(v.id)) continue;
+      // Killed, but the fatal blow is still on its way: it stays until it lands.
+      if (v.kind === KIND_UNIT && v.holdUntil && this.time.now < v.holdUntil) continue;
+      if (v.pendingDie) { const ev = v.pendingDie; delete v.pendingDie; this.r3d?.event(ev); this.dieFx(ev); }
       // An enemy building that slipped into the fog stays as a greyed "last seen" ghost.
       if (this.vision && v.kind === KIND_BUILDING && v.team !== this.session.team
         && !entityVisible(this.vision, v.kind, v.type, v.x, v.y)) this.toGhost(v);
@@ -766,7 +785,7 @@ export class GameScene extends Phaser.Scene {
       if (v.kind === KIND_BUILDER || v.ruined) continue;
       const constructing = v.kind === KIND_BUILDING && v.extra !== 100;
       // Units always show their health bar (own and enemy); structures only when damaged/selected/Alt.
-      if (v.kind !== KIND_UNIT && !(v.hp < v.maxHp || v.id === sel || constructing || this.showAllBars)) continue;
+      if (v.kind !== KIND_UNIT && !((v.shownHp ?? v.hp) < v.maxHp || v.id === sel || constructing || this.showAllBars)) continue;
       let w: number, x: number, y: number;
       if (v.kind === KIND_UNIT) {
         const p = toScreen(v.x, v.y);
@@ -778,7 +797,7 @@ export class GameScene extends Phaser.Scene {
         const top = v.sprite.y - v.sprite.displayHeight * v.sprite.originY;
         w = size * 22; x = p.x - w / 2; y = Math.max(top + 4, p.y - 140);
       }
-      const r = Math.max(0, v.hp / v.maxHp);
+      const r = Math.max(0, (v.shownHp ?? v.hp) / v.maxHp);
       // Framed bar: dark case, glossy fill coloured by side (the length shows the health), so
       // friend and foe are easy to tell apart where units and buildings crowd together.
       const col = v.team !== this.session.team ? BAR_ENEMY : v.owner === this.session.you ? BAR_OWN : BAR_ALLY;
@@ -932,7 +951,8 @@ export class GameScene extends Phaser.Scene {
     return { x: p.x, y: p.y - 14 - Math.random() * 12 };
   }
 
-  private projectile(from: View, to: View) {
+  /** Flies a missile; returns its flight time (ms). */
+  private projectile(from: View, to: View): number {
     const u = from.kind === KIND_UNIT ? UNITS[from.type] : null;
     const a = toScreen(from.x, from.y);
     const ay = a.y - (from.air ? AIR_LIFT : 0) - (from.kind === KIND_UNIT || from.kind === KIND_BUILDER ? 16 : from.kind === KIND_CASTLE ? 90 : 40);
@@ -970,6 +990,7 @@ export class GameScene extends Phaser.Scene {
         if (key === 'boulder') this.puff(b.x, b.y - 4, 0x8a7a62, 10, 26);
       },
     });
+    return dur;
   }
 
   /** Runs a cosmetic effect only while the effect budget allows it (big fights stay readable). */
@@ -1176,7 +1197,40 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** A unit or building falls. */
+  private dieFx(ev: SimEvent) {
+    if (ev.t !== 'die') return;
+    const p = toScreen(ev.x, ev.y);
+    if (ev.k === 'building') {
+      this.puff(p.x, p.y - 10, 0x8a7a62, 22, 60);
+      this.puff(p.x, p.y - 20, 0xff9a40, 8, 30);
+      this.cameras.main.shake(140, 0.003);
+    } else {
+      const v = this.views.get(ev.id);
+      if (v && v.kind === KIND_UNIT && this.cameras.main.worldView.contains(v.sprite.x, v.sprite.y)) {
+        // The fallen unit topples over and fades into the grass.
+        const body = this.img(v.sprite.x, v.sprite.y, v.sprite.texture.key).setOrigin(v.sprite.originX, v.sprite.originY)
+          .setFlipX(v.sprite.flipX).setScale(v.sprite.scaleX, v.sprite.scaleY).setDepth(v.sprite.depth - 1);
+        const dir = v.facing > 0 ? -1 : 1;
+        this.tweens.add({ targets: body, angle: v.air ? 0 : 82 * dir, y: body.y + (v.air ? AIR_LIFT : 2), duration: v.air ? 420 : 320, ease: 'Quad.easeIn' });
+        this.tweens.add({ targets: body, alpha: 0, delay: 650, duration: 900, onComplete: () => body.destroy() });
+      }
+      this.puff(p.x, p.y - 8, 0x7a1a12, 6, 12);
+      this.puff(p.x, p.y - 4, 0x8a8070, 4, 14);
+    }
+  }
+
+  /** Delays the shown damage on `target` until a hit lands `ms` from now. */
+  private holdHit(target: View, ms: number) {
+    target.holdUntil = Math.max(target.holdUntil ?? 0, this.time.now + ms);
+  }
+
   private onSimEvent(ev: SimEvent) {
+    // A unit whose killing blow is still in the air dies when it lands.
+    if (ev.t === 'die' && ev.k !== 'building') {
+      const v = this.views.get(ev.id);
+      if (v && v.holdUntil && this.time.now < v.holdUntil) { v.pendingDie = ev; return; }
+    }
     this.r3d?.event(ev);
     if (ev.t === 'round' || ev.t === 'match') this.castleFalls((1 - ev.winner) as Team);
     switch (ev.t) {
@@ -1185,12 +1239,17 @@ export class GameScene extends Phaser.Scene {
         if (!a || !b) return;
         a.atk = 260;
         if (b.x !== a.x) a.facing = b.x - b.y > a.x - a.y ? 1 : -1;
-        if (ev.r) this.projectile(a, b);
+        if (ev.r) this.holdHit(b, this.r3d ? Math.min(320, 60 + Math.hypot(a.x - b.x, a.y - b.y) * 45) : this.projectile(a, b));
         else {
+          // The blow lands at the height of the lunge.
           a.lunge = 160;
-          const h = this.hitPoint(a, b);
-          this.slash(h.x, h.y, a.facing, a.kind === KIND_UNIT ? UNITS[a.type] : undefined);
-          this.spark(h.x, h.y, 0xffd8a0, 3, 0.4);
+          this.holdHit(b, MELEE_IMPACT_MS);
+          if (this.r3d) return;
+          this.time.delayedCall(MELEE_IMPACT_MS, () => {
+            const h = this.hitPoint(a, b);
+            this.slash(h.x, h.y, a.facing, a.kind === KIND_UNIT ? UNITS[a.type] : undefined);
+            this.spark(h.x, h.y, 0xffd8a0, 3, 0.4);
+          });
         }
         return;
       }
@@ -1379,27 +1438,7 @@ export class GameScene extends Phaser.Scene {
         }
         return;
       }
-      case 'die': {
-        const p = toScreen(ev.x, ev.y);
-        if (ev.k === 'building') {
-          this.puff(p.x, p.y - 10, 0x8a7a62, 22, 60);
-          this.puff(p.x, p.y - 20, 0xff9a40, 8, 30);
-          this.cameras.main.shake(140, 0.003);
-        } else {
-          const v = this.views.get(ev.id);
-          if (v && v.kind === KIND_UNIT && this.cameras.main.worldView.contains(v.sprite.x, v.sprite.y)) {
-            // The fallen unit topples over and fades into the grass.
-            const body = this.img(v.sprite.x, v.sprite.y, v.sprite.texture.key).setOrigin(v.sprite.originX, v.sprite.originY)
-              .setFlipX(v.sprite.flipX).setScale(v.sprite.scaleX, v.sprite.scaleY).setDepth(v.sprite.depth - 1);
-            const dir = v.facing > 0 ? -1 : 1;
-            this.tweens.add({ targets: body, angle: v.air ? 0 : 82 * dir, y: body.y + (v.air ? AIR_LIFT : 2), duration: v.air ? 420 : 320, ease: 'Quad.easeIn' });
-            this.tweens.add({ targets: body, alpha: 0, delay: 650, duration: 900, onComplete: () => body.destroy() });
-          }
-          this.puff(p.x, p.y - 8, 0x7a1a12, 6, 12);
-          this.puff(p.x, p.y - 4, 0x8a8070, 4, 14);
-        }
-        return;
-      }
+      case 'die': this.dieFx(ev); return;
       case 'gold': {
         // Last-hit bounty: only the player who earned it sees the coin popup.
         if (ev.p !== this.session.you) return;

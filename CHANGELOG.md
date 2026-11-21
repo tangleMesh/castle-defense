@@ -7,6 +7,18 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.52.0
+
+- **Start battle waits for everyone:** the host's button stays disabled, with a hint naming who isn't ready yet (or that a team is still empty), until every other player has pressed Ready. Players who aren't ready see "Press Ready when you are set".
+- **Hits land when they land:** the simulation deals damage on the attack tick, but on screen a unit's health bar, its hit flash and its death used to show at the start of the attack animation. They now wait until the blow lands (the height of the lunge) or the missile arrives, in 2D and 3D. Heals show at once. The game itself is unchanged.
+- **Bots learn neural models:**
+  - **Models:** the background learner now trains two small networks from what players can see (fog of war respected): win chance, and which kind of building good players build next.
+  - **Training data:** self-play (only strong winners' choices count) and real matches, where human choices are stored in `botSamples` and count most.
+  - **How Auto bots use them:** they lean on the build model in proportion to their skill, and the win-chance model tells them earlier when it's time for an all-in or a turtle.
+  - **Safety:** a new model is only kept if it predicts held-out games better than the current one. Self-play pits bots with and without the models against each other; if the model side keeps losing (under 45% over 80+ games), the models are switched off until a better one comes.
+  - **Admin:** the last 5 versions are kept. `POST /api/learner/rollback` and `/api/learner/models` (with `ADMIN_TOKEN`) roll back or switch the models off.
+  - **Docs:** see `docs/bots.md`.
+
 ## 0.51.0
 
 - **Bots keep learning (background learner):**

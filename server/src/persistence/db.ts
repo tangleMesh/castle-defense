@@ -68,6 +68,16 @@ export interface LearnerDoc extends LearnedState {
   updatedAt: Date;
 }
 
+/** A training sample from a real match (human play is rare and worth keeping). */
+export interface SampleDoc {
+  kind: 'value' | 'policy';
+  x: number[];
+  y: number;
+  w: number;
+  human: boolean;
+  at: Date;
+}
+
 export interface Collections {
   db: Db;
   users: import('mongodb').Collection<UserDoc>;
@@ -75,6 +85,7 @@ export interface Collections {
   matches: import('mongodb').Collection<MatchDoc>;
   savedGames: import('mongodb').Collection<SavedGameDoc>;
   learner: import('mongodb').Collection<LearnerDoc>;
+  samples: import('mongodb').Collection<SampleDoc>;
   close(): Promise<void>;
 }
 
@@ -99,6 +110,7 @@ export async function connectDb(url: string, dbName = 'bastion_clash'): Promise<
     matches: db.collection<MatchDoc>('matches'),
     savedGames: db.collection<SavedGameDoc>('savedGames'),
     learner: db.collection<LearnerDoc>('learner'),
+    samples: db.collection<SampleDoc>('botSamples'),
     close: () => client.close(),
   };
   await Promise.all([
@@ -106,6 +118,7 @@ export async function connectDb(url: string, dbName = 'bastion_clash'): Promise<
     c.sessions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 }),
     c.matches.createIndex({ 'players.userId': 1, endedAt: -1 }),
     c.savedGames.createIndex({ userIds: 1, status: 1, updatedAt: -1 }),
+    c.samples.createIndex({ kind: 1, at: -1 }),
   ]);
   return c;
 }

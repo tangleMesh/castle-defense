@@ -142,3 +142,40 @@ describe('learning', () => {
     for (let i = 1; i < curve.length; i++) expect(curve[i][0]).toBeGreaterThan(curve[i - 1][0]);
   });
 });
+
+describe('learned models', () => {
+  it('the MLP learns a simple rule (loss drops, predictions right)', async () => {
+    const { Mlp } = await import('../src/index');
+    const net = new Mlp([2, 8, 1], 'sigmoid', 3);
+    const xs: number[][] = [], ys: number[] = [];
+    for (let i = 0; i < 400; i++) { const a = (i * 7919 % 100) / 100, b = (i * 104729 % 100) / 100; xs.push([a, b]); ys.push(a > b ? 1 : 0); }
+    const before = net.loss(xs, ys);
+    for (let e = 0; e < 200; e++) net.trainBatch(xs, ys, undefined, 0.02);
+    expect(net.loss(xs, ys)).toBeLessThan(before * 0.5);
+    expect(net.predict([0.9, 0.1])[0]).toBeGreaterThan(0.7);
+    expect(Mlp.fromJSON(net.toJSON()).predict([0.9, 0.1])[0]).toBeCloseTo(net.predict([0.9, 0.1])[0], 3);
+  });
+  it('the recorder labels a game, and bots play with a policy model in place', async () => {
+    const { GameRecorder, Mlp, setModels, CATEGORIES, FEATURE_COUNT } = await import('../src/index');
+    setModels({ policy: new Mlp([FEATURE_COUNT, 8, CATEGORIES.length], 'softmax', 5).toJSON(), value: new Mlp([FEATURE_COUNT, 8, 1], 'sigmoid', 6).toJSON() });
+    try {
+      const sim = Sim.create({ countdownTicks: 0, bestOf: 1, seed: 8, players: [
+        { userId: makeBotId('auto', 'a'), name: 'a', team: 0, faction: 'bloodtusk' },
+        { userId: makeBotId('auto', 'b'), name: 'b', team: 1, faction: 'frostmark' },
+      ] });
+      const ais = [new AiPlayer(0, 'auto', 41, undefined, { skill: 1.1 }), new AiPlayer(1, 'auto', 42, undefined, { skill: 1.1, useModels: false })];
+      const rec = new GameRecorder(() => ({ w: 1, human: false }));
+      while (sim.state.phase === 'playing' && sim.state.tick < 25 * 60 * TICK_RATE) {
+        const cmds: PlayerCommand[] = [];
+        for (const ai of ais) for (const cmd of ai.update(sim)) cmds.push({ player: ai.player, cmd });
+        rec.observe(sim, cmds);
+        sim.step(cmds);
+      }
+      rec.observe(sim, []);
+      expect(rec.value.length).toBeGreaterThan(10);
+      expect(rec.policy.length).toBeGreaterThan(5);
+      expect(rec.value[0].x).toHaveLength(FEATURE_COUNT);
+      expect(new Set(rec.value.map((v) => v.y)).size).toBe(2);
+    } finally { setModels(null); }
+  }, 120_000);
+});

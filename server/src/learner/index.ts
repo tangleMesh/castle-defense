@@ -2,11 +2,11 @@ import { availableParallelism, loadavg } from 'node:os';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { Worker } from 'node:worker_threads';
 import {
-  PLAN_IDS, addPlanResults, addSkillResult, curveFromState, freshLearnedState, setSkillCurve, setStrategyStats, statKey,
-  FACTION_IDS, type LearnedState, type Participant, type PlanRecord,
+  PLAN_IDS, addPlanResults, addSkillResult, curveFromState, freshLearnedState, setModels, setSkillCurve, setStrategyStats, statKey,
+  FACTION_IDS, type LearnedState, type Participant, type PlanRecord, type Sample,
 } from '@bc/shared';
 import type { Persistence } from '../persistence';
-import type { FromWorker, ToWorker, SelfPlayResult } from './worker';
+import type { FromWorker, ToWorker, SelfPlayResult, ModelKind } from './worker';
 
 export type LearnerMode = 'off' | 'idle' | 'always';
 
@@ -51,7 +51,8 @@ export class Learner {
       const doc = await this.db.learner.load();
       if (doc && doc.version === this.state.version && doc.skillElo?.length === this.state.skillElo.length) {
         const { _id: _i, updatedAt: _u, ...rest } = doc;
-        this.state = rest;
+        // Fields added later get their defaults.
+        this.state = { ...freshLearnedState(), ...rest };
       }
     } catch (err) {
       console.error('[learner] could not load the learned state', err);
@@ -59,10 +60,19 @@ export class Learner {
     this.apply();
     if (this.o.mode === 'off') return;
     this.worker = new Worker(new URL('./worker-boot.mjs', import.meta.url));
-    this.worker.on('message', (m: FromWorker) => { if (m.t === 'game') this.onSelfPlay(m.result); });
+    this.worker.on('message', (m: FromWorker) => {
+      if (m.t === 'game') this.onSelfPlay(m.result);
+      else if (m.t === 'model') this.onModel(m.kind, m.model, m.valLoss, m.championLoss, m.samples);
+    });
     this.worker.on('error', (e) => { console.error('[learner worker]', e); this.worker = null; });
     this.lag.enable();
     this.post({ t: 'state', strategy: this.state.strategy, curve: curveFromState(this.state) });
+    this.post({ t: 'models', models: this.modelSet() });
+    // The worker trains on human samples kept from earlier matches too.
+    try {
+      const [value, policy] = await Promise.all([this.db.learner.recentSamples('value', 20_000), this.db.learner.recentSamples('policy', 20_000)]);
+      this.post({ t: 'samples', value, policy });
+    } catch (err) { console.error('[learner] could not load samples', err); }
     this.timer = setInterval(() => this.throttle(), 2000);
     this.timer.unref();
   }
@@ -98,7 +108,54 @@ export class Learner {
     setStrategyStats(this.state.strategy);
     const curve = curveFromState(this.state);
     setSkillCurve(curve);
+    setModels(this.modelSet());
     this.post({ t: 'state', strategy: this.state.strategy, curve });
+  }
+
+  private modelSet() {
+    const s = this.state;
+    return { ...s.models, enabled: s.modelsEnabled, version: s.modelVersion };
+  }
+
+  /** The worker found a model that predicts held-out games better: it becomes the live one. */
+  private onModel(kind: ModelKind, model: NonNullable<LearnedState['models']['value']>, valLoss: number, championLoss: number | null, samples: number) {
+    const s = this.state;
+    s.models = { ...s.models, [kind]: model };
+    s.modelVersion++;
+    s.history = [...s.history, { version: s.modelVersion, at: new Date().toISOString(), models: s.models }].slice(-5);
+    // A new policy model (it changes how bots play) gets a fresh chance in the A/B games.
+    if (kind === 'policy') { s.modelsEnabled = true; s.modelEdge = [0, 0]; }
+    this.lastModel = { kind, valLoss, championLoss, samples, at: new Date() };
+    this.apply();
+    this.post({ t: 'models', models: this.modelSet() });
+    this.unsaved++;
+    void this.save();
+  }
+
+  private lastModel: { kind: ModelKind; valLoss: number; championLoss: number | null; samples: number; at: Date } | null = null;
+
+  /** Switches back to an earlier model version (admin). */
+  rollback(version: number): boolean {
+    const h = this.state.history.find((x) => x.version === version);
+    if (!h) return false;
+    this.state.models = h.models;
+    this.state.modelsEnabled = true;
+    this.state.modelEdge = [0, 0];
+    this.apply();
+    this.post({ t: 'models', models: this.modelSet() });
+    this.unsaved++;
+    void this.save();
+    return true;
+  }
+
+  /** Turns the learned models on or off for all bots (admin). */
+  setModelsEnabled(on: boolean) {
+    this.state.modelsEnabled = on;
+    this.state.modelEdge = [0, 0];
+    this.apply();
+    this.post({ t: 'models', models: this.modelSet() });
+    this.unsaved++;
+    void this.save();
   }
 
   private onSelfPlay(r: SelfPlayResult) {
@@ -107,6 +164,22 @@ export class Learner {
     addPlanResults(this.state.strategy, r.players.flatMap((p) => p.log), 1);
     addSkillResult(this.state, r.players.map((p) => ({ team: p.team, skill: p.skill })), r.winner, K_SELF);
     this.state.selfPlayGames++;
+    // A/B check: one side with the models, the other without. If the model side keeps losing,
+    // the models are switched off until a better one arrives.
+    const side = (t: 0 | 1) => r.players.filter((p) => p.team === t);
+    const uses = (t: 0 | 1) => side(t).every((p) => p.models), none = (t: 0 | 1) => side(t).every((p) => !p.models);
+    const modelTeam = uses(0) && none(1) ? 0 : uses(1) && none(0) ? 1 : null;
+    if (modelTeam !== null && this.state.models.policy) {
+      const e = this.state.modelEdge;
+      e[0] = e[0] * 0.995 + (r.winner === modelTeam ? 1 : 0);
+      e[1] = e[1] * 0.995 + 1;
+      if (this.state.modelsEnabled && e[1] >= 80 && e[0] / e[1] < 0.45) {
+        this.state.modelsEnabled = false;
+        console.warn(`[learner] models off: model side won only ${Math.round((100 * e[0]) / e[1])}% of A/B games`);
+        this.apply();
+        this.post({ t: 'models', models: this.modelSet() });
+      }
+    }
     this.unsaved++;
     if (this.state.selfPlayGames % 5 === 0) this.apply();
   }
@@ -115,7 +188,15 @@ export class Learner {
    * A real match finished: its bots' plans and results feed the strategy stats, and the result
    * against the humans' known ratings calibrates the skill curve.
    */
-  recordMatch(players: Participant[], winner: 0 | 1, plans: PlanRecord[], humans: number) {
+  recordMatch(players: Participant[], winner: 0 | 1, plans: PlanRecord[], humans: number, samples?: { value: Sample[]; policy: Sample[] }) {
+    // Training samples (human play is kept in the database: it's what makes bots play like people).
+    if (samples && (samples.value.length || samples.policy.length)) {
+      this.post({ t: 'samples', value: samples.value, policy: samples.policy });
+      if (humans) {
+        void this.db.learner.addSamples('value', samples.value).catch((err) => console.error('[learner] samples', err));
+        void this.db.learner.addSamples('policy', samples.policy.filter((x) => x.human)).catch((err) => console.error('[learner] samples', err));
+      }
+    }
     addPlanResults(this.state.strategy, plans, humans ? REAL_WEIGHT : 1);
     if (players.some((p) => 'skill' in p)) addSkillResult(this.state, players, winner, humans ? K_REAL : K_SELF);
     this.state.realGames++;
@@ -154,6 +235,16 @@ export class Learner {
       lastSelfPlay: this.lastResult,
       skillCurve: curveFromState(s),
       bestOpenings: best,
+      models: {
+        version: s.modelVersion,
+        enabled: s.modelsEnabled,
+        value: !!s.models.value,
+        policy: !!s.models.policy,
+        abWinRate: s.modelEdge[1] ? Math.round((100 * s.modelEdge[0]) / s.modelEdge[1]) / 100 : null,
+        abGames: Math.round(s.modelEdge[1]),
+        lastTrained: this.lastModel,
+        history: s.history.map((h) => ({ version: h.version, at: h.at })),
+      },
     };
   }
 }

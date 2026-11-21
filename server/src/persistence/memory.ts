@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { ObjectId } from 'mongodb';
-import type { SimState, UserStats } from '@bc/shared';
+import type { Sample, SimState, UserStats } from '@bc/shared';
 import type { LearnerDoc, MatchDoc, SavedGameDoc, UserDoc } from './db';
 import type { Persistence } from './index';
 import { EMPTY_STATS } from './users';
@@ -19,6 +19,7 @@ export function createMemoryPersistence(): Persistence {
   const matches: MatchDoc[] = [];
   const saved = new Map<string, SavedGameDoc>();
   let learned: LearnerDoc | null = null;
+  const samples: Record<'value' | 'policy', Sample[]> = { value: [], policy: [] };
 
   return {
     users: {
@@ -77,6 +78,8 @@ export function createMemoryPersistence(): Persistence {
     learner: {
       async load() { return learned ? clone(learned) : null; },
       async save(doc: Omit<LearnerDoc, '_id' | 'updatedAt'>) { learned = { ...clone(doc), _id: 'state', updatedAt: new Date() }; },
+      async addSamples(kind: 'value' | 'policy', s: Sample[]) { samples[kind].push(...clone(s)); samples[kind] = samples[kind].slice(-100_000); },
+      async recentSamples(kind: 'value' | 'policy', limit: number) { return clone(samples[kind].slice(-limit)); },
     },
     async close() {},
   };
