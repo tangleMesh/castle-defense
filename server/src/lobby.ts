@@ -47,7 +47,7 @@ export class Lobby {
 
   readonly matchmaker: Matchmaker;
 
-  constructor(private db: Persistence, private tickMs: number, mm: { botWait?: [number, number]; botWaitPerPlayer?: number } = {}) {
+  constructor(private db: Persistence, private tickMs: number, mm: { botWait?: [number, number]; botWaitPerPlayer?: number; foundDelay?: number } = {}) {
     this.matchmaker = new Matchmaker(db, {
       send: (userId, msg) => this.conns.get(userId)?.send(msg),
       inRoom: (userId) => this.membership.has(userId),

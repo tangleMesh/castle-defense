@@ -1,5 +1,5 @@
 import {
-  BASE_INCOME, SAPPHIRE_GOLD, START_SAPPHIRES, START_LUMBER, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_FULL_SECONDS, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries, AI_LEVEL_NAMES, type MatchStats, type MatchStatsPlayer,
+  BASE_INCOME, BOUNTY_MULT, SAPPHIRE_GOLD, START_SAPPHIRES, START_LUMBER, BUILDINGS, INCOME_PCT, FACTIONS, ITEMS, ITEM_BY_ID, MAX_ITEMS, GRID_HOTKEYS, INCOME_INTERVAL_TICKS, REPAIR_FULL_SECONDS, CASTLE_REPAIR_HPS, MAP, ROCK_GRID, TICK_RATE, UNITS, DAMAGE_TABLE, fogActive, unitAbilities, buildingAbilities, num, teammateCarries, AI_LEVEL_NAMES, type MatchStats, type MatchStatsPlayer,
   type ArmorType, type AttackType, type EntRow, type ServerMessage, type SimEvent, type Snapshot,
 } from '@bc/shared';
 import { getGraphics, setGraphicsMode } from '../settings';
@@ -682,7 +682,7 @@ export class Hud {
         h('div', null, `Attack: ${num(u.dmg)} ${ATTACK_LABEL[u.attackType]}${u.range > 1.5 ? ` · range ${u.range}` : ' · melee'}${u.splash ? ' · splash' : ''}${u.chain ? ` · chains ${u.chain}` : ''}`),
         h('div', null, `Armor: ${u.armor} ${ARMOR_LABEL[u.armorType]} · Speed ${u.speed}${u.air ? ' · flying' : ''}`),
         unitAbilities(u, UNITS).map((a) => h('div', { class: 'ability' }, `✦ ${a}`)),
-        h('div', { class: 'dim' }, `Strong vs ${strongAgainst(u.attackType)} · Bounty ${u.bounty}g`),
+        h('div', { class: 'dim' }, `Strong vs ${strongAgainst(u.attackType)} · Bounty ${Math.round(u.bounty * BOUNTY_MULT)}g`),
       ));
     } else if (kind === 1) {
       const d = BUILDINGS[type];

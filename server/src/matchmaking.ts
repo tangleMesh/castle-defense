@@ -1,12 +1,12 @@
 import {
   FACTION_IDS, START_RATING, botTargets, skillForElo,
-  type FactionId, type MatchmakingStatus, type UserStats,
+  type FactionId, type MatchFoundPlayer, type MatchmakingStatus, type ServerMessage, type UserStats,
 } from '@bc/shared';
 import type { Persistence } from './persistence';
 
 /** What the matchmaker needs from the lobby. */
 export interface MatchmakingHost {
-  send(userId: string, msg: { type: 'mm.status'; status: MatchmakingStatus } | { type: 'error'; message: string }): void;
+  send(userId: string, msg: Extract<ServerMessage, { type: 'mm.status' | 'mm.found' | 'error' }>): void;
   /** The user sits in a lobby room or match. */
   inRoom(userId: string): boolean;
   online(userId: string): boolean;
@@ -38,6 +38,8 @@ export interface MatchmakerOptions {
   botWait?: [number, number];
   /** Seconds more per extra player in a team (bigger matches are slower to fill). */
   botWaitPerPlayer?: number;
+  /** Seconds of the "match found" screen before the match loads. */
+  foundDelay?: number;
   tickMs?: number;
 }
 
@@ -234,12 +236,19 @@ export class Matchmaker {
     for (const team of [0, 1] as const) for (let i = humans.filter((h) => h.team === team).length; i < size; i++) slots.push({ team });
     const targets = botTargets(slots);
     const players: RankedPlayer[] = humans.map((h) => ({ userId: h.userId, name: h.name, team: h.team, faction: FACTION_IDS[0] }));
+    const lineup: [MatchFoundPlayer[], MatchFoundPlayer[]] = [[], []];
+    for (const h of humans) lineup[h.team].push({ userId: h.userId, name: h.name, rating: Math.round(h.rating) });
     for (let i = humans.length; i < slots.length; i++) {
       const target = targets[i] ?? START_RATING;
       const acct = await this.botAccount(target);
       players.push({ userId: acct.id, name: acct.name, team: slots[i].team, faction: FACTION_IDS[0], botSkill: skillForElo(target) });
+      lineup[slots[i].team].push({ userId: acct.id, name: acct.name, rating: Math.round(acct.rating) });
     }
     try {
+      // The "match found" screen: everyone sees the lineup for a few seconds, then the match loads.
+      const delay = this.o.foundDelay ?? 6;
+      for (const h of humans) this.host.send(h.userId, { type: 'mm.found', size, startsIn: delay, you: h.team, teams: lineup });
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay * 1000));
       await this.host.startRanked(size, players);
     } finally {
       for (const p of teams.flat()) { p.search = null; p.found = false; }
@@ -253,18 +262,18 @@ export class Matchmaker {
    * A free bot account with a rating near `target` (a new one if none fits), so the rating its
    * opponents see matches how it plays.
    */
-  private async botAccount(target: number): Promise<{ id: string; name: string }> {
+  private async botAccount(target: number): Promise<{ id: string; name: string; rating: number }> {
     const bots = (await this.db.users.listBots()).filter((b) => !this.busyBots.has(b._id!.toHexString()));
     const near = bots.filter((b) => Math.abs((b.stats?.rating ?? START_RATING) - target) <= 90);
     const pick = near.length ? near[Math.floor(Math.random() * near.length)] : null;
-    if (pick) { this.busyBots.add(pick._id!.toHexString()); return { id: pick._id!.toHexString(), name: pick.username }; }
+    if (pick) { this.busyBots.add(pick._id!.toHexString()); return { id: pick._id!.toHexString(), name: pick.username, rating: pick.stats?.rating ?? START_RATING }; }
     for (let attempt = 0; attempt < 20; attempt++) {
       const name = botName();
       try {
         const doc = await this.db.users.createBot(name, botStats(target));
         const id = doc._id!.toHexString();
         this.busyBots.add(id);
-        return { id, name };
+        return { id, name, rating: doc.stats.rating };
       } catch { /* name taken: try another */ }
     }
     throw new Error('could not create a bot account');

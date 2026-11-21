@@ -249,8 +249,16 @@ export async function rankedScenario(base: string, opts: { prefix: string; timeo
   await c.waitFor('mm.status', (m) => m.status.party?.members.length === 2);
   d.send({ type: 'mm.queue', size: 2 });
   await d.waitFor('error', (m) => m.message.includes('leader'));
-  const ic = c.waitFor('match.init', () => true, 30_000);
+  const fc = c.waitFor('mm.found', () => true, 30_000);
+  const ic = c.waitFor('match.init', () => true, 40_000);
   c.send({ type: 'mm.queue', size: 2 });
+  // The match-found lineup comes first: both teams, the party on one side.
+  const found = await fc;
+  const sawInit = await Promise.race([ic.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 300))]);
+  assert(!sawInit, '2v2: the lineup is shown before the match loads');
+  assert(found.teams[found.you].some((p) => p.userId === c.userId) && found.teams[found.you].some((p) => p.userId === d.userId), '2v2: lineup shows the party together');
+  assert(found.teams[1 - found.you].length === 2 && found.teams.flat().every((p) => p.rating > 0), '2v2: lineup has the opponents and ratings');
+  log.push(`match found: ${found.teams.map((t) => t.map((p) => `${p.name} ${p.rating}`).join(' + ')).join(' vs ')} (loads in ${found.startsIn} s)`);
   const mc = await ic;
   assert(mc.players.length === 4, '2v2: four players');
   const mine = mc.players.find((p) => p.userId === c.userId)!, mate = mc.players.find((p) => p.userId === d.userId)!;

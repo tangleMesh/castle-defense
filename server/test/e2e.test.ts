@@ -7,7 +7,7 @@ const persistence = createMemoryPersistence();
 const servers: RunningServer[] = [];
 
 async function boot(port = 0) {
-  const s = await startServer({ persistence, port, host: '127.0.0.1', tickMs: 1, logger: false, matchmaking: { botWait: [2, 3], botWaitPerPlayer: 0 } });
+  const s = await startServer({ persistence, port, host: '127.0.0.1', tickMs: 1, logger: false, matchmaking: { botWait: [2, 3], botWaitPerPlayer: 0, foundDelay: 1 } });
   servers.push(s);
   return s;
 }

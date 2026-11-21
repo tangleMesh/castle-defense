@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.55.0
+
+- **Match found screen:** when ranked matchmaking finds a match, everyone in it sees a "Match found!" screen for about 6 seconds before the battlefield loads.
+  - **Lineup:** both teams with names and Elo, your team and you marked, each team's average.
+  - **Countdown:** "Battle starts in 5…" with a progress bar.
+- **Round gold values:** every price and bonus after the ×1.2 is rounded to a multiple of 5, so they read like the map's prices (138 → 140, 192 → 190, 252 → 250 …). That covers buildings, upgrades, items, the sapphire and the first-build bonuses (now 25/20/10/5). Start gold (300) and base income (6) stay exact.
+- **Fixed:** a unit tooltip's bounty now shows what a kill actually pays (×1.2).
+
 ## 0.54.0
 
 - **Leaderboard:** the lobby header has a "Leaderboard" button that opens the top 100 players by Elo (accounts with at least one finished match).

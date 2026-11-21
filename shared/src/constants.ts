@@ -23,13 +23,16 @@ export const SNAPSHOT_EVERY = 2;
  * stays as in the map.
  */
 export const GOLD_FACTOR = 1.2;
-const gold = (v: number) => Math.round(v * GOLD_FACTOR);
+/** A gold amount × GOLD_FACTOR, rounded to a multiple of 5 (prices like 140 or 190, not 138 or 192). */
+export const goldPrice = (v: number) => (v <= 0 ? 0 : Math.max(5, Math.round((v * GOLD_FACTOR) / 5) * 5));
+const gold = goldPrice;
 export const START_GOLD = gold(250);
 /** Lumber at the start of a round; finishing buildings (and upgrades) earns more. */
 export const START_LUMBER = 125;
 export const INCOME_INTERVAL_TICKS = 10 * TICK_RATE;
 /** Base income per tick. */
-export const BASE_INCOME = gold(5);
+/** Base income per tick: 5 × 1.2 = 6 (kept exact, rounding to 5 would undo the factor). */
+export const BASE_INCOME = Math.round(5 * GOLD_FACTOR);
 /** Default share of a building's value (gold invested, upgrades included) paid out each income tick (the map's 0.2%·10). */
 export const INCOME_PCT = 0.02;
 /** Treasure Boxes: the first adds +25% income, each further one 15% less than the one before. */

@@ -1,4 +1,4 @@
-import { GOLD_FACTOR } from '../constants';
+import { goldPrice } from '../constants';
 import type { BuildingDef, FactionDef, FactionId, UnitDef } from './types';
 import { IRONVOW } from './factions/ironvow';
 import { THORNWILD } from './factions/thornwild';
@@ -46,7 +46,7 @@ for (const b of COMMON_BUILDINGS) {
   for (const f of Object.values(FACTIONS)) if (!f.build.includes(b.id)) f.build.push(b.id);
 }
 // Gold prices: the faction files hold the map's values; the game charges them × GOLD_FACTOR.
-for (const b of Object.values(BUILDINGS)) b.cost = Math.round(b.cost * GOLD_FACTOR);
+for (const b of Object.values(BUILDINGS)) b.cost = goldPrice(b.cost);
 // Builder menu: unit spawners from cheapest to most expensive, then everything else (towers,
 // ability buildings, Treasure Box, legendaries), also by price.
 for (const f of Object.values(FACTIONS)) {

@@ -18,7 +18,7 @@ export interface ServerOptions {
   clientDist?: string;
   logger?: boolean;
   /** Matchmaking: how long parties wait for humans before bots fill the match (seconds; tests use short waits). */
-  matchmaking?: { botWait?: [number, number]; botWaitPerPlayer?: number };
+  matchmaking?: { botWait?: [number, number]; botWaitPerPlayer?: number; foundDelay?: number };
   /** Background bot learner (default: env LEARNER, else 'always'; tests: 'off'). */
   learner?: LearnerMode;
 }

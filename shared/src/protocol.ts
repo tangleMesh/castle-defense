@@ -138,6 +138,9 @@ export function parseInviteCode(input: string): string | null {
 /** Ranked matches: always random factions; best of this many rounds. */
 export const RANKED_BEST_OF = 3;
 
+/** A player in the match-found lineup. */
+export interface MatchFoundPlayer { userId: string; name: string; rating: number }
+
 /** The player's matchmaking state: their party and whether it is searching. */
 export interface MatchmakingStatus {
   /** The party (absent: not in a party; queueing alone creates a one-person party). */
@@ -184,4 +187,6 @@ export type ServerMessage =
   | { type: 'match.end'; reason: 'finished' | 'saved' | 'left'; winner?: 0 | 1; score?: [number, number]; stats?: MatchStats }
   | { type: 'chat'; from: string; text: string; scope: 'lobby' | 'match' | 'team' }
   | { type: 'mm.status'; status: MatchmakingStatus }
+  /** A ranked match was found: who plays (both teams), it loads in `startsIn` seconds. */
+  | { type: 'mm.found'; size: number; startsIn: number; you: 0 | 1; teams: [MatchFoundPlayer[], MatchFoundPlayer[]] }
   | { type: 'error'; message: string };

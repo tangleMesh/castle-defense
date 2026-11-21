@@ -1,4 +1,4 @@
-import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage, type MatchmakingStatus, type LeaderboardEntry, RANKED_BEST_OF } from '@bc/shared';
+import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage, type MatchmakingStatus, type LeaderboardEntry, type MatchFoundPlayer, RANKED_BEST_OF } from '@bc/shared';
 import { builderPortrait } from './portraits';
 import { getGraphics, setGraphicsMode } from '../settings';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
@@ -32,6 +32,9 @@ export class LobbyView {
   private board: { top: LeaderboardEntry[]; you: LeaderboardEntry | null; loading: boolean; error?: string } | null = null;
   private mmSize: 1 | 2 | 3 | 4 = 1;
   private mmTimer: ReturnType<typeof setInterval> | null = null;
+  /** The "match found" screen: lineup and when the match loads. */
+  private found: { size: number; you: 0 | 1; teams: [MatchFoundPlayer[], MatchFoundPlayer[]]; at: number } | null = null;
+  private foundTimer: ReturnType<typeof setInterval> | null = null;
   /** The first room state from the server arrived (a waiting invite is used then). */
   private synced = false;
   private root = $('#screen-lobby');
@@ -81,6 +84,13 @@ export class LobbyView {
         if (!m.status.search && this.mmTimer) { clearInterval(this.mmTimer); this.mmTimer = null; }
         break;
       }
+      case 'mm.found': {
+        this.found = { size: m.size, you: m.you, teams: m.teams, at: Date.now() + m.startsIn * 1000 };
+        if (this.foundTimer) clearInterval(this.foundTimer);
+        this.foundTimer = setInterval(() => this.tickFound(), 250);
+        break;
+      }
+      case 'match.init': this.clearFound(); return;
       case 'chat': if (m.scope === 'lobby') { this.chat.push({ from: m.from, text: m.text }); this.chat = this.chat.slice(-50); } break;
       case 'error': this.error = m.message; setTimeout(() => { if (this.error === m.message) { this.error = ''; this.render(); } }, 5000); break;
       default: return;
@@ -112,6 +122,7 @@ export class LobbyView {
         this.board ? this.renderBoard() : this.room ? this.renderRoom(this.room) : this.renderBrowser(),
         h('aside', { class: 'side' }, this.renderSaved(), this.renderHistory(), this.renderChat()),
       ),
+      this.found ? this.renderFound() : null,
     ].filter((n): n is HTMLElement => !!n));
     if (chatFocused || chatDraft) {
       const box = this.root.querySelector<HTMLInputElement>('.lobby-chat input');
@@ -166,6 +177,42 @@ export class LobbyView {
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------- match found
+
+  private clearFound() {
+    this.found = null;
+    if (this.foundTimer) { clearInterval(this.foundTimer); this.foundTimer = null; }
+    this.root.querySelector('.found-overlay')?.remove();
+  }
+
+  private tickFound() {
+    const el = this.root.querySelector('.found-count');
+    if (!this.found || !el) return;
+    const left = Math.max(0, Math.ceil((this.found.at - Date.now()) / 1000));
+    el.textContent = left > 0 ? String(left) : '…';
+    const bar = this.root.querySelector<HTMLElement>('.found-bar i');
+    if (bar) bar.style.width = `${Math.min(100, 100 - ((this.found.at - Date.now()) / 6000) * 100)}%`;
+  }
+
+  /** Full-screen lineup between "match found" and the battlefield. */
+  private renderFound() {
+    const f = this.found!;
+    const team = (t: 0 | 1) => h('div', { class: `found-team t${t} ${t === f.you ? 'mine' : ''}` },
+      h('h3', { style: `color:${TEAM_CSS[t]}` }, `${TEAM_NAMES[t]}${t === f.you ? ' · your team' : ''}`),
+      f.teams[t].map((p) => h('div', { class: `found-player ${p.userId === this.user.id ? 'me' : ''}` },
+        h('b', null, p.name), h('span', { class: 'elo' }, String(p.rating)))),
+      h('div', { class: 'found-avg dim' }, `Ø ${Math.round(f.teams[t].reduce((s, p) => s + p.rating, 0) / Math.max(1, f.teams[t].length))}`));
+    const left = Math.max(0, Math.ceil((f.at - Date.now()) / 1000));
+    return h('div', { class: 'found-overlay' },
+      h('div', { class: 'found-card' },
+        h('div', { class: 'found-title' }, 'Match found!'),
+        h('div', { class: 'dim' }, `Ranked ${f.size}v${f.size} · random factions · best of ${RANKED_BEST_OF}`),
+        h('div', { class: 'found-teams' }, team(0), h('div', { class: 'found-vs' }, 'VS'), team(1)),
+        h('div', { class: 'found-foot' },
+          h('span', { class: 'dim' }, 'Battle starts in'), h('span', { class: 'found-count' }, left > 0 ? String(left) : '…')),
+        h('div', { class: 'found-bar' }, h('i', null))));
   }
 
   // ---------------------------------------------------------------- leaderboard
