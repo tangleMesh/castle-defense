@@ -41,12 +41,24 @@ export class UserRepo {
 
   /** Accounts with at least one finished match, best Elo first (ties: more wins, then older account). */
   async leaderboard(limit: number): Promise<UserDoc[]> {
-    return this.c.users.find({ 'stats.matches': { $gt: 0 } }).sort({ 'stats.rating': -1, 'stats.wins': -1, createdAt: 1 }).limit(limit).toArray();
+    // Accounts from before Elo existed have no stored rating: they count with the start rating.
+    return this.c.users.aggregate<UserDoc>([
+      { $match: { 'stats.matches': { $gt: 0 } } },
+      { $addFields: { _r: { $ifNull: ['$stats.rating', START_RATING] }, _w: { $ifNull: ['$stats.wins', 0] } } },
+      { $sort: { _r: -1, _w: -1, createdAt: 1 } },
+      { $limit: limit },
+      { $project: { _r: 0, _w: 0 } },
+    ]).toArray();
   }
 
   /** How many ranked accounts are ahead of this rating. */
   async countAbove(rating: number): Promise<number> {
-    return this.c.users.countDocuments({ 'stats.matches': { $gt: 0 }, 'stats.rating': { $gt: rating } });
+    const [res] = await this.c.users.aggregate<{ n: number }>([
+      { $match: { 'stats.matches': { $gt: 0 } } },
+      { $match: { $expr: { $gt: [{ $ifNull: ['$stats.rating', START_RATING] }, rating] } } },
+      { $count: 'n' },
+    ]).toArray();
+    return res?.n ?? 0;
   }
 
   async verify(username: string, password: string): Promise<UserDoc | null> {

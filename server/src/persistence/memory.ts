@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { ObjectId } from 'mongodb';
-import type { Sample, SimState, UserStats } from '@bc/shared';
+import { START_RATING, type Sample, type SimState, type UserStats } from '@bc/shared';
 import type { LearnerDoc, MatchDoc, SavedGameDoc, UserDoc } from './db';
 import type { Persistence } from './index';
 import { EMPTY_STATS } from './users';
@@ -37,10 +37,10 @@ export function createMemoryPersistence(): Persistence {
       },
       async leaderboard(limit: number) {
         return [...users.values()].filter((u) => (u.stats.matches ?? 0) > 0)
-          .sort((a, b) => (b.stats.rating ?? 0) - (a.stats.rating ?? 0) || (b.stats.wins ?? 0) - (a.stats.wins ?? 0) || a.createdAt.getTime() - b.createdAt.getTime())
+          .sort((a, b) => (b.stats.rating ?? START_RATING) - (a.stats.rating ?? START_RATING) || (b.stats.wins ?? 0) - (a.stats.wins ?? 0) || a.createdAt.getTime() - b.createdAt.getTime())
           .slice(0, limit).map(cloneUser);
       },
-      async countAbove(rating: number) { return [...users.values()].filter((u) => (u.stats.matches ?? 0) > 0 && (u.stats.rating ?? 0) > rating).length; },
+      async countAbove(rating: number) { return [...users.values()].filter((u) => (u.stats.matches ?? 0) > 0 && (u.stats.rating ?? START_RATING) > rating).length; },
       async listBots() { return [...users.values()].filter((u) => u.bot).map(cloneUser); },
       async verify(username: string, password: string) {
         const u = [...users.values()].find((x) => x.usernameLower === username.toLowerCase());
