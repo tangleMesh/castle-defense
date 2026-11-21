@@ -7,6 +7,10 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.55.1
+
+- **The bot player base grows over time:** when ranked matchmaking fills a slot with a bot, it usually picks a random free bot account whose Elo fits (±90), but one time in four a brand-new account joins instead, with a new name, rating and history. So you meet a mix of familiar and new names, and the pool keeps growing. When no fitting account exists, a new one is always created.
+
 ## 0.55.0
 
 - **Match found screen:** when ranked matchmaking finds a match, everyone in it sees a "Match found!" screen for about 6 seconds before the battlefield loads.

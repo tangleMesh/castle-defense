@@ -28,7 +28,7 @@ Difficulty comes only from how well they play.
 
 When a ranked search doesn't find enough real players within its semi-random wait, the free slots go to bot accounts.
 - **Accounts:** these are regular-looking players (`users` with `bot: true`, which can't sign in) with names, ratings and a match history, and their Elo moves with results.
-- **Choice:** the matchmaker picks an account whose rating is near the target Elo that makes the match fair (`botTargets`), or creates one.
+- **Choice:** the matchmaker usually picks a random free account whose rating is near the target Elo that makes the match fair (`botTargets`, ±90). One time in four (`newBotChance`), or when none fits, it creates a brand-new account, so the pool of bot players grows over time.
 - **Play:** the AI plays it at that target's skill.
 - **Visibility:** to clients they are ordinary accounts.
 

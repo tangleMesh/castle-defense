@@ -38,6 +38,8 @@ export interface MatchmakerOptions {
   botWait?: [number, number];
   /** Seconds more per extra player in a team (bigger matches are slower to fill). */
   botWaitPerPlayer?: number;
+  /** Chance that a bot slot gets a brand-new account even when a fitting one exists (pool grows over time). */
+  newBotChance?: number;
   /** Seconds of the "match found" screen before the match loads. */
   foundDelay?: number;
   tickMs?: number;
@@ -259,13 +261,16 @@ export class Matchmaker {
   // ---------------------------------------------------------------- bot accounts
 
   /**
-   * A free bot account with a rating near `target` (a new one if none fits), so the rating its
-   * opponents see matches how it plays.
+   * A bot account with a rating near `target`, so the rating its opponents see matches how it
+   * plays: a random free fitting one, or (25%, or when none fits) a brand-new one.
    */
   private async botAccount(target: number): Promise<{ id: string; name: string; rating: number }> {
     const bots = (await this.db.users.listBots()).filter((b) => !this.busyBots.has(b._id!.toHexString()));
     const near = bots.filter((b) => Math.abs((b.stats?.rating ?? START_RATING) - target) <= 90);
-    const pick = near.length ? near[Math.floor(Math.random() * near.length)] : null;
+    // Usually a random fitting regular; one time in four a newcomer instead, so the pool of bot
+    // players grows over time like a real player base (and opponents don't repeat forever).
+    const fresh = Math.random() < (this.o.newBotChance ?? 0.25);
+    const pick = near.length && !fresh ? near[Math.floor(Math.random() * near.length)] : null;
     if (pick) { this.busyBots.add(pick._id!.toHexString()); return { id: pick._id!.toHexString(), name: pick.username, rating: pick.stats?.rating ?? START_RATING }; }
     for (let attempt = 0; attempt < 20; attempt++) {
       const name = botName();
