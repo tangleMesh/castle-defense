@@ -26,5 +26,5 @@ export const NEUTRAL_TUNING: Tuning = { factions: {}, units: {}, aiIncome: {} };
 /** Applies a tuning (unit multipliers and bot incomes) from the hand-written base values. */
 export function applyTuning(t: Tuning) {
   applyUnitTuning(t);
-  for (const l of AI_LEVELS) AI_INCOME[l] = t.aiIncome[l] ?? DEFAULT_INCOME[l];
+  for (const l of AI_LEVELS) if (l !== 'auto') AI_INCOME[l] = t.aiIncome[l] ?? DEFAULT_INCOME[l];
 }

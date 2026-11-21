@@ -1,4 +1,4 @@
-import { AI_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
+import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage } from '@bc/shared';
 import { builderPortrait } from './portraits';
 import { getGraphics, setGraphicsMode } from '../settings';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
@@ -8,6 +8,7 @@ import { TEAM_CSS, TEAM_NAMES } from '../game/iso';
 import { $, clear, css, h, timeAgo } from './dom';
 
 const AI_HINTS: Record<AiLevel, string> = {
+  auto: 'Plays as strong as the humans in the game (matched to their Elo, teams kept fair), each with its own playstyle and temper.',
   easy: 'Slow, builds at random, sloppy rescue strikes.',
   normal: 'Steady builder that upgrades and uses auras and towers.',
   hard: 'Counters your army, builds a safe base behind its castle, plans its economy, saves the rescue strike for big waves.',
@@ -22,7 +23,7 @@ export class LobbyView {
   private history: MatchSummary[] = [];
   private chat: Array<{ from: string; text: string }> = [];
   private error = '';
-  private botLevel: AiLevel = 'normal';
+  private botLevel: AiLevel = 'auto';
   /** Short confirmation next to the invite buttons ("Link copied"). */
   private copied = '';
   /** The first room state from the server arrived (a waiting invite is used then). */
@@ -215,7 +216,7 @@ export class LobbyView {
       h('div', { class: 'teams' }, team(0), h('div', { class: 'vs' }, 'VS'), team(1)),
       isHost && !locked ? h('div', { class: 'bot-bar' },
         h('span', { class: 'dim' }, 'Computer players:'),
-        AI_LEVELS.map((l) => h('button', {
+        BOT_LEVELS.map((l) => h('button', {
           class: `btn small ${this.botLevel === l ? '' : 'ghost'}`, title: AI_HINTS[l],
           onclick: () => { this.botLevel = l; this.render(); },
         }, AI_LEVEL_NAMES[l])),
@@ -257,7 +258,7 @@ export class LobbyView {
       h('span', { class: 'fac-dot', style: `background:${random ? 'var(--gold-2)' : css(FACTIONS[s.faction].color)}` }),
       h('b', null, s.name.split(' (')[0]), h('span', { class: 'tag bot' }, 'AI'),
       h('select', { title: 'Difficulty', onchange: (e: Event) => update({ level: (e.target as HTMLSelectElement).value as AiLevel }) },
-        AI_LEVELS.map((l) => h('option', { value: l, selected: s.bot === l }, AI_LEVEL_NAMES[l]))),
+        BOT_LEVELS.map((l) => h('option', { value: l, selected: s.bot === l }, AI_LEVEL_NAMES[l]))),
       random ? h('span', { class: 'dim' }, r.mode === 'mirror' ? 'Mirrored faction' : 'Random faction') : h('select', { title: 'Faction', onchange: (e: Event) => update({ faction: (e.target as HTMLSelectElement).value as FactionId }) },
         FACTION_IDS.map((id) => {
           const mate = r.slots.find((x) => x.team === t && x.faction === id && x.userId !== s.userId);

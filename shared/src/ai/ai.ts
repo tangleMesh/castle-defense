@@ -7,15 +7,24 @@ import { KIND_CODES } from '../sim/snapshot';
 import { computeVision, entityVisible } from '../sim/vision';
 import type { Sim } from '../sim/sim';
 import type { Command, Entity, PlayerState } from '../sim/state';
+import { Humanizer } from './human';
+import { drawPersona, personaProfile, type Persona } from './persona';
 
-export type AiLevel = 'easy' | 'normal' | 'hard' | 'brutal';
+/**
+ * Bot levels: 'auto' plays as strong as the humans in the match (its skill follows a target Elo,
+ * with its own personality), the presets are fixed difficulties.
+ */
+export type AiLevel = 'auto' | 'easy' | 'normal' | 'hard' | 'brutal';
+/** The fixed difficulty ladder (weakest first), as the simulation lab measures it. */
 export const AI_LEVELS: AiLevel[] = ['easy', 'normal', 'hard', 'brutal'];
-export const AI_LEVEL_NAMES: Record<AiLevel, string> = { easy: 'Easy', normal: 'Normal', hard: 'Hard', brutal: 'Brutal' };
+/** Every level a bot can have (lobby choices). */
+export const BOT_LEVELS: AiLevel[] = ['auto', ...AI_LEVELS];
+export const AI_LEVEL_NAMES: Record<AiLevel, string> = { auto: 'Auto', easy: 'Easy', normal: 'Normal', hard: 'Hard', brutal: 'Brutal' };
 /**
  * Income multiplier per level, set by the balancer (shared/src/data/tuning.ts). Brutal openly
  * cheats (it also sees through the fog of war); easier levels may get less than a player.
  */
-export const AI_INCOME: Record<AiLevel, number> = { easy: 1, normal: 1, hard: 1, brutal: 1.3, ...ACTIVE_TUNING.aiIncome };
+export const AI_INCOME: Record<AiLevel, number> = { auto: 1, easy: 1, normal: 1, hard: 1, brutal: 1.3, ...ACTIVE_TUNING.aiIncome };
 
 /** Bot players use synthetic user ids of the form `ai:<level>:<suffix>`. */
 export function isBotId(userId: string): boolean {
@@ -23,7 +32,7 @@ export function isBotId(userId: string): boolean {
 }
 export function botLevel(userId: string): AiLevel | null {
   const level = userId.split(':')[1] as AiLevel;
-  return isBotId(userId) && AI_LEVELS.includes(level) ? level : null;
+  return isBotId(userId) && BOT_LEVELS.includes(level) ? level : null;
 }
 export function makeBotId(level: AiLevel, suffix: string): string {
   return `ai:${level}:${suffix}`;
@@ -144,6 +153,8 @@ export const PROFILES: Record<AiLevel, Profile> = {
     saves: true, tidy: true, rescueAt: 3, rescueDelay: 0, rescueAim: 0, upgradeBias: 1, rangedShare: 0.4, safeSpots: false, saveForSpecial: 20,
     itemsAfterMin: 5, items: ['thunder_drums', 'rhythm_engine', 'fury_shard', 'mason_rune'], repairBelow: 0.75, place: 'back', waitCost: 1, maxWait: 180, doctrine: 0.3, noise: 0.15, antiAirWait: 4, fullVision: true,
   },
+  // Placeholder: Auto bots get a persona-built profile (personaProfile) in the AiPlayer constructor.
+  get auto(): Profile { return PROFILES.normal; },
 };
 
 type Option =
@@ -174,9 +185,22 @@ export class AiPlayer {
   private intel = new Map<number, { type: string; kind: 'unit' | 'building'; tick: number }>();
   private profileCache: { tick: number; p: EnemyProfile } | null = null;
 
-  /** `overrides` tweak the level's profile (used by the simulation lab to compare AI variants). */
-  constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17, overrides?: Partial<Profile>) {
-    this.profile = { ...PROFILES[level], ...overrides };
+  /** The personality (Auto bots; presets have a persona of their level's skill for chat and timing). */
+  readonly persona: Persona;
+  /** Human-like input timing and chat (real matches only). */
+  readonly human: Humanizer | null;
+
+  /**
+   * `overrides` tweak the level's profile (used by the simulation lab to compare AI variants).
+   * `opts.skill` sets an Auto bot's skill (from its target Elo); `opts.human` adds human-like
+   * reaction times, attention and chat (off by default: the lab stays deterministic).
+   */
+  constructor(readonly player: number, readonly level: AiLevel, seed = player * 7919 + 17, overrides?: Partial<Profile>, opts: { skill?: number; human?: boolean; persona?: Persona } = {}) {
+    const presetSkill: Record<AiLevel, number> = { easy: 0, normal: 0.5, hard: 1, brutal: 1.2, auto: 0.5 };
+    this.persona = opts.persona ?? drawPersona(seed, opts.skill ?? presetSkill[level]);
+    const base = level === 'auto' ? personaProfile(this.persona, PROFILES) : PROFILES[level];
+    this.profile = { ...base, ...overrides };
+    this.human = opts.human ? new Humanizer(this.persona, seed) : null;
     let s = seed >>> 0 || 1;
     this.rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
     // Spread bots over different ticks so they don't all think at once (set from the team slot on
@@ -186,6 +210,47 @@ export class AiPlayer {
 
   /** Call once per tick before `sim.step`; returns commands to queue for this player. */
   update(sim: Sim): Command[] {
+    const out = this.think(sim);
+    return this.human ? this.human.step(out, sim.state.tick) : out;
+  }
+
+  /** Chat lines this bot wants to say now (only with the humaniser). */
+  drainChat(sim: Sim): Array<{ text: string; all: boolean }> {
+    if (!this.human) return [];
+    this.chatEvents(sim);
+    return this.human.drainChat(sim.state.tick);
+  }
+
+  /** Someone in the match wrote something. */
+  hear(text: string, sim: Sim) {
+    this.human?.hear(text, sim.state.tick);
+  }
+
+  private seen = { round: -1, phase: '', strikes: 0, castleLow: false, legendary: new Set<number>() };
+
+  /** Notices chat-worthy moments: start of a round, its end, enemy strikes, a falling castle. */
+  private chatEvents(sim: Sim) {
+    const s = sim.state, h = this.human!, me = s.players[this.player];
+    if (s.round !== this.seen.round && s.phase === 'playing') {
+      if (this.seen.round < 0) h.event('start', s.tick);
+      this.seen.round = s.round; this.seen.castleLow = false;
+    }
+    if (s.phase !== this.seen.phase) {
+      if (this.seen.phase === 'playing' && s.winner !== undefined) {
+        const won = s.winner === me.team;
+        const over = s.phase === 'matchOver';
+        h.event(over ? (won ? 'matchWon' : 'matchLost') : (won ? 'roundWon' : 'roundLost'), s.tick);
+      }
+      this.seen.phase = s.phase;
+    }
+    const enemyStrikes = s.players.filter((p) => p.team !== me.team && p.rescueUsed).length;
+    if (enemyStrikes > this.seen.strikes) h.event('struck', s.tick);
+    this.seen.strikes = enemyStrikes;
+    const castle = sim.castle(me.team);
+    if (!this.seen.castleLow && castle && castle.hp < castle.maxHp * 0.3) { this.seen.castleLow = true; h.event('castleLow', s.tick); }
+  }
+
+  private think(sim: Sim): Command[] {
     const s = sim.state;
     if (s.phase !== 'playing' || s.phaseTicks > 0) { this.rescueSeenAt = -1; return []; }
     const out: Command[] = [];
@@ -203,6 +268,8 @@ export class AiPlayer {
     if (s.tick < this.nextThink) return out;
     this.nextThink = s.tick + this.profile.think;
     if (this.rnd() < this.profile.idle) return out;
+    // Still "clicking" the last decision: don't decide the same purchase twice.
+    if (this.human?.busy()) return out;
     const cmd = this.decide(sim);
     if (cmd) out.push(cmd);
     return out;

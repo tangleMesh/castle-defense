@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.49.0
+
+- **Auto bots (new default in the lobby):** they play as strong as the humans in the match.
+  - **Fair teams:** each Auto bot gets a target Elo that makes both teams' average ratings equal. A lone player meets a bot of their own Elo; a strong player's bot teammate plays weaker so the teams even out; with bots on both sides, everyone aims at the humans' average.
+  - **Skill follows the target Elo:** reaction speed, planning, counters, rescue-strike timing and aim, repairs and items all scale with it. Up to well above the old Hard, without cheating.
+  - **Elo:** an Auto bot counts with its target Elo, so beating a bot tuned to your level moves your rating like any even match.
+- **Personalities:** every bot draws a playstyle and a temperament (seeded):
+  - aggression or greed, tech or spam, economy, defence, love of flyers
+  - stubbornness and chattiness
+
+  Two bots of equal skill play differently.
+- **Human-like input (real matches; the lab stays deterministic):**
+  - decisions reach the game after a human reaction time
+  - actions per minute are limited by skill
+  - attention lapses now and then (a rescue strike still interrupts them)
+- **Bot chat:** "gl hf" at the start, "gg" or "wp" after rounds, the odd "nice strike" or call for help to the team. Bots answer greetings and goodbyes. How chatty depends on the personality.
+
 ## 0.48.0
 
 - **Invite codes:** every game in the lobby has a short code (e.g. `2CE8FR`, no look-alike characters). The room shows it with **Copy code** and **Copy invite link** buttons, ready to share in Discord or any chat.

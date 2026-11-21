@@ -9,6 +9,9 @@ export { basicPlacementError, placementError, nearCastle } from './sim/placement
 export { incomeFor } from './sim/economy';
 export { ROCK_GRID, isFullyConnected, computeFlowField, buildBlockedGrid } from './sim/grid';
 export * from './ai/ai';
+export * from './ai/persona';
+export * from './ai/calibration';
+export * from './ai/human';
 export { VISION_RANGE, baseArea, fogActive, computeVision, tileVisible, entityVisible, visionFromRows, filterSnapshot } from './sim/vision';
 export { builderBounds } from './sim/movement';
 export * from './lab/match';

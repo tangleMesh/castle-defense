@@ -337,5 +337,5 @@ export interface Tuning {
   factions: Partial<Record<FactionId, { power: number; early?: number }>>;
   units: Record<string, { hp?: number; dmg?: number }>;
   /** Income multiplier per bot level ('hard' is the anchor and stays 1). */
-  aiIncome: Partial<Record<'easy' | 'normal' | 'hard' | 'brutal', number>>;
+  aiIncome: Partial<Record<'auto' | 'easy' | 'normal' | 'hard' | 'brutal', number>>;
 }

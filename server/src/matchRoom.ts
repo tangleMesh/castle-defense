@@ -1,5 +1,5 @@
 import {
-  AiPlayer, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats, BOT_RATING, START_RATING, eloDelta,
+  AiPlayer, skillForElo, CASTLE_FALL_SECONDS, SNAPSHOT_EVERY, filterSnapshot, TICK_RATE, botLevel, isBotId, makeSnapshot, matchStats, BOT_RATING, START_RATING, eloDelta,
   type ClientMessage, type FactionId, type MatchInitPlayer, type MatchStats, type PlayerCommand, type ServerMessage, type Sim, type SimEvent,
 } from '@bc/shared';
 import type { Conn } from './conn';
@@ -20,6 +20,8 @@ export interface MatchRoomOptions {
   startedAt: Date;
   persistence: Persistence;
   tickMs: number;
+  /** Target Elo of every Auto bot (their skill follows it; it also counts as their rating). */
+  botElo?: Record<string, number>;
   /** Called once the match is over (finished, saved, or abandoned). */
   onClose: (reason: 'finished' | 'saved') => void;
 }
@@ -48,7 +50,11 @@ export class MatchRoom {
     this.sim = o.sim;
     for (const p of o.players) {
       const level = botLevel(p.userId);
-      if (level) this.ais.push(new AiPlayer(p.i, level, o.sim.state.tick + p.i * 7919 + 1));
+      if (!level) continue;
+      // Real matches: human-like timing and chat; Auto bots at the skill of their target Elo.
+      const elo = o.botElo?.[p.userId];
+      const skill = level === 'auto' ? skillForElo(elo ?? START_RATING) : undefined;
+      this.ais.push(new AiPlayer(p.i, level, o.sim.state.tick + p.i * 7919 + 1, undefined, { skill, human: true }));
     }
   }
 
@@ -117,6 +123,9 @@ export class MatchRoom {
         void this.saveAndClose();
         return;
       case 'chat': {
+        // Bots read along: every bot hears the all-chat, team chat only its own team's bots.
+        const from = this.o.players.find((p) => p.userId === conn.userId)?.team;
+        for (const ai of this.ais) if (msg.all || this.sim.state.players[ai.player].team === from) ai.hear(msg.text, this.sim);
         // Shift+Enter: everyone (scope 'match'); Enter: the sender's team only.
         if (msg.all) { this.broadcast({ type: 'chat', from: conn.username, text: msg.text, scope: 'match' }); return; }
         const team = this.o.players.find((p) => p.userId === conn.userId)?.team;
@@ -129,6 +138,20 @@ export class MatchRoom {
   }
 
   // ---------------------------------------------------------------- loop
+
+  /** Bots' chat lines, sent like a player's (all-chat or their team). */
+  private botChat() {
+    for (const ai of this.ais) {
+      for (const line of ai.drainChat(this.sim)) {
+        const p = this.o.players.find((x) => x.i === ai.player);
+        if (!p) continue;
+        if (line.all) { this.broadcast({ type: 'chat', from: p.name, text: line.text, scope: 'match' }); continue; }
+        const mates = new Set(this.o.players.filter((x) => x.team === p.team).map((x) => x.userId));
+        const json = JSON.stringify({ type: 'chat', from: p.name, text: line.text, scope: 'team' } satisfies ServerMessage);
+        for (const [userId, c] of this.conns) if (mates.has(userId)) c.sendRaw(json);
+      }
+    }
+  }
 
   /**
    * Connected players still loading the battlefield while the round's start countdown is pending.
@@ -175,6 +198,7 @@ export class MatchRoom {
     const cmds = this.queue;
     this.queue = [];
     for (const ai of this.ais) for (const cmd of ai.update(this.sim)) cmds.push({ player: ai.player, cmd });
+    this.botChat();
     const events = this.sim.step(cmds);
     for (const ev of events) this.pendingEvents.push(ev);
 
@@ -258,7 +282,7 @@ export class MatchRoom {
     try {
       for (const p of s.players) {
         const lvl = botLevel(p.userId);
-        if (lvl) ratings.set(p.userId, BOT_RATING[lvl]);
+        if (lvl) ratings.set(p.userId, lvl === 'auto' ? this.o.botElo?.[p.userId] ?? START_RATING : BOT_RATING[lvl]);
         else ratings.set(p.userId, (await db.users.byId(p.userId))?.stats?.rating ?? START_RATING);
       }
     } catch (err) {

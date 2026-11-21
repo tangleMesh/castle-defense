@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
-  AI_INCOME, AI_LEVEL_NAMES, FACTION_IDS, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
+  AI_INCOME, AI_LEVEL_NAMES, BOT_RATING, START_RATING, botTargets, FACTION_IDS, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
   INVITE_ALPHABET, INVITE_LENGTH, parseInviteCode,
   type AiLevel, type ClientMessage, type GameMode, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
 } from '@bc/shared';
@@ -344,9 +344,23 @@ export class Lobby {
       });
     }
 
+    // Auto bots play at the Elo that makes the teams even (humans' ratings, preset bots' fixed ones).
+    const botElo: Record<string, number> = {};
+    try {
+      const rated = await Promise.all(players.map(async (p) => {
+        const lvl = botLevel(p.userId);
+        if (lvl === 'auto') return { team: p.team, rating: undefined };
+        if (lvl) return { team: p.team, rating: BOT_RATING[lvl] };
+        return { team: p.team, rating: (await this.db.users.byId(p.userId))?.stats?.rating ?? START_RATING };
+      }));
+      botTargets(rated).forEach((t, i) => { if (t !== undefined) botElo[players[i].userId] = t; });
+    } catch (err) {
+      console.error('[lobby] failed to read ratings for bot targets', err);
+    }
+
     r.status = 'playing';
     const match = new MatchRoom({
-      matchId, name: r.name, sim, players, hostId: r.hostId, resumed, startedAt,
+      matchId, name: r.name, sim, players, hostId: r.hostId, resumed, startedAt, botElo,
       persistence: this.db, tickMs: this.tickMs,
       onClose: () => this.closeRoom(r),
     });
