@@ -190,11 +190,10 @@ export class LobbyView {
   /** Top players by Elo; your own row highlighted (and shown below the table if you're further down). */
   private renderBoard() {
     const b = this.board!;
-    const medal = ['🥇', '🥈', '🥉'];
     const row = (e: LeaderboardEntry) => {
       const pct = e.matches ? Math.round((100 * e.wins) / e.matches) : 0;
       return h('tr', { class: e.userId === this.user.id ? 'me' : '' },
-        h('td', { class: 'rank' }, e.rank <= 3 ? h('span', { class: 'medal', title: `#${e.rank}` }, medal[e.rank - 1]) : `${e.rank}`),
+        h('td', { class: 'rank' }, e.rank <= 3 ? h('span', { class: `medal m${e.rank}`, title: ['Gold', 'Silver', 'Bronze'][e.rank - 1] }, String(e.rank)) : `${e.rank}`),
         h('td', { class: 'name' }, e.username),
         h('td', { class: 'n elo' }, String(e.rating)),
         h('td', { class: 'n dim' }, String(e.peakRating)),

@@ -574,7 +574,10 @@ button.mode { cursor: pointer; }
 .leaderboard td { padding: 7px 8px; border-bottom: 1px solid #2a2618; }
 .leaderboard .n { text-align: right; white-space: nowrap; }
 .leaderboard .rank { width: 44px; text-align: center; color: var(--gold-2); font-weight: 600; }
-.leaderboard .medal { font-size: 18px; }
+.leaderboard .medal { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 13px; font-weight: 800; color: #1a1408; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .25), 0 0 0 1px rgba(0, 0, 0, .4); }
+.leaderboard .medal.m1 { background: radial-gradient(circle at 35% 30%, #fff3b0, #e6b422 60%, #a87a10); }
+.leaderboard .medal.m2 { background: radial-gradient(circle at 35% 30%, #ffffff, #c0c6cc 60%, #80878e); }
+.leaderboard .medal.m3 { background: radial-gradient(circle at 35% 30%, #ffd2a8, #c8783a 60%, #85481c); }
 .leaderboard .name { font-weight: 600; }
 .leaderboard .elo { color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
 .leaderboard tr.me td { background: rgba(242, 201, 74, .10); }

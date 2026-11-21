@@ -10,7 +10,7 @@ So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3`
 ## 0.54.0
 
 - **Leaderboard:** the lobby header has a "Leaderboard" button that opens the top 100 players by Elo (accounts with at least one finished match).
-  - **Columns:** rank (medals for the top three; equal ratings share a rank), name, Elo, peak, wins–losses, win rate with a small bar, matches.
+  - **Columns:** rank (gold, silver and bronze badges for the top three; equal ratings share a rank), name, Elo, peak, wins–losses, win rate with a small bar, matches.
   - **Your own row:** highlighted; if you're further down, your rank shows below the table.
   - **Refresh:** a Refresh button, and "Back to lobby".
   - **API:** `GET /api/leaderboard`.
