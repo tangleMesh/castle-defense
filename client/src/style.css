@@ -532,3 +532,11 @@ button.mode { cursor: pointer; }
 .lumber-badge { position: absolute; left: 2px; top: 2px; font-size: 10px; line-height: 1; padding: 1px 3px; border-radius: 3px; background: rgba(60,36,16,0.9); color: #e8c090; }
 .lumber-badge.short { color: #ff8070; }
 .tip-cost.lumber { color: #e0b888; }
+
+/* Invite codes */
+.invite-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; padding: 8px 10px; border: 1px dashed #6a5a32; border-radius: 6px; background: rgba(242, 201, 74, .05); }
+.invite-code { font: 600 18px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 3px; color: var(--gold); padding: 4px 8px; background: #1a1710; border-radius: 4px; user-select: all; }
+.invite-bar .copied { color: #7aff8a; font-size: 13px; }
+.join-code { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.join-code .code-input { flex: 1; min-width: 160px; letter-spacing: 1px; }
+.invite-note { color: var(--gold); font-size: 14px; margin: 0 0 10px; }

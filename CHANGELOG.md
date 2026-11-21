@@ -7,6 +7,13 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.48.0
+
+- **Invite codes:** every game in the lobby has a short code (e.g. `2CE8FR`, no look-alike characters). The room shows it with **Copy code** and **Copy invite link** buttons, ready to share in Discord or any chat.
+  - **Invite link** (`…/?join=2CE8FR`): opening it puts you straight into the game. If you aren't signed in yet, the sign-in screen says you were invited, and the join happens right after you sign in or create an account.
+  - **Join by code:** the lobby has a "Got an invite?" box that takes the code (any case) or the whole pasted link.
+  - **Errors:** a game that has already started, or a wrong code, gives a clear message.
+
 ## 0.47.0
 
 - **Gold × 1.2:** every gold amount is the map's × 1.2 (`GOLD_FACTOR`). That covers:

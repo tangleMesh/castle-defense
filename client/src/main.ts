@@ -12,6 +12,7 @@ import { GameScene } from './game/scene';
 import { DPR } from './game/iso';
 import { $ } from './ui/dom';
 import { getGraphics, onGraphics } from './settings';
+import { captureInvite } from './net/invite';
 
 type Screen = 'auth' | 'lobby' | 'game';
 
@@ -134,6 +135,7 @@ class App {
 
 document.getElementById('app-version')!.textContent = `v${versionLabel(__APP_VERSION__)}`;
 
+captureInvite();
 const app = new App();
 // `?debug` exposes the app on window for manual inspection and automated UI tests.
 if (new URLSearchParams(location.search).has('debug')) (window as unknown as { bc: App }).bc = app;

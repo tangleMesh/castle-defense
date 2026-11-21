@@ -3,6 +3,7 @@ import { builderPortrait } from './portraits';
 import { getGraphics, setGraphicsMode } from '../settings';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
 import type { Socket } from '../net/socket';
+import { copyText, inviteLink, takeInvite } from '../net/invite';
 import { TEAM_CSS, TEAM_NAMES } from '../game/iso';
 import { $, clear, css, h, timeAgo } from './dom';
 
@@ -22,6 +23,10 @@ export class LobbyView {
   private chat: Array<{ from: string; text: string }> = [];
   private error = '';
   private botLevel: AiLevel = 'normal';
+  /** Short confirmation next to the invite buttons ("Link copied"). */
+  private copied = '';
+  /** The first room state from the server arrived (a waiting invite is used then). */
+  private synced = false;
   private root = $('#screen-lobby');
   private off: () => void;
 
@@ -51,6 +56,12 @@ export class LobbyView {
       case 'lobby.room': {
         const left = this.room && !m.room;
         this.room = m.room;
+        // An invite link opened before signing in: join that game now.
+        if (!this.synced) {
+          this.synced = true;
+          const code = takeInvite();
+          if (code && m.room?.code !== code) this.socket.send({ type: 'lobby.joinCode', code });
+        }
         if (left) void this.refreshData();
         break;
       }
@@ -97,7 +108,12 @@ export class LobbyView {
     const name = h('input', { placeholder: 'Game name', maxLength: 40, value: `${this.user.username}'s battle` });
     const bestOf = h('select', null, [1, 3, 5].map((n) => h('option', { value: String(n), selected: n === 3 }, `Best of ${n}`)));
     const mode = h('select', { title: 'Game mode' }, (Object.keys(GAME_MODES) as GameMode[]).map((m) => h('option', { value: m, title: GAME_MODES[m].desc }, GAME_MODES[m].name)));
+    const code = h('input', { placeholder: 'Invite code or link', maxLength: 200, class: 'code-input', autocomplete: 'off', spellcheck: false });
     return h('section', { class: 'panel-box' },
+      h('form', { class: 'join-code', onsubmit: (e: Event) => {
+        e.preventDefault();
+        if (code.value.trim()) this.socket.send({ type: 'lobby.joinCode', code: code.value });
+      } }, h('b', null, 'Got an invite?'), code, h('button', { class: 'btn small', type: 'submit' }, 'Join')),
       h('h2', null, 'Open games'),
       this.rooms.length
         ? h('div', { class: 'room-list' }, this.rooms.map((r) => {
@@ -136,6 +152,13 @@ export class LobbyView {
 
   // ---------------------------------------------------------------- room
 
+  private async copy(text: string, note: string) {
+    const ok = await copyText(text);
+    this.copied = ok ? note : `Copy failed: ${text}`;
+    this.render();
+    setTimeout(() => { if (this.copied) { this.copied = ''; this.render(); } }, 2500);
+  }
+
   private renderRoom(r: RoomInfo) {
     const me = r.slots.find((s) => s.userId === this.user.id);
     const isHost = r.hostId === this.user.id;
@@ -170,6 +193,13 @@ export class LobbyView {
       h('div', { class: 'room-head' },
         h('h2', null, r.name),
         h('span', { class: 'dim' }, `Best of ${r.bestOf}${r.score ? ` · saved score ${r.score[0]} : ${r.score[1]}` : ''}`),
+      ),
+      h('div', { class: 'invite-bar', title: 'Share the code or the link (Discord, any chat): friends join this game directly' },
+        h('span', { class: 'dim' }, 'Invite friends'),
+        h('code', { class: 'invite-code' }, r.code),
+        h('button', { class: 'btn small ghost', onclick: () => void this.copy(r.code, 'Code copied') }, 'Copy code'),
+        h('button', { class: 'btn small', onclick: () => void this.copy(inviteLink(r.code), 'Invite link copied') }, 'Copy invite link'),
+        this.copied ? h('span', { class: 'copied' }, this.copied) : null,
       ),
       h('div', { class: 'mode-bar' },
         h('h3', null, 'Game mode'),

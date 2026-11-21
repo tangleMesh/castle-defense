@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import {
   AI_INCOME, AI_LEVEL_NAMES, FACTION_IDS, MAX_PLAYERS_PER_TEAM, Sim, botLevel, isBotId, makeBotId,
+  INVITE_ALPHABET, INVITE_LENGTH, parseInviteCode,
   type AiLevel, type ClientMessage, type GameMode, type FactionId, type MatchInitPlayer, type RoomInfo, type RoomSlot,
 } from '@bc/shared';
 import type { Conn } from './conn';
@@ -9,6 +10,8 @@ import type { Persistence } from './persistence';
 
 interface Room {
   id: string;
+  /** Invite code, unique among open rooms. */
+  code: string;
   name: string;
   hostId: string;
   bestOf: number;
@@ -85,7 +88,7 @@ export class Lobby {
     switch (msg.type) {
       case 'lobby.create': {
         if (room) return err('Leave your current room first');
-        const r: Room = { id: newId(), name: msg.name, hostId: conn.userId, bestOf: msg.bestOf, mode: msg.mode ?? 'standard', status: 'lobby', slots: [] };
+        const r: Room = { id: newId(), code: this.newCode(), name: msg.name, hostId: conn.userId, bestOf: msg.bestOf, mode: msg.mode ?? 'standard', status: 'lobby', slots: [] };
         this.rooms.set(r.id, r);
         this.addSlot(r, conn, 0, 'ironvow');
         return this.changed(r);
@@ -97,10 +100,18 @@ export class Lobby {
         for (const s of room.slots) if (!s.bot) s.ready = false;
         return this.changed(room);
       }
-      case 'lobby.join': {
+      case 'lobby.join':
+      case 'lobby.joinCode': {
+        let r: Room | undefined;
+        if (msg.type === 'lobby.joinCode') {
+          const code = parseInviteCode(msg.code);
+          r = code ? [...this.rooms.values()].find((x) => x.code === code) : undefined;
+          if (!r) return err(code ? `No open game with the code ${code}` : 'That is not a valid invite code');
+          if (room === r) return; // already in it (e.g. opened the own invite link)
+        } else r = this.rooms.get(msg.roomId);
         if (room) return err('Leave your current room first');
-        const r = this.rooms.get(msg.roomId);
-        if (!r || r.status !== 'lobby') return err('Room not available');
+        if (!r) return err('Room not available');
+        if (r.status !== 'lobby') return err('That game has already started');
         if (r.roster) {
           const entry = r.roster.find((p) => p.userId === conn.userId);
           if (!entry) return err('This is a resumed game for its original players only');
@@ -199,7 +210,7 @@ export class Lobby {
         if (!saved || saved.status !== 'saved' || !saved.userIds.includes(conn.userId)) return err('Saved game not found');
         if ([...this.rooms.values()].some((r) => r.savedGameId === saved._id)) return err('That game is already open in a room');
         const r: Room = {
-          id: newId(), name: `${saved.name} (resumed)`, hostId: conn.userId, bestOf: saved.bestOf, mode: saved.mode ?? 'standard', status: 'lobby',
+          id: newId(), code: this.newCode(), name: `${saved.name} (resumed)`, hostId: conn.userId, bestOf: saved.bestOf, mode: saved.mode ?? 'standard', status: 'lobby',
           slots: [], savedGameId: saved._id, roster: saved.players, score: saved.score,
         };
         this.rooms.set(r.id, r);
@@ -369,9 +380,18 @@ export class Lobby {
 
   private info(r: Room): RoomInfo {
     return {
-      id: r.id, name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode, status: r.status,
+      id: r.id, code: r.code, name: r.name, hostId: r.hostId, bestOf: r.bestOf, mode: r.mode, status: r.status,
       savedGameId: r.savedGameId, roster: r.roster, score: r.score, slots: r.slots,
     };
+  }
+
+  /** A fresh invite code that no open room uses. */
+  private newCode(): string {
+    for (;;) {
+      const bytes = randomBytes(INVITE_LENGTH);
+      const code = [...bytes].map((b) => INVITE_ALPHABET[b % INVITE_ALPHABET.length]).join('');
+      if (![...this.rooms.values()].some((r) => r.code === code)) return code;
+    }
   }
 
   private listRooms(): RoomInfo[] {

@@ -27,6 +27,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('lobby.create'), name: z.string().trim().min(1).max(40), bestOf: z.union([z.literal(1), z.literal(3), z.literal(5)]), mode: GameModeSchema.optional() }),
   z.object({ type: z.literal('lobby.setMode'), mode: GameModeSchema }),
   z.object({ type: z.literal('lobby.join'), roomId: z.string().max(64) }),
+  /** Join by invite code (shared in a chat, or opened as an `?join=CODE` link). */
+  z.object({ type: z.literal('lobby.joinCode'), code: z.string().trim().max(200) }),
   z.object({ type: z.literal('lobby.leave') }),
   z.object({ type: z.literal('lobby.setTeam'), team: z.union([z.literal(0), z.literal(1)]) }),
   z.object({ type: z.literal('lobby.setFaction'), faction: FactionSchema }),
@@ -106,8 +108,20 @@ export interface RoomSlot {
   bot?: AiLevel;
 }
 
+/** Invite codes: letters and digits that can't be mixed up when typed (no 0/O, 1/I/L). */
+export const INVITE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const INVITE_LENGTH = 6;
+/** Pulls an invite code out of whatever was pasted: the bare code or a whole `?join=` link. */
+export function parseInviteCode(input: string): string | null {
+  const m = /[?&]join=([A-Za-z0-9]+)/.exec(input);
+  const raw = (m ? m[1] : input).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return raw.length === INVITE_LENGTH && [...raw].every((c) => INVITE_ALPHABET.includes(c)) ? raw : null;
+}
+
 export interface RoomInfo {
   id: string;
+  /** Short invite code (e.g. K7QX2M) for `?join=` links and the join-by-code box. */
+  code: string;
   name: string;
   hostId: string;
   bestOf: number;

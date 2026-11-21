@@ -1,5 +1,6 @@
 import type { PublicUser } from '@bc/shared';
 import { api, setToken } from '../net/api';
+import { pendingInvite } from '../net/invite';
 import { $, clear, h } from './dom';
 
 /** Login / registration screen. */
@@ -38,6 +39,7 @@ export function renderAuth(onAuthed: (token: string, user: PublicUser) => void) 
     h('div', { class: 'crest' }),
     h('h1', { class: 'title' }, 'Castle Defense'),
     h('p', { class: 'tagline' }, 'Raise your war camp. Let your armies march. Bring down the enemy castle.'),
+    pendingInvite() ? h('p', { class: 'invite-note' }, `You were invited to a game (code ${pendingInvite()}). Sign in or create an account to join it.`) : null,
     form,
   ));
   user.focus();

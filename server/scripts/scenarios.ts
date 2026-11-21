@@ -18,9 +18,16 @@ export async function setupMatch(host: Bot, others: Bot[], bestOf: 1 | 3 | 5, na
   host.send({ type: 'lobby.create', name, bestOf });
   const room = await host.waitFor('lobby.room', (m) => !!m.room);
   host.send({ type: 'lobby.setFaction', faction: host.faction });
+  // Everyone else joins through the invite code: typed in lower case, or a whole pasted link.
+  const code = room.room!.code;
+  assert(/^[A-Z0-9]{6}$/.test(code), `invite code ${code}`);
   for (const [i, b] of others.entries()) {
-    b.send({ type: 'lobby.join', roomId: room.room!.id });
-    await b.waitFor('lobby.room', (m) => !!m.room);
+    if (i === 0) {
+      b.send({ type: 'lobby.joinCode', code: 'XXXXXX' });
+      await b.waitFor('error', (m) => m.message.includes('No open game'));
+    }
+    b.send({ type: 'lobby.joinCode', code: i % 2 ? `https://example.org/?join=${code}` : code.toLowerCase() });
+    await b.waitFor('lobby.room', (m) => m.room?.id === room.room!.id);
     b.send({ type: 'lobby.setTeam', team: (i % 2 === 0 ? 1 : 0) as 0 | 1 });
     b.send({ type: 'lobby.setFaction', faction: b.faction });
     b.send({ type: 'lobby.ready', ready: true });
@@ -80,7 +87,7 @@ export async function fullMatchScenario(base: string, opts: { perTeam: number; b
   }
   assert(wins === opts.perTeam && losses === opts.perTeam, `wins/losses split per team (${wins}/${losses})`);
   log.push(`history + stats verified for ${bots.length} players`);
-  const errs = bots.flatMap((b) => b.errors).filter((e) => !/Not enough gold|Not enough lumber|occupied|block|busy|round starts in/.test(e));
+  const errs = bots.flatMap((b) => b.errors).filter((e) => !/Not enough gold|Not enough lumber|occupied|block|busy|round starts in|No open game with the code XXXXXX/.test(e));
   log.push(`unexpected errors: ${errs.length ? errs.join(' | ') : 'none'}`);
   bots.forEach((b) => b.disconnect());
   return { log };
