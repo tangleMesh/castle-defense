@@ -83,5 +83,41 @@ describe('humanizer', () => {
     expect(built).toBeGreaterThan(8);
     // A few placement races are normal (a spot taken while "clicking"); not a stream of errors.
     expect(errors).toBeLessThan(25);
+  }, 120_000);
+});
+
+describe('strategist', () => {
+  it('recognises enemy plans from sightings', async () => {
+    const { recognisePlan } = await import('../src/index');
+    const base = { spawners: 3, towers: 0, chests: 0, upgrades: 0, legendary: 0, airShare: 0, avgSpawnerCost: 300, minutes: 4 };
+    expect(recognisePlan({ ...base, airShare: 0.6 })).toBe('air');
+    expect(recognisePlan({ ...base, towers: 4 })).toBe('turtle');
+    expect(recognisePlan({ ...base, chests: 1 })).toBe('eco');
+    expect(recognisePlan({ ...base, spawners: 5, avgSpawnerCost: 150 })).toBe('rush');
+    expect(recognisePlan({ ...base, spawners: 0 })).toBe('*');
   });
+  it('experience wins over taste for skilled bots', async () => {
+    const { choosePlan, setStrategyStats, seededRandom } = await import('../src/index');
+    setStrategyStats({ 'ironvow|turtle|*': [90, 100], 'ironvow|rush|*': [10, 100], 'ironvow|eco|*': [10, 100], 'ironvow|tech|*': [10, 100], 'ironvow|air|*': [10, 100], 'ironvow|balanced|*': [10, 100] });
+    const r = seededRandom(9);
+    let turtle = 0;
+    for (let i = 0; i < 50; i++) if (choosePlan('ironvow', '*', { ...drawPersona(i, 1.2), aggression: 1 }, r) === 'turtle') turtle++;
+    setStrategyStats({});
+    expect(turtle).toBeGreaterThan(35);
+  });
+  it('Auto bots log their plan and the result of every round', () => {
+    const sim = Sim.create({ countdownTicks: 0, bestOf: 3, seed: 21, players: [
+      { userId: makeBotId('auto', 'a'), name: 'a', team: 0, faction: 'sunspire' },
+      { userId: makeBotId('auto', 'b'), name: 'b', team: 1, faction: 'thornwild' },
+    ] });
+    const ais = [new AiPlayer(0, 'auto', 31, undefined, { skill: 1 }), new AiPlayer(1, 'auto', 32, undefined, { skill: 1 })];
+    while (sim.state.phase !== 'matchOver' && sim.state.tick < 40 * 60 * TICK_RATE) {
+      const cmds: PlayerCommand[] = [];
+      for (const ai of ais) for (const cmd of ai.update(sim)) cmds.push({ player: ai.player, cmd });
+      sim.step(cmds);
+    }
+    for (const ai of ais) ai.update(sim);
+    expect(ais[0].roundLog.length).toBe(sim.state.rounds.length);
+    expect(ais[0].roundLog.map((r) => r.won)).toEqual(ais[1].roundLog.map((r) => !r.won));
+  }, 120_000);
 });

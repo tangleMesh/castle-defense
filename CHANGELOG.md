@@ -7,6 +7,23 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.50.0
+
+- **Auto bots plan the whole round:** each picks a game plan:
+  - rush: cheap spawners, early pressure
+  - eco: an early Treasure Chest
+  - tech: upgrades and an early legendary
+  - turtle: towers, ranged units and a legendary
+  - air
+  - balanced
+
+  The plan shapes its army, tower count, Treasure Chest, upgrade and legendary timing.
+- **Openings:** chosen by the bot's personality and by experience (what has worked for its faction), so every round and every bot can play differently.
+- **Reading the enemy:** from what the bot has actually seen (fog of war), it recognises the enemy's plan (flyer mass, turtle, greedy eco, tech, rush) and switches to a counter plan.
+  - **How quickly it reacts:** skilled players react sooner; stubborn ones keep their plan.
+  - **When behind:** a clearly beaten bot goes all-in if it's the tilting kind, or turtles if it's calm.
+- **Round log:** bots log their plan, the enemy plan and the result of every round, for the background learner in the next step.
+
 ## 0.49.0
 
 - **Auto bots (new default in the lobby):** they play as strong as the humans in the match.

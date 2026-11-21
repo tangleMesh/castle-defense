@@ -9,6 +9,7 @@ import type { Sim } from '../sim/sim';
 import type { Command, Entity, PlayerState } from '../sim/state';
 import { Humanizer } from './human';
 import { drawPersona, personaProfile, type Persona } from './persona';
+import { COUNTER_PLAN, PLANS, choosePlan, recognisePlan, type PlanId } from './strategy';
 
 /**
  * Bot levels: 'auto' plays as strong as the humans in the match (its skill follows a target Elo,
@@ -226,22 +227,16 @@ export class AiPlayer {
     this.human?.hear(text, sim.state.tick);
   }
 
-  private seen = { round: -1, phase: '', strikes: 0, castleLow: false, legendary: new Set<number>() };
+  private seen = { started: false, rounds: 0, strikes: 0, castleLow: false };
 
-  /** Notices chat-worthy moments: start of a round, its end, enemy strikes, a falling castle. */
+  /** Notices chat-worthy moments: start of the match, round results, enemy strikes, a falling castle. */
   private chatEvents(sim: Sim) {
     const s = sim.state, h = this.human!, me = s.players[this.player];
-    if (s.round !== this.seen.round && s.phase === 'playing') {
-      if (this.seen.round < 0) h.event('start', s.tick);
-      this.seen.round = s.round; this.seen.castleLow = false;
-    }
-    if (s.phase !== this.seen.phase) {
-      if (this.seen.phase === 'playing' && s.winner !== undefined) {
-        const won = s.winner === me.team;
-        const over = s.phase === 'matchOver';
-        h.event(over ? (won ? 'matchWon' : 'matchLost') : (won ? 'roundWon' : 'roundLost'), s.tick);
-      }
-      this.seen.phase = s.phase;
+    if (!this.seen.started && s.phase === 'playing') { this.seen.started = true; h.event('start', s.tick); }
+    if (s.rounds.length > this.seen.rounds) {
+      this.seen.rounds = s.rounds.length; this.seen.castleLow = false;
+      const won = s.rounds[s.rounds.length - 1].winner === me.team;
+      h.event(s.phase === 'matchOver' ? (won ? 'matchWon' : 'matchLost') : (won ? 'roundWon' : 'roundLost'), s.tick);
     }
     const enemyStrikes = s.players.filter((p) => p.team !== me.team && p.rescueUsed).length;
     if (enemyStrikes > this.seen.strikes) h.event('struck', s.tick);
@@ -252,7 +247,9 @@ export class AiPlayer {
 
   private think(sim: Sim): Command[] {
     const s = sim.state;
+    if (s.phase !== 'playing') this.logRound(sim);
     if (s.phase !== 'playing' || s.phaseTicks > 0) { this.rescueSeenAt = -1; return []; }
+    this.strategize(sim);
     const out: Command[] = [];
     // Teammates decide in the same tick before either strike is registered: claim it so two bots
     // never burn both strikes on the same wave.
@@ -491,7 +488,8 @@ export class AiPlayer {
   /** This round's preferences per building category (redrawn every round). */
   private doctrineFor(sim: Sim): Partial<Record<BuildCategory, number>> {
     const round = sim.state.round;
-    if (this.doctrine?.round === round) return this.doctrine.w;
+    const plan = this.currentPlan();
+    if (this.doctrine?.round === round) return plan ? this.withPlan(this.doctrine.w, plan.weights) : this.doctrine.w;
     const sigma = this.profile.doctrine ?? 0;
     const w: Partial<Record<BuildCategory, number>> = {};
     for (const c of ['melee', 'ranged', 'air', 'swarm', 'siege', 'tower', 'aura', 'eco', 'upgrade', 'special'] as BuildCategory[]) {
@@ -500,7 +498,90 @@ export class AiPlayer {
       w[c] = Math.exp(sigma * g);
     }
     this.doctrine = { round, w };
-    return w;
+    return plan ? this.withPlan(w, plan.weights) : w;
+  }
+
+  private withPlan(w: Partial<Record<BuildCategory, number>>, p: Partial<Record<BuildCategory, number>>) {
+    const out: Partial<Record<BuildCategory, number>> = { ...w };
+    for (const [c, v] of Object.entries(p) as Array<[BuildCategory, number]>) out[c] = (out[c] ?? 1) * v;
+    return out;
+  }
+
+  // ---------------------------------------------------------------- strategy (Auto bots)
+
+  /**
+   * The round's game plan: an opening chosen from taste and experience, re-checked every so often
+   * against what the enemy seems to be doing (a counter plan when it changes), and a switch to an
+   * all-in or a turtle when clearly behind (tilted players gamble).
+   */
+  strategy: { round: number; plan: PlanId; opening: PlanId; enemy: PlanId | '*'; next: number; switches: number; desperate: boolean } | null = null;
+  /** Finished rounds, for the learner: faction, opening, final plan, enemy plan, result. */
+  readonly roundLog: Array<{ round: number; faction: FactionId; opening: PlanId; plan: PlanId; enemy: PlanId | '*'; won: boolean; skill: number }> = [];
+
+  private currentPlan() {
+    return this.strategy ? PLANS[this.strategy.plan] : null;
+  }
+
+  private strategize(sim: Sim) {
+    if (this.level !== 'auto') return;
+    const s = sim.state, me = s.players[this.player], P = this.persona;
+    const skill = Math.min(1, P.skill / 1.2);
+    const every = Math.round((40 - 25 * skill) * (1 + P.stubborn) * TICK_RATE);
+    if (!this.strategy || this.strategy.round !== s.round) {
+      const opening = choosePlan(me.faction, '*', P, this.rnd);
+      this.strategy = { round: s.round, plan: opening, opening, enemy: '*', next: s.tick + every, switches: 0, desperate: false };
+      return;
+    }
+    const st = this.strategy;
+    if (s.tick < st.next) return;
+    st.next = s.tick + every;
+    const enemy = recognisePlan(this.sightings(sim));
+    // Clearly behind (our castle much lower than theirs): tilted players go all-in, calm ones turtle.
+    const mine = sim.castle(me.team), theirs = sim.castle((1 - me.team) as 0 | 1);
+    if (!st.desperate && mine && theirs && mine.hp / mine.maxHp < 0.45 && mine.hp / mine.maxHp < theirs.hp / theirs.maxHp - 0.25) {
+      st.desperate = true;
+      st.plan = P.tilt > 0.6 ? 'rush' : 'turtle';
+      st.switches++;
+      return;
+    }
+    if (enemy === '*' || enemy === st.enemy) return;
+    st.enemy = enemy;
+    // Noticing and reacting takes skill; stubborn players keep their plan more often.
+    if (this.rnd() > (0.25 + 0.75 * skill) * (1 - 0.7 * P.stubborn)) return;
+    const options = [...new Set<PlanId>([...COUNTER_PLAN[enemy], st.plan])];
+    const next = choosePlan(me.faction, enemy, P, this.rnd, options);
+    if (next !== st.plan) { st.plan = next; st.switches++; }
+  }
+
+  /** What we've seen of the enemy base and army (fog of war: only our intel). */
+  private sightings(sim: Sim) {
+    const s = sim.state, me = s.players[this.player];
+    this.enemyProfile(sim, me); // refreshes intel
+    let spawners = 0, towers = 0, chests = 0, upgrades = 0, legendary = 0, spawnerCost = 0, air = 0, units = 0;
+    for (const m of this.intel.values()) {
+      if (m.kind === 'unit') { units++; if (UNITS[m.type]?.air) air++; continue; }
+      const d = BUILDINGS[m.type];
+      if (d.special) legendary++;
+      if (d.upgradeOnly) upgrades++;
+      if (d.treasure) chests++;
+      else if (d.attack) towers++;
+      else if (d.spawn) { spawners++; spawnerCost += d.cost; }
+    }
+    return { spawners, towers, chests, upgrades, legendary, airShare: units ? air / units : 0, avgSpawnerCost: spawners ? spawnerCost / spawners : 0, minutes: (s.tick - s.roundStartTick) / TICK_RATE / 60 };
+  }
+
+  /** Rounds already written to the log. */
+  private loggedRounds = 0;
+
+  /** Round over: note how the plan did (the learner reads roundLog). */
+  private logRound(sim: Sim) {
+    const s = sim.state, st = this.strategy;
+    if (s.rounds.length <= this.loggedRounds) return;
+    this.loggedRounds = s.rounds.length;
+    if (!st) return;
+    const me = s.players[this.player];
+    const r = s.rounds[s.rounds.length - 1];
+    this.roundLog.push({ round: s.rounds.length, faction: me.faction, opening: st.opening, plan: st.plan, enemy: st.enemy, won: r.winner === me.team, skill: this.persona.skill });
   }
 
   private options(sim: Sim, me: PlayerState, mine: Entity[], queued: { building: string }[]): Option[] {
@@ -519,7 +600,8 @@ export class AiPlayer {
     const top = Math.max(...spawnOpts.map((d) => this.spawnScore(d, enemy) / d.cost));
     const towers = count((d) => !!d.attack);
     const ranged = count((d) => !!d.spawn && !d.special && UNITS[d.spawn.unit].range >= 4);
-    const wantTowers = enemy.pressure ? 3 : spawners >= (P.counter ? 3 : 5) ? 1 + Math.floor(spawners / 6) : 0;
+    const plan = this.currentPlan();
+    const wantTowers = Math.max(0, (enemy.pressure ? 3 : spawners >= (P.counter ? 3 : 5) ? 1 + Math.floor(spawners / 6) : 0) + (plan && spawners >= 2 ? plan.towers : 0));
 
     const gems = me.sapphires ?? START_SAPPHIRES;
     // Lumber (towers, Treasure Boxes, legendaries) can't be bought: only what we have counts.
@@ -528,7 +610,7 @@ export class AiPlayer {
       const def = BUILDINGS[id];
       if ((def.sapphires ?? 0) > gems || (def.lumber ?? 0) > lumber) continue;
       if (def.special) {
-        if (total >= P.specialAt && !count((d) => !!d.special)) out.push({ kind: 'build', def, score: top * (P.planner ? 1.3 : 1) });
+        if (total >= P.specialAt + (plan?.specialShift ?? 0) && !count((d) => !!d.special)) out.push({ kind: 'build', def, score: top * (P.planner ? 1.3 : 1) });
         continue;
       }
       if (def.spawn) {
@@ -549,7 +631,7 @@ export class AiPlayer {
         const boxes = count((d) => !!d.treasure);
         const perTick = incomeFor(sim, this.player) * TREASURE_BONUS * TREASURE_DECAY ** boxes;
         const payback = (def.cost / Math.max(0.1, perTick)) * (INCOME_INTERVAL_TICKS / TICK_RATE);
-        if (payback < (P.counter ? 300 : 240) && spawners >= 3) out.push({ kind: 'build', def, score: top * 1.1 });
+        if (payback < (P.counter ? 300 : 240) * (plan?.chestAt === 1 ? 1.6 : 1) && spawners >= (plan?.chestAt ?? 3)) out.push({ kind: 'build', def, score: top * 1.1 });
       } else if (def.incomeBonus) {
         const bonus = all.reduce((n, t) => n + (BUILDINGS[t].incomeBonus ?? 0), 0);
         if (bonus + def.incomeBonus > MAX_INCOME_BONUS + 1e-9) continue;
@@ -574,7 +656,7 @@ export class AiPlayer {
       }
     }
 
-    if (total >= P.upgradeAfter) {
+    if (total >= P.upgradeAfter + (plan?.upgradeShift ?? 0)) {
       for (const e of mine) {
         const from = BUILDINGS[e.type];
         if (!from.upgrades?.length || e.buildLeft) continue;
@@ -697,7 +779,7 @@ export class AiPlayer {
       if (e.kind === 'unit') {
         if (UNITS[e.type]) this.intel.set(e.id, { type: e.type, kind: 'unit', tick });
         if (Math.hypot(e.x - c.x, e.y - c.y) < 18) near++;
-      } else if (e.kind === 'building' && BUILDINGS[e.type].spawn) this.intel.set(e.id, { type: e.type, kind: 'building', tick });
+      } else if (e.kind === 'building' && BUILDINGS[e.type]) this.intel.set(e.id, { type: e.type, kind: 'building', tick });
     }
     // Units seen within the last minute count (dead or alive: the next wave is coming), buildings
     // as long as they stand (their ruin is visible to everyone).
@@ -709,7 +791,8 @@ export class AiPlayer {
         add(u, Math.max(0.6, u.hp / 200));
       } else {
         if (!alive.has(id)) { this.intel.delete(id); continue; }
-        const sp = BUILDINGS[m.type].spawn!;
+        const sp = BUILDINGS[m.type].spawn;
+        if (!sp) continue;
         const u = UNITS[sp.unit];
         add(u, Math.max(0.6, u.hp / 200) * sp.count * 2);
       }
