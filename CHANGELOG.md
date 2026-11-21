@@ -7,6 +7,20 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.51.0
+
+- **Bots keep learning (background learner):**
+  - **Real matches:** every finished match teaches the bots. Their plans and results feed the strategy stats, and their result against the humans' ratings calibrates how strong each skill level really is on the Elo scale.
+  - **Self-play in idle time:** a worker thread plays one bot game after another, at the lowest CPU priority, only while no match runs, the event loop is calm and the CPU has room.
+  - **Pausing:** a game pauses mid-way when someone starts a match.
+  - **Rate limit:** at most 400 games an hour.
+  - **What changes over time:**
+    - Openings that win get chosen more, and plans that stop working (e.g. after a balance change) fade.
+    - The skill curve moves so an Auto bot "at 1400 Elo" really plays like a 1400 player.
+  - **Storage:** kept in MongoDB (`learner` collection) and loaded at start.
+  - **Status:** `GET /api/learner` (games played, skill curve, best openings).
+  - **Settings:** `LEARNER=off|idle|always` (default `idle`; `off` in tests) and `LEARNER_GAMES_PER_HOUR`.
+
 ## 0.50.0
 
 - **Auto bots plan the whole round:** each picks a game plan:

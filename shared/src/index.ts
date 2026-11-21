@@ -13,6 +13,7 @@ export * from './ai/persona';
 export * from './ai/calibration';
 export * from './ai/human';
 export * from './ai/strategy';
+export * from './ai/learning';
 export { VISION_RANGE, baseArea, fogActive, computeVision, tileVisible, entityVisible, visionFromRows, filterSnapshot } from './sim/vision';
 export { builderBounds } from './sim/movement';
 export * from './lab/match';

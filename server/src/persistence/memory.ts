@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { ObjectId } from 'mongodb';
 import type { SimState, UserStats } from '@bc/shared';
-import type { MatchDoc, SavedGameDoc, UserDoc } from './db';
+import type { LearnerDoc, MatchDoc, SavedGameDoc, UserDoc } from './db';
 import type { Persistence } from './index';
 import { EMPTY_STATS } from './users';
 
@@ -18,6 +18,7 @@ export function createMemoryPersistence(): Persistence {
   const sessions = new Map<string, string>();
   const matches: MatchDoc[] = [];
   const saved = new Map<string, SavedGameDoc>();
+  let learned: LearnerDoc | null = null;
 
   return {
     users: {
@@ -72,6 +73,10 @@ export function createMemoryPersistence(): Persistence {
         for (const d of saved.values()) if (d.status === 'live' && d.simState) { d.status = 'saved'; n++; }
         return n;
       },
+    },
+    learner: {
+      async load() { return learned ? clone(learned) : null; },
+      async save(doc: Omit<LearnerDoc, '_id' | 'updatedAt'>) { learned = { ...clone(doc), _id: 'state', updatedAt: new Date() }; },
     },
     async close() {},
   };

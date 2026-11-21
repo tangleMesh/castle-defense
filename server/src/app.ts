@@ -6,6 +6,7 @@ import { ClientMessageSchema } from '@bc/shared';
 import { Conn } from './conn';
 import { registerHttpRoutes } from './http';
 import { Lobby } from './lobby';
+import { Learner, type LearnerMode } from './learner';
 import { toPublic, type Persistence } from './persistence';
 
 export interface ServerOptions {
@@ -16,6 +17,8 @@ export interface ServerOptions {
   tickMs: number;
   clientDist?: string;
   logger?: boolean;
+  /** Background bot learner (default: env LEARNER, else 'idle'; tests: 'off'). */
+  learner?: LearnerMode;
 }
 
 export interface RunningServer {
@@ -43,6 +46,11 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   }
 
   const lobby = new Lobby(db, o.tickMs);
+  const mode = o.learner ?? ((process.env.LEARNER as LearnerMode | undefined) ?? (process.env.VITEST ? 'off' : 'idle'));
+  const learner = new Learner(db, { mode, busy: () => lobby.liveMatches() > 0, gamesPerHour: Number(process.env.LEARNER_GAMES_PER_HOUR) || undefined });
+  await learner.start();
+  lobby.learner = learner;
+  app.get('/api/learner', async () => learner.status());
   const wss = new WebSocketServer({ noServer: true, perMessageDeflate: { threshold: 1024 }, maxPayload: 64 * 1024 });
 
   app.server.on('upgrade', (req, socket, head) => {
@@ -96,6 +104,7 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
     app, lobby, port,
     async close() {
       await lobby.shutdown();
+      await learner.stop();
       for (const c of wss.clients) c.terminate();
       wss.close();
       await app.close();

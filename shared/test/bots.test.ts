@@ -121,3 +121,24 @@ describe('strategist', () => {
     expect(ais[0].roundLog.map((r) => r.won)).toEqual(ais[1].roundLog.map((r) => !r.won));
   }, 120_000);
 });
+
+describe('learning', () => {
+  it('strategy stats count wins and slowly forget', async () => {
+    const { addPlanResults, statKey } = await import('../src/index');
+    const stats = {};
+    addPlanResults(stats, [{ faction: 'ironvow', opening: 'rush', plan: 'rush', enemy: 'eco', won: true }], 1, 0.5);
+    addPlanResults(stats, [{ faction: 'ironvow', opening: 'rush', plan: 'rush', enemy: '*', won: false }], 1, 0.5);
+    const s = (stats as Record<string, [number, number]>)[statKey('ironvow', 'rush', '*')];
+    expect(s[1]).toBeCloseTo(1.5);
+    expect(s[0]).toBeCloseTo(0.5);
+  });
+  it('skill calibration: a bucket that beats stronger players climbs; the curve stays monotone', async () => {
+    const { addSkillResult, bucketElo, curveFromState, freshLearnedState } = await import('../src/index');
+    const st = freshLearnedState();
+    const before = bucketElo(st, 0.5);
+    for (let i = 0; i < 50; i++) addSkillResult(st, [{ team: 0, skill: 0.5 }, { team: 1, rating: 1300 }], 0, 16);
+    expect(bucketElo(st, 0.5)).toBeGreaterThan(before + 100);
+    const curve = curveFromState(st);
+    for (let i = 1; i < curve.length; i++) expect(curve[i][0]).toBeGreaterThan(curve[i - 1][0]);
+  });
+});

@@ -1,5 +1,5 @@
 import { MongoClient, type Db } from 'mongodb';
-import type { SimState, FactionId, GameMode, UserStats } from '@bc/shared';
+import type { SimState, FactionId, GameMode, LearnedState, UserStats } from '@bc/shared';
 
 export interface UserDoc {
   _id?: import('mongodb').ObjectId;
@@ -62,12 +62,19 @@ export interface SavedGameDoc {
   updatedAt: Date;
 }
 
+/** The bots' learned knowledge (one document), kept by the background learner. */
+export interface LearnerDoc extends LearnedState {
+  _id: string;
+  updatedAt: Date;
+}
+
 export interface Collections {
   db: Db;
   users: import('mongodb').Collection<UserDoc>;
   sessions: import('mongodb').Collection<SessionDoc>;
   matches: import('mongodb').Collection<MatchDoc>;
   savedGames: import('mongodb').Collection<SavedGameDoc>;
+  learner: import('mongodb').Collection<LearnerDoc>;
   close(): Promise<void>;
 }
 
@@ -91,6 +98,7 @@ export async function connectDb(url: string, dbName = 'bastion_clash'): Promise<
     sessions: db.collection<SessionDoc>('sessions'),
     matches: db.collection<MatchDoc>('matches'),
     savedGames: db.collection<SavedGameDoc>('savedGames'),
+    learner: db.collection<LearnerDoc>('learner'),
     close: () => client.close(),
   };
   await Promise.all([

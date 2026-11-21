@@ -6,6 +6,7 @@ import {
 } from '@bc/shared';
 import type { Conn } from './conn';
 import { MatchRoom } from './matchRoom';
+import type { Learner } from './learner';
 import type { Persistence } from './persistence';
 
 interface Room {
@@ -36,7 +37,15 @@ export class Lobby {
   /** userId → roomId */
   private membership = new Map<string, string>();
 
+  /** The bots' background learner (real matches feed it). */
+  learner: Learner | null = null;
+
   constructor(private db: Persistence, private tickMs: number) {}
+
+  /** Matches being played right now (the learner pauses its self-play meanwhile). */
+  liveMatches(): number {
+    return [...this.rooms.values()].filter((r) => r.match).length;
+  }
 
   // ---------------------------------------------------------------- connections
 
@@ -361,7 +370,7 @@ export class Lobby {
     r.status = 'playing';
     const match = new MatchRoom({
       matchId, name: r.name, sim, players, hostId: r.hostId, resumed, startedAt, botElo,
-      persistence: this.db, tickMs: this.tickMs,
+      persistence: this.db, tickMs: this.tickMs, learner: this.learner,
       onClose: () => this.closeRoom(r),
     });
     r.match = match;

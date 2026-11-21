@@ -3,6 +3,7 @@ import {
   type ClientMessage, type FactionId, type MatchInitPlayer, type MatchStats, type PlayerCommand, type ServerMessage, type Sim, type SimEvent,
 } from '@bc/shared';
 import type { Conn } from './conn';
+import type { Learner } from './learner';
 import type { Persistence } from './persistence';
 
 const LIVE_SAVE_EVERY_TICKS = 30 * TICK_RATE;
@@ -22,6 +23,8 @@ export interface MatchRoomOptions {
   tickMs: number;
   /** Target Elo of every Auto bot (their skill follows it; it also counts as their rating). */
   botElo?: Record<string, number>;
+  /** Learns from the result (bots' plans, their strength against the humans' ratings). */
+  learner?: Learner | null;
   /** Called once the match is over (finished, saved, or abandoned). */
   onClose: (reason: 'finished' | 'saved') => void;
 }
@@ -135,6 +138,25 @@ export class MatchRoom {
         return;
       }
     }
+  }
+
+  // ---------------------------------------------------------------- learning
+
+  /** Hands the result to the learner: Auto bots by skill, everyone else by rating. */
+  private teachLearner(ratings: Map<string, number>, winner: 0 | 1) {
+    const learner = this.o.learner;
+    if (!learner) return;
+    const s = this.sim.state;
+    // The bots log a round on their next update after it ended: make sure the last one is in.
+    for (const ai of this.ais) ai.update(this.sim);
+    const players = s.players.map((p) => {
+      const ai = this.ais.find((a) => a.player === p.index);
+      if (ai && ai.level === 'auto') return { team: p.team, skill: ai.persona.skill };
+      return { team: p.team, rating: ratings.get(p.userId) ?? START_RATING };
+    });
+    const plans = this.ais.flatMap((ai) => ai.roundLog.map(({ faction, opening, plan, enemy, won }) => ({ faction, opening, plan, enemy, won })));
+    const humans = s.players.filter((p) => !isBotId(p.userId)).length;
+    try { learner.recordMatch(players, winner, plans, humans); } catch (err) { console.error('[match] learner', err); }
   }
 
   // ---------------------------------------------------------------- loop
@@ -291,6 +313,7 @@ export class MatchRoom {
     const team = (t: 0 | 1) => s.players.filter((p) => p.team === t).map((p) => ratings.get(p.userId) ?? START_RATING);
     const delta0 = eloDelta(team(0), team(1), winner === 0);
     const after = (p: (typeof s.players)[number]) => (ratings.get(p.userId) ?? START_RATING) + (p.team === 0 ? delta0 : -delta0);
+    this.teachLearner(ratings, winner);
     const stats: MatchStats = {
       mode: s.mode ?? 'standard',
       rounds: s.rounds.map((r) => ({
