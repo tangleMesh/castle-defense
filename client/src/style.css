@@ -565,3 +565,21 @@ button.mode { cursor: pointer; }
 .mm-clock { font: 600 18px ui-monospace, Menlo, Consolas, monospace; color: var(--gold); }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #4a4028; border-top-color: var(--gold); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Leaderboard */
+.board .room-head { align-items: center; }
+.board .room-head button { margin-left: auto; }
+.leaderboard { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 15px; }
+.leaderboard th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gold-2); padding: 6px 8px; border-bottom: 1px solid #4a4028; }
+.leaderboard td { padding: 7px 8px; border-bottom: 1px solid #2a2618; }
+.leaderboard .n { text-align: right; white-space: nowrap; }
+.leaderboard .rank { width: 44px; text-align: center; color: var(--gold-2); font-weight: 600; }
+.leaderboard .medal { font-size: 18px; }
+.leaderboard .name { font-weight: 600; }
+.leaderboard .elo { color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
+.leaderboard tr.me td { background: rgba(242, 201, 74, .10); }
+.leaderboard tr.me .name::after { content: ' (you)'; color: var(--gold-2); font-weight: 400; }
+.leaderboard tr.gap td { text-align: center; color: #6a5a32; border-bottom: none; padding: 2px; }
+.leaderboard tbody tr:not(.gap):hover td { background: rgba(255, 255, 255, .03); }
+.winbar { display: inline-block; width: 44px; height: 6px; border-radius: 3px; vertical-align: middle; background: linear-gradient(90deg, #7ac860 var(--w), #3a3222 var(--w)); }
+@media (max-width: 640px) { .leaderboard th:nth-child(4), .leaderboard td:nth-child(4), .leaderboard th:nth-child(7), .leaderboard td:nth-child(7) { display: none; } }

@@ -1,4 +1,4 @@
-import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage, type MatchmakingStatus, RANKED_BEST_OF } from '@bc/shared';
+import { BOT_LEVELS, AI_LEVEL_NAMES, START_RATING, FACTIONS, FACTION_IDS, GAME_MODES, MAX_PLAYERS_PER_TEAM, type AiLevel, type FactionId, type GameMode, type PublicUser, type RoomInfo, type ServerMessage, type MatchmakingStatus, type LeaderboardEntry, RANKED_BEST_OF } from '@bc/shared';
 import { builderPortrait } from './portraits';
 import { getGraphics, setGraphicsMode } from '../settings';
 import { api, type MatchSummary, type SavedGameSummary } from '../net/api';
@@ -28,6 +28,8 @@ export class LobbyView {
   private copied = '';
   /** Ranked matchmaking: party and search state. */
   private mm: MatchmakingStatus = { party: null, search: null };
+  /** The leaderboard page instead of the game browser / room. */
+  private board: { top: LeaderboardEntry[]; you: LeaderboardEntry | null; loading: boolean; error?: string } | null = null;
   private mmSize: 1 | 2 | 3 | 4 = 1;
   private mmTimer: ReturnType<typeof setInterval> | null = null;
   /** The first room state from the server arrived (a waiting invite is used then). */
@@ -101,12 +103,13 @@ export class LobbyView {
           h('span', { class: 'dim' }, ` · ${s.wins}W ${s.losses}L · ${s.roundsWon} rounds won · ${s.unitsKilled} kills · ${s.rescueStrikesUsed} strikes`),
           h('button', { class: 'btn small ghost', title: 'Graphics of the battlefield: painted 2D or 3D (only for you)', onclick: () => { setGraphicsMode(getGraphics() === '3d' ? '2d' : '3d'); this.render(); } },
             `Graphics: ${getGraphics() === '3d' ? '3D' : '2D'}`),
+          h('button', { class: `btn small ${this.board ? '' : 'ghost'}`, onclick: () => (this.board ? this.closeBoard() : void this.openBoard()) }, this.board ? 'Back to lobby' : 'Leaderboard'),
           h('button', { class: 'btn small ghost', onclick: () => this.onLogout() }, 'Sign out'),
         ),
       ),
       this.error ? h('div', { class: 'banner-error' }, this.error) : null,
       h('main', { class: 'lobby-grid' },
-        this.room ? this.renderRoom(this.room) : this.renderBrowser(),
+        this.board ? this.renderBoard() : this.room ? this.renderRoom(this.room) : this.renderBrowser(),
         h('aside', { class: 'side' }, this.renderSaved(), this.renderHistory(), this.renderChat()),
       ),
     ].filter((n): n is HTMLElement => !!n));
@@ -162,6 +165,57 @@ export class LobbyView {
           h('li', null, 'Destroy the enemy castle to win the round. Each round starts fresh.'),
         ),
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------- leaderboard
+
+  private async openBoard() {
+    this.board = { top: this.board?.top ?? [], you: this.board?.you ?? null, loading: true };
+    this.render();
+    try {
+      const { top, you } = await api.leaderboard();
+      if (this.board) this.board = { top, you, loading: false };
+    } catch (e) {
+      if (this.board) this.board = { ...this.board, loading: false, error: (e as Error).message };
+    }
+    this.render();
+  }
+
+  private closeBoard() {
+    this.board = null;
+    this.render();
+  }
+
+  /** Top players by Elo; your own row highlighted (and shown below the table if you're further down). */
+  private renderBoard() {
+    const b = this.board!;
+    const medal = ['🥇', '🥈', '🥉'];
+    const row = (e: LeaderboardEntry) => {
+      const pct = e.matches ? Math.round((100 * e.wins) / e.matches) : 0;
+      return h('tr', { class: e.userId === this.user.id ? 'me' : '' },
+        h('td', { class: 'rank' }, e.rank <= 3 ? h('span', { class: 'medal', title: `#${e.rank}` }, medal[e.rank - 1]) : `${e.rank}`),
+        h('td', { class: 'name' }, e.username),
+        h('td', { class: 'n elo' }, String(e.rating)),
+        h('td', { class: 'n dim' }, String(e.peakRating)),
+        h('td', { class: 'n' }, `${e.wins}–${e.losses}`),
+        h('td', { class: 'n' }, h('span', { class: 'winbar', style: `--w:${pct}%` }), ` ${pct}%`),
+        h('td', { class: 'n dim' }, String(e.matches)));
+    };
+    const inTop = b.you && b.top.some((t) => t.userId === b.you!.userId);
+    return h('section', { class: 'panel-box board' },
+      h('div', { class: 'room-head' },
+        h('h2', null, 'Leaderboard'),
+        h('span', { class: 'dim' }, 'Top players by Elo · at least one finished match'),
+        h('button', { class: 'btn small ghost', disabled: b.loading, onclick: () => void this.openBoard() }, b.loading ? 'Loading…' : 'Refresh')),
+      b.error ? h('div', { class: 'banner-error' }, b.error) : null,
+      !b.loading && !b.top.length && !b.error ? h('p', { class: 'dim' }, 'Nobody has finished a match yet. Be the first!') : null,
+      b.top.length ? h('table', { class: 'leaderboard' },
+        h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'Player'), h('th', { class: 'n' }, 'Elo'), h('th', { class: 'n' }, 'Peak'),
+          h('th', { class: 'n' }, 'W–L'), h('th', { class: 'n' }, 'Win rate'), h('th', { class: 'n' }, 'Matches'))),
+        h('tbody', null, b.top.map(row),
+          b.you && !inTop ? [h('tr', { class: 'gap' }, h('td', { colSpan: 7 }, '⋯')), row(b.you)] : null)) : null,
+      !b.you && !b.loading ? h('p', { class: 'dim small' }, 'Finish a match to appear on the leaderboard.') : null,
     );
   }
 

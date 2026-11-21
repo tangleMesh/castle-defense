@@ -1,4 +1,4 @@
-import type { PublicUser } from '@bc/shared';
+import type { LeaderboardEntry, PublicUser } from '@bc/shared';
 
 const TOKEN_KEY = 'bc.token';
 
@@ -54,6 +54,7 @@ export const api = {
   logout: () => call('POST', '/api/logout', {}),
   me: () => call<{ user: PublicUser }>('GET', '/api/me'),
   history: () => call<{ matches: MatchSummary[] }>('GET', '/api/history'),
+  leaderboard: () => call<{ top: LeaderboardEntry[]; you: LeaderboardEntry | null }>('GET', '/api/leaderboard'),
   saved: () => call<{ saved: SavedGameSummary[] }>('GET', '/api/saved'),
   discardSaved: (id: string) => call('DELETE', `/api/saved/${encodeURIComponent(id)}`),
 };

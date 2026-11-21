@@ -59,6 +59,18 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
+/** One row of the Elo leaderboard (GET /api/leaderboard). */
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  rating: number;
+  peakRating: number;
+  wins: number;
+  losses: number;
+  matches: number;
+}
+
 export interface PublicUser {
   id: string;
   username: string;

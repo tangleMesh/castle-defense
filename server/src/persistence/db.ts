@@ -121,6 +121,7 @@ export async function connectDb(url: string, dbName = 'bastion_clash'): Promise<
   };
   await Promise.all([
     c.users.createIndex({ usernameLower: 1 }, { unique: true }),
+    c.users.createIndex({ 'stats.rating': -1 }),
     c.sessions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 }),
     c.matches.createIndex({ 'players.userId': 1, endedAt: -1 }),
     c.savedGames.createIndex({ userIds: 1, status: 1, updatedAt: -1 }),

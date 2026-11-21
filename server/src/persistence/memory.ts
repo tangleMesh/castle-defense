@@ -35,6 +35,12 @@ export function createMemoryPersistence(): Persistence {
         users.set(doc._id.toHexString(), doc);
         return cloneUser(doc);
       },
+      async leaderboard(limit: number) {
+        return [...users.values()].filter((u) => (u.stats.matches ?? 0) > 0)
+          .sort((a, b) => (b.stats.rating ?? 0) - (a.stats.rating ?? 0) || (b.stats.wins ?? 0) - (a.stats.wins ?? 0) || a.createdAt.getTime() - b.createdAt.getTime())
+          .slice(0, limit).map(cloneUser);
+      },
+      async countAbove(rating: number) { return [...users.values()].filter((u) => (u.stats.matches ?? 0) > 0 && (u.stats.rating ?? 0) > rating).length; },
       async listBots() { return [...users.values()].filter((u) => u.bot).map(cloneUser); },
       async verify(username: string, password: string) {
         const u = [...users.values()].find((x) => x.usernameLower === username.toLowerCase());

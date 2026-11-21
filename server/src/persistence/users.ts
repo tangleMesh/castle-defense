@@ -39,6 +39,16 @@ export class UserRepo {
     return this.c.users.find({ bot: true }).toArray();
   }
 
+  /** Accounts with at least one finished match, best Elo first (ties: more wins, then older account). */
+  async leaderboard(limit: number): Promise<UserDoc[]> {
+    return this.c.users.find({ 'stats.matches': { $gt: 0 } }).sort({ 'stats.rating': -1, 'stats.wins': -1, createdAt: 1 }).limit(limit).toArray();
+  }
+
+  /** How many ranked accounts are ahead of this rating. */
+  async countAbove(rating: number): Promise<number> {
+    return this.c.users.countDocuments({ 'stats.matches': { $gt: 0 }, 'stats.rating': { $gt: rating } });
+  }
+
   async verify(username: string, password: string): Promise<UserDoc | null> {
     const u = await this.c.users.findOne({ usernameLower: username.toLowerCase() });
     if (!u || u.bot || !(await bcrypt.compare(password, u.passwordHash))) return null;

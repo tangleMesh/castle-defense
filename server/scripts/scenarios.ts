@@ -87,6 +87,12 @@ export async function fullMatchScenario(base: string, opts: { perTeam: number; b
   }
   assert(wins === opts.perTeam && losses === opts.perTeam, `wins/losses split per team (${wins}/${losses})`);
   log.push(`history + stats verified for ${bots.length} players`);
+  // Leaderboard: everyone who finished the match is listed, best rating first, with their own rank.
+  const board = await api<{ top: Array<{ rank: number; username: string; rating: number }>; you: { rank: number; rating: number } | null }>(base, '/api/leaderboard', bots[0].token);
+  for (const b of bots) assert(board.top.some((t) => t.username === b.name), `${b.name} on the leaderboard`);
+  assert(board.top.every((t, i) => i === 0 || board.top[i - 1].rating >= t.rating), 'leaderboard sorted by Elo');
+  assert(!!board.you && board.top.some((t) => t.rank === board.you!.rank && t.rating === board.you!.rating), 'own rank reported');
+  log.push(`leaderboard lists all ${bots.length} players`);
   const errs = bots.flatMap((b) => b.errors).filter((e) => !/Not enough gold|Not enough lumber|occupied|block|busy|round starts in|No open game with the code XXXXXX/.test(e));
   log.push(`unexpected errors: ${errs.length ? errs.join(' | ') : 'none'}`);
   bots.forEach((b) => b.disconnect());
