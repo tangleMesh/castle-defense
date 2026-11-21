@@ -7,6 +7,10 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.52.1
+
+- **The bots' learner runs non-stop:** it now plays one self-play game right after another, all the time (`LEARNER=always` by default), still in a single worker thread at the lowest CPU priority. There is no limit on games per hour any more. `LEARNER_GAMES_PER_HOUR` can still set a cap, and `LEARNER=idle` brings back "only when the server is quiet".
+
 ## 0.52.0
 
 - **Start battle waits for everyone:** the host's button stays disabled, with a hint naming who isn't ready yet (or that a team is still empty), until every other player has pressed Ready. Players who aren't ready see "Press Ready when you are set".

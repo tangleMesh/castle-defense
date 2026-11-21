@@ -17,8 +17,8 @@
 ## The learner (`server/src/learner/`)
 
 - **Self-play worker:** a worker thread at the lowest CPU priority plays one bot game after another: 1v1 or 2v2, random factions, skills and personalities.
-  - **When it runs:** only while no real match is running, the event loop is calm and the load is low. Otherwise the game pauses mid-way.
-  - **Rate:** at most `LEARNER_GAMES_PER_HOUR` games an hour (default 400), spaced out.
+  - **When it runs:** by default continuously, one game right after another, at the lowest CPU priority. In `idle` mode only while no real match is running and the machine is quiet; otherwise the game pauses mid-way.
+  - **Rate:** unlimited by default; `LEARNER_GAMES_PER_HOUR` can set a cap.
 - **What it learns:**
   - **Strategy stats:** which plans win, per faction and against which enemy plan. Old results fade, so balance changes and new habits show up.
   - **Skill calibration:** Elo per skill level. Real matches against humans count 4× as much as self-play, because human ratings anchor the scale.
@@ -32,8 +32,8 @@
 
 | | |
 |---|---|
-| `LEARNER=off\|idle\|always` | off: only use what was learned; idle (default): self-play when the server is quiet; always: self-play continuously (still lowest priority) |
-| `LEARNER_GAMES_PER_HOUR` | upper limit of self-play games per hour (default 400) |
+| `LEARNER=off\|idle\|always` | off: only use what was learned; idle: self-play only when the server is quiet; always (default): self-play continuously, one game after another (lowest CPU priority) |
+| `LEARNER_GAMES_PER_HOUR` | optional upper limit of self-play games per hour (default 0 = unlimited) |
 | `LEARNER_TRAIN_VALUE`, `LEARNER_TRAIN_POLICY` | new samples before a training attempt (default 3000 / 1500) |
 | `GET /api/learner` | status: games, skill curve, best openings per faction, model version, A/B win rate |
 | `POST /api/learner/rollback` `{ version }` | back to an earlier model version (header `x-admin-token` = `ADMIN_TOKEN`) |

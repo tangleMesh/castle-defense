@@ -17,7 +17,7 @@ export interface ServerOptions {
   tickMs: number;
   clientDist?: string;
   logger?: boolean;
-  /** Background bot learner (default: env LEARNER, else 'idle'; tests: 'off'). */
+  /** Background bot learner (default: env LEARNER, else 'always'; tests: 'off'). */
   learner?: LearnerMode;
 }
 
@@ -46,8 +46,8 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   }
 
   const lobby = new Lobby(db, o.tickMs);
-  const mode = o.learner ?? ((process.env.LEARNER as LearnerMode | undefined) ?? (process.env.VITEST ? 'off' : 'idle'));
-  const learner = new Learner(db, { mode, busy: () => lobby.liveMatches() > 0, gamesPerHour: Number(process.env.LEARNER_GAMES_PER_HOUR) || undefined });
+  const mode = o.learner ?? ((process.env.LEARNER as LearnerMode | undefined) ?? (process.env.VITEST ? 'off' : 'always'));
+  const learner = new Learner(db, { mode, busy: () => lobby.liveMatches() > 0, gamesPerHour: Number(process.env.LEARNER_GAMES_PER_HOUR) || undefined /* unset or 0: unlimited */ });
   await learner.start();
   lobby.learner = learner;
   app.get('/api/learner', async () => learner.status());

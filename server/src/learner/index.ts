@@ -19,7 +19,7 @@ export interface LearnerOptions {
   mode: LearnerMode;
   /** A real match is running (idle mode pauses self-play). */
   busy: () => boolean;
-  /** Upper limit on self-play games per hour (also spaces them out). */
+  /** Upper limit on self-play games per hour (default: none, one game right after another). */
   gamesPerHour?: number;
 }
 
@@ -92,14 +92,15 @@ export class Learner {
   private throttle() {
     const now = Date.now();
     this.gameTimes = this.gameTimes.filter((t) => now - t < 3600_000);
-    const perHour = this.o.gamesPerHour ?? 400;
+    const perHour = this.o.gamesPerHour ?? Infinity;
     const calm = this.lag.mean / 1e6 < 30 && loadavg()[0] < availableParallelism() * 0.6;
     this.lag.reset();
     const want = this.o.mode === 'always' || (this.o.mode === 'idle' && !this.o.busy() && calm);
     const on = want && this.gameTimes.length < perHour;
     if (on !== this.running) { this.running = on; }
-    // Space games out evenly over the hour (at least 2 s apart).
-    this.post({ t: 'run', on, restMs: Math.max(2000, 3600_000 / perHour - 4000) });
+    // Unlimited: the next game starts right after the last (a short breather to stay polite);
+    // with a limit, games are spaced out evenly over the hour.
+    this.post({ t: 'run', on, restMs: Number.isFinite(perHour) ? Math.max(2000, 3600_000 / perHour - 4000) : 200 });
     if (this.unsaved && (this.unsaved >= 20 || now - this.lastSave > 120_000)) void this.save();
   }
 
