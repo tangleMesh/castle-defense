@@ -25,7 +25,7 @@ export interface ServerOptions {
   logger?: boolean;
   /** Matchmaking: how long parties wait for humans before bots fill the match (seconds; tests use short waits). */
   matchmaking?: { botWait?: [number, number]; botWaitPerPlayer?: number; foundDelay?: number; newBotChance?: number; reconnectGrace?: number };
-  /** Background bot learner (default: env LEARNER, else 'always'; tests: 'off'). */
+  /** Background bot learner (default: env LEARNER, else 'off'; the live deployment runs 'always'). */
   learner?: LearnerMode;
 }
 
@@ -53,7 +53,8 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   }
 
   const lobby = new Lobby(db, o.tickMs, o.matchmaking);
-  const mode = o.learner ?? ((process.env.LEARNER as LearnerMode | undefined) ?? (process.env.VITEST ? 'off' : 'always'));
+  // Off unless switched on: the live deployment sets LEARNER=always (deploy/docker-compose.yml).
+  const mode = o.learner ?? ((process.env.LEARNER as LearnerMode | undefined) ?? 'off');
   const learner = new Learner(db, { mode, busy: () => lobby.liveMatches() > 0, gamesPerHour: Number(process.env.LEARNER_GAMES_PER_HOUR) || undefined /* unset or 0: unlimited */ });
   await learner.start();
   lobby.learner = learner;

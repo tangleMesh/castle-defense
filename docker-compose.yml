@@ -19,8 +19,9 @@ services:
       DB_NAME: bastion_clash
       PORT: "3000"
       TICK_MS: ${TICK_MS:-50}
-      # Background bot learner (docs/bots.md): off | idle | always
-      LEARNER: ${LEARNER:-always}
+      # Background bot learner (docs/bots.md): off | idle | always. Off in dev: only the live
+      # server (deploy/docker-compose.yml) learns.
+      LEARNER: ${LEARNER:-off}
       # 0 = unlimited: one self-play game right after another
       LEARNER_GAMES_PER_HOUR: ${LEARNER_GAMES_PER_HOUR:-0}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}

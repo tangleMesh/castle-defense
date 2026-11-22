@@ -35,7 +35,7 @@ When a ranked search doesn't find enough real players within its semi-random wai
 ## The learner (`server/src/learner/`)
 
 - **Self-play worker:** a worker thread at the lowest CPU priority plays one bot game after another: 1v1 or 2v2, random factions, skills and personalities.
-  - **When it runs:** by default continuously, one game right after another, at the lowest CPU priority. In `idle` mode only while no real match is running and the machine is quiet; otherwise the game pauses mid-way.
+  - **When it runs:** on the live server (`LEARNER=always`) continuously, one game right after another, at the lowest CPU priority; off by default and in dev. In `idle` mode only while no real match is running and the machine is quiet; otherwise the game pauses mid-way.
   - **Rate:** unlimited by default; `LEARNER_GAMES_PER_HOUR` can set a cap.
 - **What it learns:**
   - **Strategy stats:** which plans win, per faction and against which enemy plan. Old results fade, so balance changes and new habits show up.
@@ -50,7 +50,7 @@ When a ranked search doesn't find enough real players within its semi-random wai
 
 | | |
 |---|---|
-| `LEARNER=off\|idle\|always` | off: only use what was learned; idle: self-play only when the server is quiet; always (default): self-play continuously, one game after another (lowest CPU priority) |
+| `LEARNER=off\|idle\|always` | off (default, and in dev): only use what was learned; idle: self-play only when the server is quiet; always (the live deployment): self-play continuously, one game after another (lowest CPU priority) |
 | `LEARNER_GAMES_PER_HOUR` | optional upper limit of self-play games per hour (default 0 = unlimited) |
 | `LEARNER_TRAIN_VALUE`, `LEARNER_TRAIN_POLICY` | new samples before a training attempt (default 3000 / 1500) |
 | `GET /api/learner` | status: games, skill curve, best openings per faction, model version, A/B win rate, and `strength` (see below) |

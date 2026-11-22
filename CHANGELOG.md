@@ -7,6 +7,10 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.58.1
+
+- **The bots learn only on the live server:** the background learner is now off by default and in the dev setup (`LEARNER=off`). Only the live deployment (`deploy/docker-compose.yml`, `LEARNER=always`) plays self-play games and learns from matches. Set `LEARNER=always` to switch it on anywhere else.
+
 ## 0.58.0
 
 - **Live deployment from GitHub releases** (setup guide: `docs/deploy.md`):
