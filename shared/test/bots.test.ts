@@ -205,3 +205,13 @@ describe('fair bots', () => {
     expect(struck).toBe(false);
   });
 });
+
+describe('learner state', () => {
+  it('a fresh state has empty strength measurements', async () => {
+    const { freshLearnedState } = await import('../src/index');
+    const s = freshLearnedState();
+    expect(s.benchmark.total).toEqual([0, 0]);
+    expect(s.vsHumans.games).toBe(0);
+    expect(s.modelAccuracy).toEqual({});
+  });
+});

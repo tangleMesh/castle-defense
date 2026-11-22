@@ -2,7 +2,7 @@ import { availableParallelism, loadavg } from 'node:os';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { Worker } from 'node:worker_threads';
 import {
-  PLAN_IDS, addPlanResults, addSkillResult, curveFromState, freshLearnedState, setModels, setSkillCurve, setStrategyStats, statKey,
+  PLAN_IDS, MAX_SKILL, eloForSkill, expectedScore, addPlanResults, addSkillResult, curveFromState, freshLearnedState, setModels, setSkillCurve, setStrategyStats, statKey,
   FACTION_IDS, type LearnedState, type Participant, type PlanRecord, type Sample,
 } from '@bc/shared';
 import type { Persistence } from '../persistence';
@@ -62,7 +62,8 @@ export class Learner {
     this.worker = new Worker(new URL('./worker-boot.mjs', import.meta.url));
     this.worker.on('message', (m: FromWorker) => {
       if (m.t === 'game') this.onSelfPlay(m.result);
-      else if (m.t === 'model') this.onModel(m.kind, m.model, m.valLoss, m.championLoss, m.samples);
+      else if (m.t === 'bench') this.onBenchmark(m.learnedWon);
+      else if (m.t === 'model') { this.state.modelAccuracy[m.kind] = m.accuracy; this.onModel(m.kind, m.model, m.valLoss, m.championLoss, m.samples); }
     });
     this.worker.on('error', (e) => { console.error('[learner worker]', e); this.worker = null; });
     this.lag.enable();
@@ -135,6 +136,16 @@ export class Learner {
 
   private lastModel: { kind: ModelKind; valLoss: number; championLoss: number | null; samples: number; at: Date } | null = null;
 
+  /** A benchmark game finished (learning bot vs the fixed Hard bot). */
+  private onBenchmark(learnedWon: boolean) {
+    const b = this.state.benchmark;
+    b.recent = [b.recent[0] * 0.995 + (learnedWon ? 1 : 0), b.recent[1] * 0.995 + 1];
+    b.total = [b.total[0] + (learnedWon ? 1 : 0), b.total[1] + 1];
+    // A point for the trend every 50 benchmark games.
+    if (b.total[1] % 50 === 0) b.history = [...b.history, { at: new Date().toISOString(), games: b.total[1], winRate: round2(b.recent[0] / b.recent[1]) }].slice(-200);
+    this.unsaved++;
+  }
+
   /** Switches back to an earlier model version (admin). */
   rollback(version: number): boolean {
     const h = this.state.history.find((x) => x.version === version);
@@ -190,6 +201,16 @@ export class Learner {
    * against the humans' known ratings calibrates the skill curve.
    */
   recordMatch(players: Participant[], winner: 0 | 1, plans: PlanRecord[], humans: number, samples?: { value: Sample[]; policy: Sample[] }) {
+    // Bots vs people: one team only Auto bots, the other only rated players (humans).
+    for (const t of [0, 1] as const) {
+      const bots = players.filter((p) => p.team === t), people = players.filter((p) => p.team !== t);
+      if (!bots.length || !people.length || !bots.every((p) => 'skill' in p) || !people.every((p) => 'rating' in p) || !humans) continue;
+      const avg = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length;
+      const botElo = avg(bots.map((p) => eloForSkill((p as { skill: number }).skill)));
+      const humanElo = avg(people.map((p) => (p as { rating: number }).rating));
+      const h = this.state.vsHumans;
+      h.games++; h.wins += winner === t ? 1 : 0; h.expected += expectedScore(botElo, humanElo);
+    }
     // Training samples (human play is kept in the database: it's what makes bots play like people).
     if (samples && (samples.value.length || samples.policy.length)) {
       this.post({ t: 'samples', value: samples.value, policy: samples.policy });
@@ -213,6 +234,39 @@ export class Learner {
     try { await this.db.learner.save(this.state); } catch (err) { console.error('[learner] save failed', err); }
   }
 
+  /** How good the bots are, measured three ways (see status().strength). */
+  private strength() {
+    const s = this.state, b = s.benchmark, h = s.vsHumans;
+    const rate = b.recent[1] ? round2(b.recent[0] / b.recent[1]) : null;
+    const curve = curveFromState(s);
+    return {
+      summary: rate === null ? 'No benchmark games yet.'
+        : `The learning bot wins ${Math.round(rate * 100)}% against the original Hard bot (50% = no better). Strongest bot plays at ~${Math.round(eloForSkill(MAX_SKILL, curve))} Elo, Hard-level at ~${Math.round(eloForSkill(1, curve))}.`,
+      vsOriginalHard: {
+        explain: 'Learning Auto bot (skill 1 = Hard strength, with plans, experience and models) vs the original Hard bot that never learns, same faction. 50% = equal; above = learning helped.',
+        winRate: rate, recentGames: Math.round(b.recent[1]), totalGames: b.total[1],
+        allTimeWinRate: b.total[1] ? round2(b.total[0] / b.total[1]) : null,
+        trend: b.history.slice(-20),
+      },
+      eloScale: {
+        explain: 'What Elo bots really play at, calibrated from results (real matches count most).',
+        strongestBot: Math.round(eloForSkill(MAX_SKILL, curve)),
+        hardLevel: Math.round(eloForSkill(1, curve)),
+        normalLevel: Math.round(eloForSkill(0.5, curve)),
+        weakestBot: Math.round(eloForSkill(0, curve)),
+      },
+      vsHumans: {
+        explain: 'Real matches with only bots on one side and only people on the other: how often the bots won, and how often Elo expected them to.',
+        games: h.games, botWinRate: h.games ? round2(h.wins / h.games) : null, expectedWinRate: h.games ? round2(h.expected / h.games) : null,
+      },
+      models: {
+        explain: 'Held-out samples the live models get right: value = predicting the round winner (50% = guessing), policy = which kind of building is built next (10 kinds).',
+        valueAccuracy: s.modelAccuracy.value !== undefined ? round2(s.modelAccuracy.value) : null,
+        policyAccuracy: s.modelAccuracy.policy !== undefined ? round2(s.modelAccuracy.policy) : null,
+      },
+    };
+  }
+
   /** Public summary (GET /api/learner). */
   status() {
     const s = this.state;
@@ -234,6 +288,7 @@ export class Learner {
       realGames: s.realGames,
       gamesLastHour: this.gameTimes.length,
       lastSelfPlay: this.lastResult,
+      strength: this.strength(),
       skillCurve: curveFromState(s),
       bestOpenings: best,
       models: {
@@ -249,3 +304,5 @@ export class Learner {
     };
   }
 }
+
+const round2 = (v: number) => Math.round(v * 100) / 100;

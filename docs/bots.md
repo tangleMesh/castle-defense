@@ -53,6 +53,17 @@ When a ranked search doesn't find enough real players within its semi-random wai
 | `LEARNER=off\|idle\|always` | off: only use what was learned; idle: self-play only when the server is quiet; always (default): self-play continuously, one game after another (lowest CPU priority) |
 | `LEARNER_GAMES_PER_HOUR` | optional upper limit of self-play games per hour (default 0 = unlimited) |
 | `LEARNER_TRAIN_VALUE`, `LEARNER_TRAIN_POLICY` | new samples before a training attempt (default 3000 / 1500) |
-| `GET /api/learner` | status: games, skill curve, best openings per faction, model version, A/B win rate |
+| `GET /api/learner` | status: games, skill curve, best openings per faction, model version, A/B win rate, and `strength` (see below) |
 | `POST /api/learner/rollback` `{ version }` | back to an earlier model version (header `x-admin-token` = `ADMIN_TOKEN`) |
 | `POST /api/learner/models` `{ enabled }` | switch the models off or on (same header) |
+
+## How good are the bots? (`GET /api/learner` → `strength`)
+
+| Field | Meaning |
+|---|---|
+| `summary` | One sentence: the benchmark win rate and the Elo of the strongest and the Hard-level bot |
+| `vsOriginalHard` | Every 5th self-play game is a benchmark: the learning Auto bot at skill 1 (Hard strength, with plans, experience and models) vs the original Hard bot that never learns, on the same faction. `winRate` over the last ~200 games (50% = no better; above = the learning helped), `allTimeWinRate`, and a `trend` point every 50 benchmark games |
+| `eloScale` | The Elo the bots really play at (strongest, Hard-level, Normal-level, weakest), calibrated from results; real matches count most |
+| `vsHumans` | Real matches with only bots on one side and only people on the other: the bots' win rate and the win rate Elo expected (equal = calibrated) |
+| `models` | How often the live models are right on held-out samples. Value: who wins the round (50% = guessing). Policy: which of 10 kinds of building comes next (10% = guessing) |
+

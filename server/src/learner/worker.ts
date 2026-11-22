@@ -26,7 +26,9 @@ export interface SelfPlayResult {
 }
 export type FromWorker =
   | { t: 'game'; result: SelfPlayResult }
-  | { t: 'model'; kind: ModelKind; model: MlpJson; valLoss: number; championLoss: number | null; samples: number };
+  /** A benchmark game: the learning Auto bot (skill 1, Hard strength) vs the fixed original Hard bot. */
+  | { t: 'bench'; learnedWon: boolean; faction: FactionId }
+  | { t: 'model'; kind: ModelKind; model: MlpJson; valLoss: number; championLoss: number | null; samples: number; accuracy: number };
 
 try { setPriority(19); } catch { /* not permitted: still throttled by the main thread */ }
 
@@ -75,7 +77,13 @@ async function train(kind: ModelKind) {
   const valLoss = cand.loss(xs, ys, ws), championLoss = champ ? champ.loss(xs, ys, ws) : null;
   if (championLoss === null || valLoss < championLoss * 0.995) {
     champion[kind] = cand.toJSON();
-    parentPort!.postMessage({ t: 'model', kind, model: champion[kind]!, valLoss, championLoss, samples: data.length } satisfies FromWorker);
+    // Share of held-out samples predicted right (value: who wins; policy: the category built).
+    let right = 0;
+    for (let k = 0; k < xs.length; k++) {
+      const out = cand.predict(xs[k]);
+      if (kind === 'value' ? (out[0] > 0.5 ? 1 : 0) === ys[k] : out.indexOf(Math.max(...out)) === ys[k]) right++;
+    }
+    parentPort!.postMessage({ t: 'model', kind, model: champion[kind]!, valLoss, championLoss, samples: data.length, accuracy: right / xs.length } satisfies FromWorker);
   }
 }
 
@@ -136,9 +144,47 @@ async function playGame(): Promise<SelfPlayResult | null> {
   return { players, winner, seconds: Math.round(sim.state.tick / TICK_RATE) };
 }
 
+/**
+ * Benchmark: the learning Auto bot at skill 1 (Hard strength, with its plans, experience and models)
+ * against the original Hard bot, which never learns, both on the same faction so only the play
+ * differs. Its win rate over time shows how much the learning has improved the bots.
+ */
+async function playBenchmark(): Promise<{ learnedWon: boolean; faction: FactionId } | null> {
+  const faction = FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)];
+  const learnedTeam = Math.random() < 0.5 ? 0 : 1;
+  const sim = Sim.create({
+    countdownTicks: 0, bestOf: 1, seed: (Math.random() * 2 ** 32) >>> 0,
+    players: [0, 1].map((t) => ({ userId: makeBotId(t === learnedTeam ? 'auto' : 'hard', `bm${t}`), name: `bm${t}`, team: t as 0 | 1, faction })),
+  });
+  const seed = (Math.random() * 2 ** 31) >>> 0;
+  const ais = [0, 1].map((t) => (t === learnedTeam ? new AiPlayer(t, 'auto', seed + t, undefined, { skill: 1 }) : new AiPlayer(t, 'hard', seed + t)));
+  const limit = 25 * 60 * TICK_RATE;
+  while (sim.state.phase === 'playing' && sim.state.tick < limit) {
+    if (sim.state.tick % 400 === 0) {
+      await new Promise((r) => setImmediate(r));
+      while (!running && !stopped) await sleep(500);
+      if (stopped) return null;
+    }
+    const cmds: PlayerCommand[] = [];
+    for (const ai of ais) for (const c of ai.update(sim)) cmds.push({ player: ai.player, cmd: c });
+    sim.step(cmds);
+  }
+  const winner = sim.state.rounds.at(-1)?.winner ?? (sim.castle(0)!.hp >= sim.castle(1)!.hp ? 0 : 1);
+  return { learnedWon: winner === learnedTeam, faction };
+}
+
+let gamesPlayed = 0;
+
 void (async () => {
   while (!stopped) {
     if (!running) { await sleep(500); continue; }
+    // Every 5th game is a benchmark game (not used for training).
+    if (++gamesPlayed % 5 === 0) {
+      const bench = await playBenchmark();
+      if (bench) parentPort!.postMessage({ t: 'bench', ...bench } satisfies FromWorker);
+      await sleep(restMs);
+      continue;
+    }
     const result = await playGame();
     if (result) parentPort!.postMessage({ t: 'game', result } satisfies FromWorker);
     // Enough new games: try to improve the models.

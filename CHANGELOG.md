@@ -7,6 +7,15 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.57.0
+
+- **How good are the bots? `GET /api/learner` now has a `strength` section:**
+  - `summary`: one sentence with the essentials.
+  - `vsOriginalHard`: every 5th self-play game is a benchmark (not used for training). The learning Auto bot at Hard strength (with its plans, experience and models) plays the original Hard bot, which never learns, on the same faction. You get the win rate over the last ~200 games (50% = no better, above = the learning helped), the all-time rate, and a trend point every 50 benchmark games.
+  - `eloScale`: the Elo the strongest, Hard-level, Normal-level and weakest bots really play at, calibrated from results.
+  - `vsHumans`: real matches of bots against people: their win rate vs what Elo expected.
+  - `models`: how often the live models are right on held-out samples (the value model's prediction of the round winner, and the policy model's guess at the next kind of building).
+
 ## 0.56.0
 
 - **Leaving and disconnects in ranked matches:**

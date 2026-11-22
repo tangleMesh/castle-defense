@@ -26,6 +26,15 @@ export interface LearnedState {
   modelsEnabled: boolean;
   /** Self-play games of model users against non-users: [model side wins, games] (slowly forgetting). */
   modelEdge: [number, number];
+  /**
+   * Benchmark: the learning Auto bot (skill 1) vs the fixed original Hard bot, same faction.
+   * `recent` forgets slowly (≈ the last 200 games), `total` counts everything.
+   */
+  benchmark: { recent: [number, number]; total: [number, number]; history: Array<{ at: string; games: number; winRate: number }> };
+  /** Real matches of bots against humans: bot wins, games, and the wins Elo expected. */
+  vsHumans: { wins: number; games: number; expected: number };
+  /** Share of held-out samples the live models predict right. */
+  modelAccuracy: { value?: number; policy?: number };
   /** Earlier model versions (newest last) for rollback. */
   history: Array<{ version: number; at: string; models: { value?: MlpJson; policy?: MlpJson } }>;
 }
@@ -37,6 +46,7 @@ export function freshLearnedState(): LearnedState {
   return {
     version: 1, selfPlayGames: 0, realGames: 0, strategy: {}, skillElo: SKILL_BUCKETS.map((s) => Math.round(eloForSkill(s, DEFAULT_SKILL_CURVE))),
     models: {}, modelVersion: 0, modelsEnabled: true, modelEdge: [0, 0], history: [],
+    benchmark: { recent: [0, 0], total: [0, 0], history: [] }, vsHumans: { wins: 0, games: 0, expected: 0 }, modelAccuracy: {},
   };
 }
 
