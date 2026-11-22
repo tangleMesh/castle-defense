@@ -67,6 +67,10 @@ The game uses semantic versioning. The current version is in the root `package.j
 
 The server is authoritative. Clients send only intents (move, build, upgrade, sell, rescue, buy). The server steps the simulation and broadcasts compact snapshots at 10 Hz, and clients interpolate between them.
 
+## Live deployment
+
+The live server runs from GitHub releases: publishing a release builds an arm64/amd64 image (GitHub Actions → ghcr.io; workflow in `deploy/github/release.yml`). The Mac mini installs it automatically (systemd timer, waits for running matches to end), runs server + MongoDB with Docker Compose behind a Cloudflare Tunnel, and backs the database up to S3 (weekly by default). Setup guide: [docs/deploy.md](docs/deploy.md); files: [deploy/](deploy/).
+
 ## Run with Docker (recommended)
 
 ```bash

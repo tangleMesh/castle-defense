@@ -1,0 +1,68 @@
+# Live deployment (Mac mini). Not the dev setup in the repository root.
+#   cd deploy && docker compose up -d
+# The server image comes from GitHub releases (ghcr.io); update.sh switches CASTLE_VERSION in .env
+# when a new release is published. Only Cloudflare Tunnel exposes the game: the port is bound to
+# localhost.
+name: castle-defense-live
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  server:
+    image: ${CASTLE_IMAGE:-ghcr.io/tanglemesh/castle-defense}:${CASTLE_VERSION:-latest}
+    restart: unless-stopped
+    init: true
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ${DB_NAME:-bastion_clash}
+      PORT: "3000"
+      LEARNER: ${LEARNER:-always}
+      LEARNER_GAMES_PER_HOUR: ${LEARNER_GAMES_PER_HOUR:-0}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8080}:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Running matches are saved on shutdown (players can resume them).
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Database backup to AWS S3 every BACKUP_INTERVAL_HOURS (default weekly).
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ${DB_NAME:-bastion_clash}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-168}
+      BACKUP_KEEP: ${BACKUP_KEEP:-12}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PREFIX: ${S3_PREFIX:-castle-defense}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-eu-central-1}
+    volumes:
+      - backup-state:/state
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo-data:
+  backup-state:

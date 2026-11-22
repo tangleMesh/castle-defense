@@ -7,6 +7,12 @@ import { Conn } from './conn';
 import { registerHttpRoutes } from './http';
 import { Lobby } from './lobby';
 import { Learner, type LearnerMode } from './learner';
+import { readFileSync } from 'node:fs';
+
+/** The game version (root package.json; the image is built from a release). */
+const APP_VERSION: string = (() => {
+  try { return JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version ?? '?'; } catch { return '?'; }
+})();
 import { toPublic, type Persistence } from './persistence';
 
 export interface ServerOptions {
@@ -39,7 +45,6 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   const app = Fastify({ logger: o.logger === false ? false : { level: process.env.LOG_LEVEL ?? 'info' } });
   if (recovered) app.log.info(`${recovered} interrupted match(es) marked as saved`);
   registerHttpRoutes(app, db);
-  app.get('/api/health', async () => ({ ok: true }));
 
   if (o.clientDist && existsSync(o.clientDist)) {
     await app.register(fastifyStatic, { root: o.clientDist });
@@ -53,6 +58,8 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   await learner.start();
   lobby.learner = learner;
   app.get('/api/learner', async () => learner.status());
+  // Health for monitoring and the live updater: version and how many matches are being played.
+  app.get('/api/health', async () => ({ ok: true, version: APP_VERSION, liveMatches: lobby.liveMatches() }));
   // Admin (header x-admin-token = env ADMIN_TOKEN): roll the bots' models back, or switch them off/on.
   const admin = (req: { headers: Record<string, unknown> }) => !!process.env.ADMIN_TOKEN && req.headers['x-admin-token'] === process.env.ADMIN_TOKEN;
   app.post<{ Body: { version?: number } }>('/api/learner/rollback', async (req, reply) => {

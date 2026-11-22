@@ -4,3 +4,6 @@ dist
 .env
 lab-report.md
 *.w3x
+
+# live deployment settings (secrets)
+deploy/.env

@@ -1,5 +1,6 @@
-# ---- build: install everything, bundle the client
-FROM node:24-slim AS build
+# ---- build: install everything, bundle the client (architecture-independent output, so it runs
+# natively on the build machine even when the image is built for arm64)
+FROM --platform=$BUILDPLATFORM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/

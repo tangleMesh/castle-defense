@@ -7,6 +7,16 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.58.0
+
+- **Live deployment from GitHub releases** (setup guide: `docs/deploy.md`):
+  - **Build:** publishing a release runs the tests and builds the server image for arm64 (Mac mini M1) and amd64. It is pushed to `ghcr.io/tanglemesh/castle-defense:<tag>` (workflow: `deploy/github/release.yml`, to be placed in `.github/workflows/`; see the guide).
+  - **Run:** `deploy/docker-compose.yml` runs the live server and MongoDB. The game port is bound to localhost only, for the Cloudflare Tunnel.
+  - **Updates:** `deploy/update.sh`, run every 5 min by a systemd timer, installs a new release once its image is ready and waits until no match is running. `AUTO_UPDATE=0` pins a version (rollback).
+  - **Backups:** a backup container dumps the database to AWS S3 every `BACKUP_INTERVAL_HOURS` (default 168 = weekly) and keeps the newest `BACKUP_KEEP`. Manual backup, list and restore commands are in the guide.
+  - **Setup:** `deploy/install.sh` sets everything up on the Mac mini.
+- `GET /api/health` now reports the version and the number of running matches.
+
 ## 0.57.0
 
 - **How good are the bots? `GET /api/learner` now has a `strength` section:**
