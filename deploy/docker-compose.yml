@@ -9,6 +9,8 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
+    # The Mac mini is shared: cap MongoDB's cache (default would be ~half of the host RAM).
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
     volumes:
       - mongo-data:/data/db
     healthcheck:
