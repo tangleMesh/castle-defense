@@ -10,6 +10,8 @@ const LIVE_SAVE_EVERY_TICKS = 30 * TICK_RATE;
 const DISCONNECT_GRACE_MS = 60_000;
 /** Longest the first start countdown waits for clients that are still loading. */
 const LOAD_WAIT_MS = 20_000;
+/** Ranked: how long the match waits for a disconnected player before an AI takes over their base. */
+const RANKED_GRACE_MS = 45_000;
 
 export interface MatchRoomOptions {
   matchId: string;
@@ -27,6 +29,8 @@ export interface MatchRoomOptions {
   learner?: Learner | null;
   /** Ranked matchmaking match: can't be saved and left by the host. */
   ranked?: boolean;
+  /** Ranked: ms a disconnected player gets to come back before an AI takes over (default 45 s). */
+  reconnectGraceMs?: number;
   /** Matchmaking bot accounts → skill: played by the AI, but rated and recorded like any account. */
   disguised?: Record<string, number>;
   /** Called once the match is over (finished, saved, or abandoned). */
@@ -48,6 +52,14 @@ export class MatchRoom {
   private ticksSinceSave = 0;
   private closed = false;
   private ais: AiPlayer[] = [];
+  /** Ranked: AIs standing in for players who left or didn't come back (userId → AI). */
+  private takeover = new Map<string, AiPlayer>();
+  /** Ranked: players who left (or never returned): they take the loss whatever the result. */
+  private leavers = new Set<string>();
+  /** Ranked: surrender votes per team. */
+  private surrender: [Set<string>, Set<string>] = [new Set(), new Set()];
+  private forfeit: { team: 0 | 1; reason: 'surrender' | 'abandon' } | null = null;
+  private get rankedGrace() { return this.o.reconnectGraceMs ?? RANKED_GRACE_MS; }
   /** Training samples from this match (humans' choices teach the bots to play like people). */
   private recorder: GameRecorder;
   /** Players whose client has the battlefield on screen (see `loading`). */
@@ -59,7 +71,9 @@ export class MatchRoom {
     this.sim = o.sim;
     // Human build choices count (winners' a bit more); bots' choices in real matches don't.
     this.recorder = new GameRecorder((player, won) => {
-      const human = !this.isAi(this.sim.state.players[player]?.userId ?? '');
+      const id = this.sim.state.players[player]?.userId ?? '';
+      // A stand-in AI's choices aren't a human's.
+      const human = !this.isAi(id) && !this.takeover.has(id);
       return { w: human ? (won ? 1.5 : 1) : 0, human };
     });
     for (const p of o.players) {
@@ -106,8 +120,10 @@ export class MatchRoom {
     this.sim.state.players[i].connected = true;
     conn.send({
       type: 'match.init', matchId: this.id, you: i, players: this.o.players,
-      bestOf: this.sim.state.bestOf, hostId: this.o.hostId, resumed: this.o.resumed,
+      bestOf: this.sim.state.bestOf, hostId: this.o.hostId, resumed: this.o.resumed, ...(this.o.ranked ? { ranked: true } : {}),
     });
+    // Back in a ranked match: take the base back from the stand-in AI.
+    if (this.takeover.has(conn.userId)) this.endTakeover(conn.userId);
     conn.send({ type: 'match.snapshot', snap: filterSnapshot(makeSnapshot(this.sim, []), this.sim.state.players[i].team) });
     this.broadcastPause(true);
   }
@@ -120,6 +136,14 @@ export class MatchRoom {
     if (left) this.disconnectedAt.delete(userId);
     else this.disconnectedAt.set(userId, Date.now());
     this.pauseVotes.delete(userId);
+    for (const v of this.surrender) v.delete(userId);
+    if (this.o.ranked) {
+      // Ranked: leaving on purpose hands the base to an AI at once (and counts as a loss); a
+      // disconnect gets a grace period first. The match never gets saved for later.
+      if (left) { this.leavers.add(userId); void this.startTakeover(userId, 'left'); }
+      this.broadcastPause(true);
+      return;
+    }
     if (this.conns.size === 0) {
       // Everybody is gone: keep the game resumable instead of simulating to nobody.
       void this.saveAndClose();
@@ -135,7 +159,16 @@ export class MatchRoom {
       case 'cmd':
         if (this.queue.length < 2000) this.queue.push({ player: i, cmd: msg.cmd });
         return;
+      case 'game.surrender': {
+        if (!this.o.ranked) return conn.send({ type: 'error', message: 'Surrender is only possible in ranked matches' });
+        const team = this.sim.state.players[i].team;
+        if (msg.yes) this.surrender[team].add(conn.userId); else this.surrender[team].delete(conn.userId);
+        this.checkSurrender(team, msg.yes ? conn.username : null);
+        return;
+      }
       case 'game.pause':
+        // Ranked: no pause votes (only waiting for reconnects); nobody can freeze a ladder game.
+        if (this.o.ranked) return conn.send({ type: 'error', message: 'Ranked matches can\'t be paused' });
         if (msg.pause) this.pauseVotes.add(conn.userId); else this.pauseVotes.delete(conn.userId);
         this.broadcastPause(true);
         return;
@@ -163,6 +196,91 @@ export class MatchRoom {
     }
   }
 
+  // ---------------------------------------------------------------- ranked: leavers & surrender
+
+  /** Grace periods that ran out become AI takeovers; a team without any player left forfeits. */
+  private rankedChecks() {
+    const now = Date.now();
+    for (const [userId, at] of this.disconnectedAt) {
+      if (now - at >= this.rankedGrace && !this.takeover.has(userId)) {
+        this.leavers.add(userId);
+        void this.startTakeover(userId, 'gone');
+      }
+    }
+    if (this.forfeit) return;
+    // A team whose people are all gone (left, or past the grace period) gives up the match.
+    for (const team of [0, 1] as const) {
+      const people = this.o.players.filter((p) => p.team === team && !this.isAi(p.userId));
+      if (people.length && people.every((p) => this.leavers.has(p.userId) && !this.conns.has(p.userId))) {
+        // Both teams abandoned: the one whose castle holds better wins.
+        const other = (1 - team) as 0 | 1;
+        const otherGone = this.o.players.filter((p) => p.team === other && !this.isAi(p.userId)).every((p) => this.leavers.has(p.userId) && !this.conns.has(p.userId));
+        const s = this.sim.state;
+        const loser = otherGone && (s.score[team] > s.score[other] || (s.score[team] === s.score[other] && this.castleShare(team) > this.castleShare(other))) ? other : team;
+        this.endByForfeit(loser, 'abandon');
+        return;
+      }
+    }
+  }
+
+  private castleShare(team: 0 | 1) {
+    const c = this.sim.castle(team);
+    return c ? c.hp / c.maxHp : 0;
+  }
+
+  /** An AI (Auto, at the player's Elo) keeps playing a base whose player left or dropped. */
+  private async startTakeover(userId: string, why: 'left' | 'gone') {
+    if (this.takeover.has(userId) || this.closed) return;
+    const p = this.o.players.find((x) => x.userId === userId);
+    if (!p) return;
+    let rating = START_RATING;
+    try { rating = (await this.o.persistence.users.byId(userId))?.stats?.rating ?? START_RATING; } catch { /* default */ }
+    if (this.takeover.has(userId) || this.closed || this.conns.has(userId)) return;
+    const ai = new AiPlayer(p.i, 'auto', this.sim.state.tick + p.i * 104729 + 7, undefined, { skill: skillForElo(rating), human: true });
+    this.takeover.set(userId, ai);
+    this.ais.push(ai);
+    this.disconnectedAt.delete(userId);
+    this.system(p.team, why === 'left' ? `${p.name} left the match. An AI plays their base now.` : `${p.name} didn't come back. An AI plays their base until they return.`);
+    this.broadcastPause(true);
+  }
+
+  private endTakeover(userId: string) {
+    const ai = this.takeover.get(userId);
+    if (!ai) return;
+    this.takeover.delete(userId);
+    this.ais = this.ais.filter((a) => a !== ai);
+    this.leavers.delete(userId);
+    const p = this.o.players.find((x) => x.userId === userId);
+    if (p) this.system(p.team, `${p.name} is back and takes over again.`);
+  }
+
+  /** A note in the team chat (and the all-chat for the other team's sake when it matters). */
+  private system(team: 0 | 1, text: string) {
+    const json = JSON.stringify({ type: 'chat', from: '⚑ Game', text, scope: 'team' } satisfies ServerMessage);
+    for (const [userId, c] of this.conns) if (this.o.players.find((p) => p.userId === userId)?.team === team) c.sendRaw(json);
+  }
+
+  /** Surrender once every connected player of the team agrees. */
+  private checkSurrender(team: 0 | 1, voter: string | null) {
+    const voters = this.o.players.filter((p) => p.team === team && !this.isAi(p.userId) && this.conns.has(p.userId)).map((p) => p.userId);
+    const yes = voters.filter((u) => this.surrender[team].has(u)).length;
+    if (voter) this.system(team, voters.length > 1 ? `${voter} votes to surrender (${yes}/${voters.length}).` : `${voter} surrenders.`);
+    if (voters.length && yes === voters.length) this.endByForfeit(team, 'surrender');
+  }
+
+  /** The match ends early: `loser` surrendered or abandoned it. */
+  private endByForfeit(loser: 0 | 1, reason: 'surrender' | 'abandon') {
+    if (this.forfeit || this.closed) return;
+    const s = this.sim.state;
+    const winner = (1 - loser) as 0 | 1;
+    this.forfeit = { team: loser, reason };
+    s.phase = 'matchOver';
+    s.winner = winner;
+    this.pendingEvents.push({ t: 'match', winner, score: [s.score[0], s.score[1]] });
+    this.flushSnapshot();
+    void this.finish();
+  }
+
   // ---------------------------------------------------------------- learning
 
   /** Hands the result to the learner: Auto bots by skill, everyone else by rating. */
@@ -173,11 +291,11 @@ export class MatchRoom {
     // The bots log a round on their next update after it ended: make sure the last one is in.
     for (const ai of this.ais) ai.update(this.sim);
     const players = s.players.map((p) => {
-      const ai = this.ais.find((a) => a.player === p.index);
+      const ai = this.ais.find((a) => a.player === p.index && ![...this.takeover.values()].includes(a));
       if (ai && ai.level === 'auto') return { team: p.team, skill: ai.persona.skill };
       return { team: p.team, rating: ratings.get(p.userId) ?? START_RATING };
     });
-    const plans = this.ais.flatMap((ai) => ai.roundLog.map(({ faction, opening, plan, enemy, won }) => ({ faction, opening, plan, enemy, won })));
+    const plans = this.ais.filter((ai) => ![...this.takeover.values()].includes(ai)).flatMap((ai) => ai.roundLog.map(({ faction, opening, plan, enemy, won }) => ({ faction, opening, plan, enemy, won })));
     const humans = s.players.filter((p) => !this.isAi(p.userId)).length;
     this.recorder.observe(this.sim, []);
     try { learner.recordMatch(players, winner, plans, humans, { value: this.recorder.value, policy: this.recorder.policy }); } catch (err) { console.error('[match] learner', err); }
@@ -188,6 +306,8 @@ export class MatchRoom {
   /** Bots' chat lines, sent like a player's (all-chat or their team). */
   private botChat() {
     for (const ai of this.ais) {
+      // Stand-ins for players who left stay silent (their teammates know it's an AI).
+      if ([...this.takeover.values()].includes(ai)) continue;
       for (const line of ai.drainChat(this.sim)) {
         const p = this.o.players.find((x) => x.i === ai.player);
         if (!p) continue;
@@ -213,10 +333,11 @@ export class MatchRoom {
     const now = Date.now();
     const loading = this.loading(now);
     if (loading.length) return { paused: true, reason: 'Waiting for players to load the battlefield', waitingFor: loading, resumeIn: Math.ceil((LOAD_WAIT_MS - (now - this.startedAt)) / 1000) };
-    const waiting = [...this.disconnectedAt.entries()].filter(([, at]) => now - at < DISCONNECT_GRACE_MS);
+    const grace = this.o.ranked ? this.rankedGrace : DISCONNECT_GRACE_MS;
+    const waiting = [...this.disconnectedAt.entries()].filter(([u, at]) => now - at < grace && !this.takeover.has(u));
     if (waiting.length) {
       const names = waiting.map(([u]) => this.o.players.find((p) => p.userId === u)?.name ?? '?');
-      const resumeIn = Math.ceil((DISCONNECT_GRACE_MS - (now - Math.min(...waiting.map(([, at]) => at)))) / 1000);
+      const resumeIn = Math.ceil((grace - (now - Math.min(...waiting.map(([, at]) => at)))) / 1000);
       return { paused: true, reason: 'Waiting for players to reconnect', waitingFor: names, resumeIn };
     }
     const connected = this.conns.size;
@@ -237,6 +358,8 @@ export class MatchRoom {
 
   private tick() {
     if (this.closed) return;
+    if (this.o.ranked) this.rankedChecks();
+    if (this.forfeit) return;
     const pause = this.isPaused();
     this.broadcastPause();
     if (pause.paused) return;
@@ -337,7 +460,10 @@ export class MatchRoom {
     }
     const team = (t: 0 | 1) => s.players.filter((p) => p.team === t).map((p) => ratings.get(p.userId) ?? START_RATING);
     const delta0 = eloDelta(team(0), team(1), winner === 0);
-    const after = (p: (typeof s.players)[number]) => (ratings.get(p.userId) ?? START_RATING) + (p.team === 0 ? delta0 : -delta0);
+    // Ranked leavers take the loss whatever their team did.
+    const lossDelta = (t: 0 | 1) => eloDelta(team(t), team((1 - t) as 0 | 1), false);
+    const left = (p: (typeof s.players)[number]) => this.leavers.has(p.userId);
+    const after = (p: (typeof s.players)[number]) => (ratings.get(p.userId) ?? START_RATING) + (left(p) ? Math.min(0, lossDelta(p.team)) : p.team === 0 ? delta0 : -delta0);
     this.teachLearner(ratings, winner);
     const stats: MatchStats = {
       mode: s.mode ?? 'standard',
@@ -353,8 +479,10 @@ export class MatchRoom {
           factions: s.rounds.map((r) => r.players?.[i]?.faction ?? p.faction),
           kills: t.kills, lost: t.lost, goldEarned: Math.floor(t.goldEarned), castleDmg: Math.round(t.castleDmg), strikes: t.strikes,
           ...(human ? { rating: { before: ratings.get(p.userId) ?? START_RATING, after: after(p) } } : {}),
+          ...(left(p) ? { left: true } : {}),
         };
       }),
+      ...(this.forfeit ? { forfeit: this.forfeit } : {}),
     };
     this.broadcast({ type: 'match.end', reason: 'finished', winner, score: [s.score[0], s.score[1]], stats });
     try {
@@ -379,8 +507,8 @@ export class MatchRoom {
       await Promise.all(s.players.filter((p) => !isBotId(p.userId)).map(async (p) => {
         await db.users.addStats(p.userId, {
           matches: 1,
-          wins: p.team === winner ? 1 : 0,
-          losses: p.team === winner ? 0 : 1,
+          wins: p.team === winner && !left(p) ? 1 : 0,
+          losses: p.team === winner && !left(p) ? 0 : 1,
           roundsWon: s.score[p.team],
           unitsKilled: matchStats(p).kills,
           rescueStrikesUsed: matchStats(p).strikes,

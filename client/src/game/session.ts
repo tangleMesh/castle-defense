@@ -35,6 +35,8 @@ export class MatchSession {
   readonly team: Team;
   readonly players: MatchInitPlayer[];
   readonly hostId: string;
+  /** Ranked matchmaking match (surrender instead of pause and save; leaving counts as a loss). */
+  readonly ranked: boolean;
   buffer: Buffered[] = [];
   latest!: Snapshot;
   latestById = new Map<number, EntRow>();
@@ -50,6 +52,7 @@ export class MatchSession {
     this.you = init.you;
     this.players = init.players;
     this.hostId = init.hostId;
+    this.ranked = !!init.ranked;
     this.team = init.players[init.you].team;
   }
 

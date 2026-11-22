@@ -93,6 +93,8 @@ export class Hud {
   private disposers: Array<() => void> = [];
   private raf = 0;
   private pauseVote = false;
+  /** Ranked: this player votes to surrender. */
+  private surrenderVote = false;
 
   constructor(private session: MatchSession, private scene: GameScene, private onExit: () => void, private sendRaw: (m: import('@bc/shared').ClientMessage) => void) {
     this.root = $('#hud');
@@ -952,8 +954,8 @@ export class Hud {
       h('p', null, p.reason),
       p.waitingFor.length ? h('p', null, `Waiting for: ${p.waitingFor.join(', ')}`, p.resumeIn ? ` · continuing in ${p.resumeIn}s` : '') : null,
       p.votes.length ? h('p', { class: 'dim' }, `Pause votes: ${p.votes.join(', ')}`) : null,
-      this.pauseVote ? h('button', { class: 'btn', onclick: () => this.votePause(false) }, 'Vote to resume') : null,
-      this.session.isHost ? h('button', { class: 'btn ghost', onclick: () => this.sendRaw({ type: 'game.saveAndExit' }) }, 'Save & exit') : null,
+      this.pauseVote && !this.session.ranked ? h('button', { class: 'btn', onclick: () => this.votePause(false) }, 'Vote to resume') : null,
+      this.session.isHost && !this.session.ranked ? h('button', { class: 'btn ghost', onclick: () => this.sendRaw({ type: 'game.saveAndExit' }) }, 'Save & exit') : null,
     ));
     this.overlay.hidden = false;
   }
@@ -972,6 +974,8 @@ export class Hud {
       h('h1', { class: cls }, title),
       m.score ? h('div', { class: 'banner-score' }, h('span', { style: `color:${TEAM_CSS[0]}` }, m.score[0]), ' : ', h('span', { style: `color:${TEAM_CSS[1]}` }, m.score[1])) : null,
       m.reason === 'saved' ? h('p', null, 'The match was saved. Any of its players can resume it from the lobby later — everyone must rejoin.') : null,
+      m.stats?.forfeit ? h('p', { class: 'forfeit-note' }, `${TEAM_NAMES[m.stats.forfeit.team]} ${m.stats.forfeit.reason === 'surrender' ? 'surrendered' : 'abandoned the match'}.`) : null,
+      m.stats?.players.find((p) => p.userId === this.session.userId)?.left ? h('p', { class: 'dim' }, 'You left the match: it counts as a loss for you.') : null,
       m.stats ? this.statsPage(m.stats) : h('table', { class: 'roster' }, this.session.latest.players.map((p) => h('tr', null,
         h('td', { style: `color:${TEAM_CSS[p.team]}` }, '●'), h('td', null, p.name), h('td', null, `${p.kills} kills`)))),
       h('button', { class: 'btn', onclick: () => this.onExit() }, 'Return to lobby'),
@@ -997,7 +1001,7 @@ export class Hud {
     const rows = ([0, 1] as const).flatMap((t) => [
       h('tr', { class: 'team-row' }, h('td', { colspan: '8', style: `color:${TEAM_CSS[t]}` }, `${TEAM_NAMES[t]} team`)),
       ...st.players.filter((p) => p.team === t).map((p) => h('tr', { class: p === me ? 'me' : '' },
-        h('td', null, h('b', null, p.name), h('div', { class: 'dim small' }, factions(p))),
+        h('td', null, h('b', null, p.name), p.left ? h('span', { class: 'tag left', title: 'Left the match: counted as a loss' }, 'left') : null, h('div', { class: 'dim small' }, factions(p))),
         cell(p, 'kills'), cell(p, 'lost'), cell(p, 'goldEarned'), cell(p, 'castleDmg'), cell(p, 'strikes'), elo(p))),
     ]);
     const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
@@ -1036,13 +1040,21 @@ export class Hud {
       h('h2', null, 'Menu'),
       h('button', { class: 'btn', title: 'Your own display setting (other players keep theirs)', onclick: () => { setGraphicsMode(getGraphics() === '3d' ? '2d' : '3d'); this.renderMenu(); } },
         `Graphics: ${getGraphics() === '3d' ? '3D' : '2D'} (switch to ${getGraphics() === '3d' ? '2D' : '3D'})`),
-      h('button', { class: 'btn', onclick: () => this.votePause(!this.pauseVote) }, this.pauseVote ? 'Withdraw pause vote' : 'Vote to pause'),
-      this.session.isHost ? h('button', { class: 'btn', onclick: () => this.sendRaw({ type: 'game.saveAndExit' }) }, 'Save & exit (resume later)') : h('p', { class: 'dim' }, 'Only the host can save the game.'),
+      ...(this.session.ranked ? [
+        // Ranked: no pausing or saving. A team can surrender once all its players agree.
+        h('button', { class: 'btn', title: 'Your team gives up the match once all its connected players vote to surrender', onclick: () => { this.surrenderVote = !this.surrenderVote; this.sendRaw({ type: 'game.surrender', yes: this.surrenderVote }); this.renderMenu(); } },
+          this.surrenderVote ? 'Withdraw surrender vote' : 'Vote to surrender'),
+        h('p', { class: 'dim small' }, 'Ranked match: no pausing or saving. A disconnected player gets 45 s to come back, then an AI plays their base.'),
+      ] : [
+        h('button', { class: 'btn', onclick: () => this.votePause(!this.pauseVote) }, this.pauseVote ? 'Withdraw pause vote' : 'Vote to pause'),
+        this.session.isHost ? h('button', { class: 'btn', onclick: () => this.sendRaw({ type: 'game.saveAndExit' }) }, 'Save & exit (resume later)') : h('p', { class: 'dim' }, 'Only the host can save the game.'),
+      ]),
       h('button', { class: 'btn danger', onclick: (e: MouseEvent) => {
         const b = e.currentTarget as HTMLButtonElement;
         if (b.dataset.armed) { this.sendRaw({ type: 'game.leave' }); this.onExit(); return; }
-        b.dataset.armed = '1'; b.textContent = 'Click again to leave the match';
-      } }, 'Leave match'),
+        b.dataset.armed = '1';
+        b.textContent = this.session.ranked ? 'Click again: an AI takes over and you lose Elo' : 'Click again to leave the match';
+      } }, this.session.ranked ? 'Leave match (counts as a loss)' : 'Leave match'),
       h('button', { class: 'btn ghost', onclick: () => this.toggleMenu(false) }, 'Return to game'),
       h('div', { class: 'keys' },
         h('b', null, 'Controls'),

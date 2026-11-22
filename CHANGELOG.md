@@ -7,6 +7,22 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.56.0
+
+- **Leaving and disconnects in ranked matches:**
+  - **Leaving on purpose:**
+    - In team games an AI takes over your base at once, at your Elo, so your teammates aren't left alone. They get a note in team chat.
+    - If you were the last player of your team (e.g. in 1v1), your team forfeits and the other side wins.
+    - Either way, leaving counts as a loss for you (Elo and stats), even if your team wins without you. The menu says so: "Leave match (counts as a loss)".
+  - **Disconnects:**
+    - The match waits 45 s for you to reconnect (paused, with a countdown). After that an AI plays your base, and you count as a leaver unless you come back.
+    - Reconnecting before the match ends gives you your base back, and the leaver mark goes away.
+    - A team with nobody left forfeits.
+  - **Surrender:** "Vote to surrender" in the menu. The team gives up once all its connected players agree, with votes shown in team chat (1/2…).
+  - **No pause votes and no save & exit in ranked**; nobody can freeze a ladder game.
+  - **Result screen:** shows "… surrendered" or "… abandoned the match", and marks leavers.
+  - **Learning:** stand-in AIs stay silent in chat and don't count as human data for the learner.
+
 ## 0.55.1
 
 - **The bot player base grows over time:** when ranked matchmaking fills a slot with a bot, it usually picks a random free bot account whose Elo fits (±90), but one time in four a brand-new account joins instead, with a new name, rating and history. So you meet a mix of familiar and new names, and the pool keeps growing. When no fitting account exists, a new one is always created.

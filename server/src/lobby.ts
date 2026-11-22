@@ -47,7 +47,7 @@ export class Lobby {
 
   readonly matchmaker: Matchmaker;
 
-  constructor(private db: Persistence, private tickMs: number, mm: { botWait?: [number, number]; botWaitPerPlayer?: number; foundDelay?: number; newBotChance?: number } = {}) {
+  constructor(private db: Persistence, private tickMs: number, private mm: { botWait?: [number, number]; botWaitPerPlayer?: number; foundDelay?: number; newBotChance?: number; reconnectGrace?: number } = {}) {
     this.matchmaker = new Matchmaker(db, {
       send: (userId, msg) => this.conns.get(userId)?.send(msg),
       inRoom: (userId) => this.membership.has(userId),
@@ -106,7 +106,7 @@ export class Lobby {
     const room = this.roomOf(conn.userId);
     const err = (message: string) => conn.send({ type: 'error', message });
 
-    if (room?.match && ['cmd', 'game.pause', 'game.saveAndExit', 'match.loaded', 'chat'].includes(msg.type)) {
+    if (room?.match && ['cmd', 'game.pause', 'game.saveAndExit', 'game.surrender', 'match.loaded', 'chat'].includes(msg.type)) {
       room.match.handle(conn, msg);
       return;
     }
@@ -413,6 +413,7 @@ export class Lobby {
     const match = new MatchRoom({
       matchId, name: r.name, sim, players, hostId: r.hostId, resumed, startedAt, botElo,
       persistence: this.db, tickMs: this.tickMs, learner: this.learner, ranked: r.ranked, disguised: r.disguised,
+      ...(this.mm.reconnectGrace !== undefined ? { reconnectGraceMs: this.mm.reconnectGrace * 1000 } : {}),
       onClose: () => this.closeRoom(r),
     });
     r.match = match;

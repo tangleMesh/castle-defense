@@ -48,6 +48,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   /** The client has loaded the battlefield (the round's start countdown waits for everyone). */
   z.object({ type: z.literal('match.loaded') }),
   z.object({ type: z.literal('game.leave') }),
+  /** Ranked: vote for (or withdraw from) surrendering; the team gives up once all its connected players agree. */
+  z.object({ type: z.literal('game.surrender'), yes: z.boolean() }),
   // In a match: `all` reaches every player (enemies too); otherwise only the own team.
   z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(300), all: z.boolean().optional() }),
   // Ranked matchmaking: a party (alone or with friends who joined by its invite code) queues for a size.
@@ -105,6 +107,8 @@ export interface MatchStatsPlayer {
   strikes: number;
   /** Elo before and after the match (accounts only). */
   rating?: { before: number; after: number };
+  /** Left the ranked match (or never came back): counted as a loss whatever the result. */
+  left?: boolean;
 }
 
 /** The statistics page shown after the final round. */
@@ -112,6 +116,8 @@ export interface MatchStats {
   mode: string;
   rounds: Array<{ winner: 0 | 1; seconds: number; players: Array<{ kills: number; lost: number; goldEarned: number; castleDmg: number; faction: string }> }>;
   players: MatchStatsPlayer[];
+  /** How a ranked match ended early: a team surrendered, or all its players left. */
+  forfeit?: { team: 0 | 1; reason: 'surrender' | 'abandon' };
 }
 
 export interface RoomSlot {
@@ -181,7 +187,7 @@ export type ServerMessage =
   | { type: 'auth.ok'; user: PublicUser }
   | { type: 'lobby.list'; rooms: RoomInfo[] }
   | { type: 'lobby.room'; room: RoomInfo | null }
-  | { type: 'match.init'; matchId: string; you: number; players: MatchInitPlayer[]; bestOf: number; hostId: string; resumed: boolean }
+  | { type: 'match.init'; matchId: string; you: number; players: MatchInitPlayer[]; bestOf: number; hostId: string; resumed: boolean; ranked?: boolean }
   | { type: 'match.snapshot'; snap: Snapshot }
   | { type: 'match.paused'; paused: boolean; reason: string; waitingFor: string[]; votes: string[]; resumeIn?: number }
   | { type: 'match.end'; reason: 'finished' | 'saved' | 'left'; winner?: 0 | 1; score?: [number, number]; stats?: MatchStats }

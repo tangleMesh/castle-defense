@@ -273,3 +273,87 @@ export async function rankedScenario(base: string, opts: { prefix: string; timeo
   for (const x of [a, b, c, d]) x.disconnect();
   return { log };
 }
+
+/**
+ * Ranked leavers. Needs short waits: matchmaking { botWait, foundDelay: 1, reconnectGrace: 2 }.
+ * - 1v1: a player who leaves forfeits at once (the opponent wins) and takes the loss.
+ * - Surrender: the team gives up; no pausing in ranked.
+ * - 2v2: when one player leaves, an AI keeps playing their base and the match goes on; the leaver
+ *   takes the loss even if the team wins.
+ * - A player who drops and doesn't come back within the grace period forfeits.
+ */
+export async function rankedLeaveScenario(base: string, opts: { prefix: string; graceSec: number }): Promise<ScenarioResult> {
+  const log: string[] = [];
+  const mk = async (n: string, seed: number) => { const b = new Bot(base, `${opts.prefix}${n}`, 'ironvow', seed); await b.register(); await b.connect(); return b; };
+  const me = async (b: Bot) => (await api<{ user: PublicUser }>(base, '/api/me', b.token)).user.stats;
+  const startSolo = async (x: Bot, size: 1 | 2) => {
+    const init = x.waitFor('match.init', () => true, 30_000);
+    x.send({ type: 'mm.queue', size });
+    const m = await init;
+    await x.waitFor('match.snapshot', (s) => s.snap.tick > 200, 30_000);
+    return m;
+  };
+
+  // 1v1 between two people: A leaves → B wins at once, A takes the loss.
+  const a = await mk('a', 401), b = await mk('b', 402);
+  const ia = a.waitFor('match.init', () => true, 30_000), ib = b.waitFor('match.init', () => true, 30_000);
+  a.send({ type: 'mm.queue', size: 1 });
+  await a.waitFor('mm.status', (m) => !!m.status.search);
+  b.send({ type: 'mm.queue', size: 1 });
+  const [init] = await Promise.all([ia, ib]);
+  assert(!!init.ranked, 'ranked flag sent with match.init');
+  await b.waitFor('match.snapshot', (m) => m.snap.tick > 200, 30_000);
+  b.send({ type: 'game.pause', pause: true });
+  await b.waitFor('error', (m) => /can't be paused/.test(m.message));
+  const endB = b.waitFor('match.end', () => true, 20_000);
+  a.send({ type: 'game.leave' });
+  const e1 = await endB;
+  assert(e1.winner === b.team && e1.stats?.forfeit?.reason === 'abandon' && e1.stats.forfeit.team === a.team, '1v1: the leaver forfeits');
+  const pa = e1.stats.players.find((p) => p.userId === a.userId)!, pb = e1.stats.players.find((p) => p.userId === b.userId)!;
+  assert(pa.left && pa.rating!.after < pa.rating!.before && pb.rating!.after > pb.rating!.before, '1v1: leaver loses Elo, opponent gains');
+  log.push(`1v1 leave: B wins at once; A ${pa.rating!.before}→${pa.rating!.after} (left), B ${pb.rating!.before}→${pb.rating!.after}`);
+
+  // Surrender against bots.
+  const c = await mk('c', 403);
+  await startSolo(c, 1);
+  const endC = c.waitFor('match.end', () => true, 20_000);
+  c.send({ type: 'game.surrender', yes: true });
+  const e2 = await endC;
+  assert(e2.stats?.forfeit?.reason === 'surrender' && e2.winner !== c.team, 'surrender ends the match as a loss');
+  log.push('surrender: the match ended as a loss');
+
+  // 2v2 party vs bots: Q leaves, an AI takes over, the match goes on; then P surrenders alone.
+  const p = await mk('p', 404), q = await mk('q', 405);
+  p.send({ type: 'party.create' });
+  const party = await p.waitFor('mm.status', (m) => !!m.status.party);
+  q.send({ type: 'lobby.joinCode', code: party.status.party!.code });
+  await p.waitFor('mm.status', (m) => m.status.party?.members.length === 2);
+  const iq = q.waitFor('match.init', () => true, 30_000);
+  await startSolo(p, 2);
+  await iq;
+  const told = p.waitFor('chat', (m) => /left the match/.test(m.text), 10_000);
+  q.send({ type: 'game.leave' });
+  await told;
+  const t0 = p.snap!.tick;
+  await p.waitFor('match.snapshot', (m) => m.snap.tick > t0 + 200, 15_000);
+  assert(!p.ended, '2v2: the match goes on after a teammate left');
+  log.push(`2v2 leave: teammate told, an AI plays the base, the match goes on (tick ${t0} → ${p.snap!.tick})`);
+  const endP = p.waitFor('match.end', () => true, 20_000);
+  p.send({ type: 'game.surrender', yes: true });
+  const e3 = await endP;
+  assert(e3.stats!.players.find((x) => x.userId === q.userId)?.left === true, '2v2: the leaver is marked');
+  await sleep(500);
+  assert((await me(q)).losses === 1, '2v2: the leaver has a loss');
+
+  // C again: drops and doesn't come back → forfeits after the grace period.
+  await startSolo(c, 1);
+  c.disconnect();
+  await sleep((opts.graceSec + 3) * 1000);
+  await c.connect();
+  await sleep(800);
+  const sc = await me(c);
+  assert(sc.matches === 2 && sc.losses === 2, `the player who never came back lost (${sc.matches} matches, ${sc.losses} losses)`);
+  log.push(`abandon: C dropped and the match was forfeited after ${opts.graceSec} s`);
+  for (const x of [a, b, c, p, q]) x.disconnect();
+  return { log };
+}

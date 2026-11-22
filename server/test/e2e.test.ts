@@ -1,13 +1,13 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { startServer, type RunningServer } from '../src/app';
 import { createMemoryPersistence } from '../src/persistence/memory';
-import { aiMatchScenario, fullMatchScenario, rankedScenario, saveResumeScenario } from '../scripts/scenarios';
+import { aiMatchScenario, fullMatchScenario, rankedLeaveScenario, rankedScenario, saveResumeScenario } from '../scripts/scenarios';
 
 const persistence = createMemoryPersistence();
 const servers: RunningServer[] = [];
 
 async function boot(port = 0) {
-  const s = await startServer({ persistence, port, host: '127.0.0.1', tickMs: 1, logger: false, matchmaking: { botWait: [2, 3], botWaitPerPlayer: 0, foundDelay: 1 } });
+  const s = await startServer({ persistence, port, host: '127.0.0.1', tickMs: 1, logger: false, matchmaking: { botWait: [2, 3], botWaitPerPlayer: 0, foundDelay: 1, reconnectGrace: 2 } });
   servers.push(s);
   return s;
 }
@@ -47,6 +47,12 @@ describe('websocket end-to-end (in-memory persistence, accelerated ticks)', () =
   it('ranked matchmaking: humans meet in the queue; a waiting party gets bot accounts that look like players', async () => {
     const s = await boot();
     const res = await rankedScenario(`http://127.0.0.1:${s.port}`, { prefix: 'rk', timeoutMs: 200_000 });
+    console.log(res.log.join('\n'));
+  }, 300_000);
+
+  it('ranked leavers: leaving hands the base to an AI and costs Elo; surrender; a dropped player forfeits', async () => {
+    const s = await boot();
+    const res = await rankedLeaveScenario(`http://127.0.0.1:${s.port}`, { prefix: 'lv', graceSec: 2 });
     console.log(res.log.join('\n'));
   }, 300_000);
 });
