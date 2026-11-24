@@ -1,4 +1,3 @@
-import { availableParallelism, loadavg } from 'node:os';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { Worker } from 'node:worker_threads';
 import {
@@ -68,6 +67,7 @@ export class Learner {
   /** Worker health, for the status page: is it alive, how often it had to be restarted, why. */
   private health = { restarts: 0, lastError: null as string | null, lastErrorAt: null as Date | null, lastActivity: Date.now(), startedAt: new Date() };
   private stopping = false;
+  private pausedBecause: string | null = null;
   private respawn: NodeJS.Timeout | null = null;
 
   /**
@@ -140,10 +140,22 @@ export class Learner {
     const now = Date.now();
     this.gameTimes = this.gameTimes.filter((t) => now - t < 3600_000);
     const perHour = this.o.gamesPerHour ?? Infinity;
-    const calm = this.lag.mean / 1e6 < 30 && loadavg()[0] < availableParallelism() * 0.6;
+    // Only this server's own event loop counts. The load average is the whole host's: in a container
+    // on a shared machine, other apps kept it high and idle mode never ran. The worker runs at the
+    // lowest CPU priority and inside the container's CPU limit anyway.
+    const lagMs = this.lag.mean / 1e6;
+    const calm = !(lagMs >= 30);
     this.lag.reset();
-    const want = this.o.mode === 'always' || (this.o.mode === 'idle' && !this.o.busy() && calm);
-    const on = want && this.gameTimes.length < perHour;
+    const busy = this.o.busy();
+    const limited = this.gameTimes.length >= perHour;
+    this.pausedBecause = this.o.mode === 'off' ? 'learner off'
+      : limited ? 'games-per-hour limit reached'
+      : this.o.mode === 'idle' && busy ? 'a match is running (idle mode)'
+      : this.o.mode === 'idle' && !calm ? `server busy (event loop lag ${Math.round(lagMs)} ms, idle mode)`
+      : !this.worker ? 'worker restarting'
+      : null;
+    const want = this.o.mode === 'always' || (this.o.mode === 'idle' && !busy && calm);
+    const on = want && !limited;
     if (on !== this.running) { this.running = on; this.health.lastActivity = Date.now(); }
     // Watchdog: a running worker that hasn't finished anything in 20 minutes is stuck: replace it.
     if (this.worker && this.running && Date.now() - this.health.lastActivity > 20 * 60_000) {
@@ -338,6 +350,7 @@ export class Learner {
     return {
       mode: this.o.mode,
       selfPlayRunning: this.running && !!this.worker,
+      pausedBecause: this.running && this.worker ? null : this.pausedBecause,
       worker: {
         alive: !!this.worker,
         restarts: this.health.restarts,

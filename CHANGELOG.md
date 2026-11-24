@@ -9,6 +9,8 @@ So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3`
 
 ## 0.58.3
 
+- **Idle mode learns again:** `LEARNER=idle` also waited for a low load average. In a container, that is the whole host's load, so on the shared Mac mini idle mode never played a game. Idle mode now waits only until no match is running and the server's event loop is calm. The worker still runs at the lowest CPU priority, within the container's CPU limit.
+- **`/api/learner` explains a pause:** `pausedBecause` says why self-play isn't running (a match is running, the server is busy, the games-per-hour limit, the worker restarting, the learner switched off).
 - **The learner needs less memory:** training samples are kept as `Float32Array`s, which halves the worker's heap with full buffers (about 140 → 60–85 MB). Trimming the buffers no longer splices one sample at a time.
 - **The learner can't take the server down:** the worker's heap is capped at `LEARNER_MAX_MB` (default 256). If it runs out, only the worker restarts, never the game server with its running matches.
 - **Deploy guide:** memory needs and a troubleshooting entry for a learner that isn't running. The server needs about 400–500 MB with full buffers, so give it 1 GB or more.

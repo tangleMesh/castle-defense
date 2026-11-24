@@ -121,7 +121,7 @@ Settings in `deploy/.env` (see `deploy/.env.example`):
 | `UPDATE_MAX_WAIT_MIN` | `120` | How long an update waits for running matches to end |
 | `BACKUP_INTERVAL_HOURS` | `168` | Backup interval (168 = weekly) |
 | `BACKUP_KEEP` | `12` | Backups kept in S3 (0 = all) |
-| `LEARNER` | `always` | Background bot learner: `always`, `idle` or `off` |
+| `LEARNER` | `always` | Background bot learner: `always`; `idle` (only while no match is running); `off` |
 | `ADMIN_TOKEN` | random | For the learner's admin endpoints |
 | `LEARNER_MAX_MB` | `256` | Heap cap for the learner's worker (it restarts if it needs more) |
 
