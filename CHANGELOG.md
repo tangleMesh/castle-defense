@@ -7,6 +7,12 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.58.3
+
+- **The learner needs less memory:** training samples are kept as `Float32Array`s, which halves the worker's heap with full buffers (about 140 → 60–85 MB). Trimming the buffers no longer splices one sample at a time.
+- **The learner can't take the server down:** the worker's heap is capped at `LEARNER_MAX_MB` (default 256). If it runs out, only the worker restarts, never the game server with its running matches.
+- **Deploy guide:** memory needs and a troubleshooting entry for a learner that isn't running. The server needs about 400–500 MB with full buffers, so give it 1 GB or more.
+
 ## 0.58.2
 
 - **The learner restarts itself:** if the background self-play worker crashed or ran out of memory, the learner stopped for good. `/api/learner` still said `mode: always`, but no more games were played. Now:

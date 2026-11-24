@@ -29,6 +29,7 @@ services:
       PORT: "3000"
       LEARNER: ${LEARNER:-always}
       LEARNER_GAMES_PER_HOUR: ${LEARNER_GAMES_PER_HOUR:-0}
+      LEARNER_MAX_MB: ${LEARNER_MAX_MB:-256}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:

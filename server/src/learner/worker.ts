@@ -42,18 +42,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const MAX_VALUE = 60_000, MAX_POLICY = 40_000;
 /** New samples before a training attempt (env overrides for quick local runs). */
 const TRAIN_VALUE = Number(process.env.LEARNER_TRAIN_VALUE) || 3000, TRAIN_POLICY = Number(process.env.LEARNER_TRAIN_POLICY) || 1500;
-const buf: Record<ModelKind, Sample[]> = { value: [], policy: [] };
+/** A sample as kept in memory: the features as a Float32Array take a fraction of a plain array's memory. */
+type Stored = { x: Float32Array; y: number; w: number; human: boolean };
+const buf: Record<ModelKind, Stored[]> = { value: [], policy: [] };
 const fresh: Record<ModelKind, number> = { value: 0, policy: 0 };
 const champion: Partial<Record<ModelKind, MlpJson>> = {};
 const addSamples = (kind: ModelKind, s: Sample[]) => {
-  buf[kind].push(...s);
+  const b = buf[kind];
+  for (const x of s) b.push({ x: Float32Array.from(x.x), y: x.y, w: x.w, human: x.human });
   fresh[kind] += s.length;
   const max = kind === 'value' ? MAX_VALUE : MAX_POLICY;
   // Over the limit: drop the oldest self-play samples first (human samples are rarer and worth more).
-  while (buf[kind].length > max) {
-    const i = buf[kind].findIndex((x) => !x.human);
-    buf[kind].splice(i < 0 ? 0 : i, 1);
-  }
+  let drop = b.length - max;
+  if (drop > 0) buf[kind] = b.filter((x) => x.human || drop-- <= 0);
+  if (buf[kind].length > max) buf[kind] = buf[kind].slice(-max);
 };
 
 /**

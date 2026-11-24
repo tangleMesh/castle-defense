@@ -123,6 +123,7 @@ Settings in `deploy/.env` (see `deploy/.env.example`):
 | `BACKUP_KEEP` | `12` | Backups kept in S3 (0 = all) |
 | `LEARNER` | `always` | Background bot learner: `always`, `idle` or `off` |
 | `ADMIN_TOKEN` | random | For the learner's admin endpoints |
+| `LEARNER_MAX_MB` | `256` | Heap cap for the learner's worker (it restarts if it needs more) |
 
 ## 5. Cloudflare Tunnel
 
@@ -224,3 +225,4 @@ docker compose restart server
 | The site doesn't load through the tunnel | `curl localhost:8080/api/health` on the Mac mini. If that works, the tunnel's hostname or service is wrong. |
 | The backup log says "disabled" | `S3_BUCKET` or the AWS keys are missing in `.env`. Run `docker compose up -d backup` after fixing them. |
 | A backup failed | `docker compose logs backup` (bucket name, region, IAM policy). It retries every hour. |
+| `/api/learner` shows `selfPlayRunning: false` or `worker.restarts` keeps growing | Look at `worker.lastError` and `docker compose logs server \| grep learner`. Usually the server is short of memory. With full training buffers it needs about 400–500 MB, so give the server container at least 1 GB (MongoDB needs its own on top). The learner worker's heap is capped at `LEARNER_MAX_MB` (default 256). If it hits the cap, only the worker restarts, never the game server. |

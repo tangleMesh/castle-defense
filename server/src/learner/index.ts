@@ -75,7 +75,9 @@ export class Learner {
    * running out of memory) it is restarted after a short pause, so the learner never stops for good.
    */
   private async spawnWorker() {
-    const w = new Worker(new URL('./worker-boot.mjs', import.meta.url));
+    // The worker gets its own memory cap: if it ever needs more it is restarted, it can never take
+    // the game server (and the running matches) down with it.
+    const w = new Worker(new URL('./worker-boot.mjs', import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: Number(process.env.LEARNER_MAX_MB) || 256 } });
     this.worker = w;
     this.health.lastActivity = Date.now();
     this.health.startedAt = new Date();
