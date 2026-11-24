@@ -7,6 +7,14 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.58.2
+
+- **The learner restarts itself:** if the background self-play worker crashed or ran out of memory, the learner stopped for good. `/api/learner` still said `mode: always`, but no more games were played. Now:
+  - a failed game is logged and the next one starts;
+  - a dead worker is restarted after 5 s, waiting longer after repeated failures, up to 5 min;
+  - a watchdog replaces a worker that hasn't reported anything for 20 minutes.
+- **`/api/learner` shows the worker's health:** a new `worker` section shows `alive`, `restarts`, `lastError`/`lastErrorAt`, `lastActivity` and the server's memory use.
+
 ## 0.58.1
 
 - **The bots learn only on the live server:** the background learner is now off by default and in the dev setup (`LEARNER=off`). Only the live deployment (`deploy/docker-compose.yml`, `LEARNER=always`) plays self-play games and learns from matches. Set `LEARNER=always` to switch it on anywhere else.

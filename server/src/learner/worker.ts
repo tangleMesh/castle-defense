@@ -26,6 +26,8 @@ export interface SelfPlayResult {
 }
 export type FromWorker =
   | { t: 'game'; result: SelfPlayResult }
+  /** A game or training step failed (the worker carries on with the next game). */
+  | { t: 'error'; message: string }
   /** A benchmark game: the learning Auto bot (skill 1, Hard strength) vs the fixed original Hard bot. */
   | { t: 'bench'; learnedWon: boolean; faction: FactionId }
   | { t: 'model'; kind: ModelKind; model: MlpJson; valLoss: number; championLoss: number | null; samples: number; accuracy: number };
@@ -175,21 +177,28 @@ async function playBenchmark(): Promise<{ learnedWon: boolean; faction: FactionI
 
 let gamesPlayed = 0;
 
+// One failed game (or training step) must never end the learning: report it and carry on.
+const report = (e: unknown) => parentPort!.postMessage({ t: 'error', message: e instanceof Error ? `${e.message} ${e.stack?.split('\n')[1]?.trim() ?? ''}` : String(e) } satisfies FromWorker);
+process.on('unhandledRejection', report);
+
 void (async () => {
   while (!stopped) {
     if (!running) { await sleep(500); continue; }
-    // Every 5th game is a benchmark game (not used for training).
-    if (++gamesPlayed % 5 === 0) {
-      const bench = await playBenchmark();
-      if (bench) parentPort!.postMessage({ t: 'bench', ...bench } satisfies FromWorker);
-      await sleep(restMs);
-      continue;
+    try {
+      // Every 5th game is a benchmark game (not used for training).
+      if (++gamesPlayed % 5 === 0) {
+        const bench = await playBenchmark();
+        if (bench) parentPort!.postMessage({ t: 'bench', ...bench } satisfies FromWorker);
+      } else {
+        const result = await playGame();
+        if (result) parentPort!.postMessage({ t: 'game', result } satisfies FromWorker);
+        // Enough new games: try to improve the models.
+        if (fresh.value >= TRAIN_VALUE) { fresh.value = 0; await train('value'); }
+        if (fresh.policy >= TRAIN_POLICY) { fresh.policy = 0; await train('policy'); }
+      }
+    } catch (e) {
+      report(e);
     }
-    const result = await playGame();
-    if (result) parentPort!.postMessage({ t: 'game', result } satisfies FromWorker);
-    // Enough new games: try to improve the models.
-    if (fresh.value >= TRAIN_VALUE) { fresh.value = 0; await train('value'); }
-    if (fresh.policy >= TRAIN_POLICY) { fresh.policy = 0; await train('policy'); }
     await sleep(restMs);
   }
   process.exit(0);

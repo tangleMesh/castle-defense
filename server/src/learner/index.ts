@@ -59,26 +59,70 @@ export class Learner {
     }
     this.apply();
     if (this.o.mode === 'off') return;
-    this.worker = new Worker(new URL('./worker-boot.mjs', import.meta.url));
-    this.worker.on('message', (m: FromWorker) => {
+    this.lag.enable();
+    await this.spawnWorker();
+    this.timer = setInterval(() => this.throttle(), 2000);
+    this.timer.unref();
+  }
+
+  /** Worker health, for the status page: is it alive, how often it had to be restarted, why. */
+  private health = { restarts: 0, lastError: null as string | null, lastErrorAt: null as Date | null, lastActivity: Date.now(), startedAt: new Date() };
+  private stopping = false;
+  private respawn: NodeJS.Timeout | null = null;
+
+  /**
+   * Starts the self-play worker and hands it what was learned so far. If it ever dies (an error,
+   * running out of memory) it is restarted after a short pause, so the learner never stops for good.
+   */
+  private async spawnWorker() {
+    const w = new Worker(new URL('./worker-boot.mjs', import.meta.url));
+    this.worker = w;
+    this.health.lastActivity = Date.now();
+    this.health.startedAt = new Date();
+    w.on('message', (m: FromWorker) => {
+      this.health.lastActivity = Date.now();
       if (m.t === 'game') this.onSelfPlay(m.result);
       else if (m.t === 'bench') this.onBenchmark(m.learnedWon);
       else if (m.t === 'model') { this.state.modelAccuracy[m.kind] = m.accuracy; this.onModel(m.kind, m.model, m.valLoss, m.championLoss, m.samples); }
+      else if (m.t === 'error') this.noteError(`game error: ${m.message}`);
     });
-    this.worker.on('error', (e) => { console.error('[learner worker]', e); this.worker = null; });
-    this.lag.enable();
+    w.on('error', (e) => this.noteError(`worker crashed: ${e instanceof Error ? e.message : String(e)}`));
+    w.on('exit', (code) => {
+      if (this.worker !== w) return;
+      this.worker = null;
+      if (this.stopping) return;
+      if (code !== 0) this.noteError(`worker exited with code ${code}`);
+      this.scheduleRespawn();
+    });
     this.post({ t: 'state', strategy: this.state.strategy, curve: curveFromState(this.state) });
     this.post({ t: 'models', models: this.modelSet() });
+    this.post({ t: 'run', on: this.running, restMs: 200 });
     // The worker trains on human samples kept from earlier matches too.
     try {
       const [value, policy] = await Promise.all([this.db.learner.recentSamples('value', 20_000), this.db.learner.recentSamples('policy', 20_000)]);
       this.post({ t: 'samples', value, policy });
     } catch (err) { console.error('[learner] could not load samples', err); }
-    this.timer = setInterval(() => this.throttle(), 2000);
-    this.timer.unref();
+  }
+
+  private noteError(msg: string) {
+    console.error('[learner]', msg);
+    this.health.lastError = msg;
+    this.health.lastErrorAt = new Date();
+  }
+
+  /** Restart the worker after a pause that grows with repeated failures (5 s … 5 min). */
+  private scheduleRespawn() {
+    if (this.respawn || this.stopping) return;
+    const delay = Math.min(300_000, 5_000 * 2 ** Math.min(6, this.health.restarts));
+    this.health.restarts++;
+    console.error(`[learner] restarting the self-play worker in ${Math.round(delay / 1000)} s`);
+    this.respawn = setTimeout(() => { this.respawn = null; if (!this.stopping) void this.spawnWorker(); }, delay);
+    this.respawn.unref();
   }
 
   async stop() {
+    this.stopping = true;
+    if (this.respawn) clearTimeout(this.respawn);
     if (this.timer) clearInterval(this.timer);
     this.lag.disable();
     if (this.worker) { this.post({ t: 'stop' }); await this.worker.terminate().catch(() => {}); this.worker = null; }
@@ -98,7 +142,15 @@ export class Learner {
     this.lag.reset();
     const want = this.o.mode === 'always' || (this.o.mode === 'idle' && !this.o.busy() && calm);
     const on = want && this.gameTimes.length < perHour;
-    if (on !== this.running) { this.running = on; }
+    if (on !== this.running) { this.running = on; this.health.lastActivity = Date.now(); }
+    // Watchdog: a running worker that hasn't finished anything in 20 minutes is stuck: replace it.
+    if (this.worker && this.running && Date.now() - this.health.lastActivity > 20 * 60_000) {
+      this.noteError('worker stopped reporting (stuck): restarting it');
+      const w = this.worker;
+      this.worker = null;
+      void w.terminate().catch(() => {});
+      this.scheduleRespawn();
+    }
     // Unlimited: the next game starts right after the last (a short breather to stay polite);
     // with a limit, games are spaced out evenly over the hour.
     this.post({ t: 'run', on, restMs: Number.isFinite(perHour) ? Math.max(2000, 3600_000 / perHour - 4000) : 200 });
@@ -283,7 +335,15 @@ export class Learner {
     }
     return {
       mode: this.o.mode,
-      selfPlayRunning: this.running,
+      selfPlayRunning: this.running && !!this.worker,
+      worker: {
+        alive: !!this.worker,
+        restarts: this.health.restarts,
+        lastError: this.health.lastError,
+        lastErrorAt: this.health.lastErrorAt,
+        lastActivity: new Date(this.health.lastActivity),
+        memoryMB: Math.round(process.memoryUsage().rss / 1e6),
+      },
       selfPlayGames: s.selfPlayGames,
       realGames: s.realGames,
       gamesLastHour: this.gameTimes.length,
