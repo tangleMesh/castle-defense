@@ -28,8 +28,8 @@ export type FromWorker =
   | { t: 'game'; result: SelfPlayResult }
   /** A game or training step failed (the worker carries on with the next game). */
   | { t: 'error'; message: string }
-  /** A benchmark game: the learning Auto bot (skill 1, Hard strength) vs the fixed original Hard bot. */
-  | { t: 'bench'; learnedWon: boolean; faction: FactionId }
+  /** A benchmark game: the learning Auto bot at the preset's skill vs the fixed original preset (Hard or Brutal). */
+  | { t: 'bench'; vs: BenchLevel; learnedWon: boolean; faction: FactionId }
   | { t: 'model'; kind: ModelKind; model: MlpJson; valLoss: number; championLoss: number | null; samples: number; accuracy: number };
 
 try { setPriority(19); } catch { /* not permitted: still throttled by the main thread */ }
@@ -153,15 +153,15 @@ async function playGame(): Promise<SelfPlayResult | null> {
  * against the original Hard bot, which never learns, both on the same faction so only the play
  * differs. Its win rate over time shows how much the learning has improved the bots.
  */
-async function playBenchmark(): Promise<{ learnedWon: boolean; faction: FactionId } | null> {
+async function playBenchmark(vs: BenchLevel): Promise<{ vs: BenchLevel; learnedWon: boolean; faction: FactionId } | null> {
   const faction = FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)];
   const learnedTeam = Math.random() < 0.5 ? 0 : 1;
   const sim = Sim.create({
     countdownTicks: 0, bestOf: 1, seed: (Math.random() * 2 ** 32) >>> 0,
-    players: [0, 1].map((t) => ({ userId: makeBotId(t === learnedTeam ? 'auto' : 'hard', `bm${t}`), name: `bm${t}`, team: t as 0 | 1, faction })),
+    players: [0, 1].map((t) => ({ userId: makeBotId(t === learnedTeam ? 'auto' : vs, `bm${t}`), name: `bm${t}`, team: t as 0 | 1, faction })),
   });
   const seed = (Math.random() * 2 ** 31) >>> 0;
-  const ais = [0, 1].map((t) => (t === learnedTeam ? new AiPlayer(t, 'auto', seed + t, undefined, { skill: 1 }) : new AiPlayer(t, 'hard', seed + t)));
+  const ais = [0, 1].map((t) => (t === learnedTeam ? new AiPlayer(t, 'auto', seed + t, undefined, { skill: BENCH_SKILL[vs] }) : new AiPlayer(t, vs, seed + t)));
   const limit = 25 * 60 * TICK_RATE;
   while (sim.state.phase === 'playing' && sim.state.tick < limit) {
     if (sim.state.tick % 400 === 0) {
@@ -174,10 +174,13 @@ async function playBenchmark(): Promise<{ learnedWon: boolean; faction: FactionI
     sim.step(cmds);
   }
   const winner = sim.state.rounds.at(-1)?.winner ?? (sim.castle(0)!.hp >= sim.castle(1)!.hp ? 0 : 1);
-  return { learnedWon: winner === learnedTeam, faction };
+  return { vs, learnedWon: winner === learnedTeam, faction };
 }
 
 let gamesPlayed = 0;
+export type BenchLevel = 'hard' | 'brutal';
+/** The preset skill each benchmark opponent stands for (Hard = 1, Brutal = 1.2). */
+const BENCH_SKILL: Record<BenchLevel, number> = { hard: 1, brutal: 1.2 };
 
 // One failed game (or training step) must never end the learning: report it and carry on.
 const report = (e: unknown) => parentPort!.postMessage({ t: 'error', message: e instanceof Error ? `${e.message} ${e.stack?.split('\n')[1]?.trim() ?? ''}` : String(e) } satisfies FromWorker);
@@ -189,7 +192,8 @@ void (async () => {
     try {
       // Every 5th game is a benchmark game (not used for training).
       if (++gamesPlayed % 5 === 0) {
-        const bench = await playBenchmark();
+        // Alternating: Hard (does learning help at equal skill?) and Brutal (the top end).
+        const bench = await playBenchmark(gamesPlayed % 10 === 0 ? 'brutal' : 'hard');
         if (bench) parentPort!.postMessage({ t: 'bench', ...bench } satisfies FromWorker);
       } else {
         const result = await playGame();

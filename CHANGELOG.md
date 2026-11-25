@@ -7,6 +7,11 @@ Castle Defense versions look like `0.21.0+2`, shown in the lower-right corner of
 
 So `0.21.0+2 → 0.21.0+3` is a pure balance change, and `0.21.0+3 → 0.22.0+3` is a game change with the same balance. Balance-only releases have headings like `## 0.21.0+3 · balance`.
 
+## 0.59.0
+
+- **Second benchmark, against Brutal:** besides the Hard test, the learner now also plays the learning Auto bot at Brutal's skill (1.2) against the original Brutal bot, on the same faction. Brutal is Hard's brain with faster reactions and no cheats. `/api/learner` → `strength.vsOriginalBrutal` shows the win rate, recent and total games, and the trend, and the summary names both rates.
+- Benchmark games now alternate between Hard and Brutal. One game in five is still a benchmark, so each opponent gets one in ten, and the Hard trend gets a new point half as often as before.
+
 ## 0.58.3
 
 - **Idle mode learns again:** `LEARNER=idle` also waited for a low load average. In a container, that is the whole host's load, so on the shared Mac mini idle mode never played a game. Idle mode now waits only until no match is running and the server's event loop is calm. The worker still runs at the lowest CPU priority, within the container's CPU limit.

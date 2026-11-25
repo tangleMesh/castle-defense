@@ -84,7 +84,7 @@ export class Learner {
     w.on('message', (m: FromWorker) => {
       this.health.lastActivity = Date.now();
       if (m.t === 'game') this.onSelfPlay(m.result);
-      else if (m.t === 'bench') this.onBenchmark(m.learnedWon);
+      else if (m.t === 'bench') this.onBenchmark(m.vs, m.learnedWon);
       else if (m.t === 'model') { this.state.modelAccuracy[m.kind] = m.accuracy; this.onModel(m.kind, m.model, m.valLoss, m.championLoss, m.samples); }
       else if (m.t === 'error') this.noteError(`game error: ${m.message}`);
     });
@@ -202,9 +202,9 @@ export class Learner {
 
   private lastModel: { kind: ModelKind; valLoss: number; championLoss: number | null; samples: number; at: Date } | null = null;
 
-  /** A benchmark game finished (learning bot vs the fixed Hard bot). */
-  private onBenchmark(learnedWon: boolean) {
-    const b = this.state.benchmark;
+  /** A benchmark game finished (learning bot vs the fixed Hard or Brutal bot). */
+  private onBenchmark(vs: 'hard' | 'brutal', learnedWon: boolean) {
+    const b = vs === 'brutal' ? this.state.benchmarkBrutal : this.state.benchmark;
     b.recent = [b.recent[0] * 0.995 + (learnedWon ? 1 : 0), b.recent[1] * 0.995 + 1];
     b.total = [b.total[0] + (learnedWon ? 1 : 0), b.total[1] + 1];
     // A point for the trend every 50 benchmark games.
@@ -304,16 +304,17 @@ export class Learner {
   private strength() {
     const s = this.state, b = s.benchmark, h = s.vsHumans;
     const rate = b.recent[1] ? round2(b.recent[0] / b.recent[1]) : null;
+    const br = s.benchmarkBrutal, brutalRate = br.recent[1] ? round2(br.recent[0] / br.recent[1]) : null;
     const curve = curveFromState(s);
+    const bench = (x: typeof b, explain: string) => ({
+      explain, winRate: x.recent[1] ? round2(x.recent[0] / x.recent[1]) : null, recentGames: Math.round(x.recent[1]), totalGames: x.total[1],
+      allTimeWinRate: x.total[1] ? round2(x.total[0] / x.total[1]) : null, trend: x.history.slice(-20),
+    });
     return {
       summary: rate === null ? 'No benchmark games yet.'
-        : `The learning bot wins ${Math.round(rate * 100)}% against the original Hard bot (50% = no better). Strongest bot plays at ~${Math.round(eloForSkill(MAX_SKILL, curve))} Elo, Hard-level at ~${Math.round(eloForSkill(1, curve))}.`,
-      vsOriginalHard: {
-        explain: 'Learning Auto bot (skill 1 = Hard strength, with plans, experience and models) vs the original Hard bot that never learns, same faction. 50% = equal; above = learning helped.',
-        winRate: rate, recentGames: Math.round(b.recent[1]), totalGames: b.total[1],
-        allTimeWinRate: b.total[1] ? round2(b.total[0] / b.total[1]) : null,
-        trend: b.history.slice(-20),
-      },
+        : `The learning bot wins ${Math.round(rate * 100)}% against the original Hard bot${brutalRate === null ? '' : ` and ${Math.round(brutalRate * 100)}% against the original Brutal bot`} (50% = no better). Strongest bot plays at ~${Math.round(eloForSkill(MAX_SKILL, curve))} Elo, Hard-level at ~${Math.round(eloForSkill(1, curve))}.`,
+      vsOriginalHard: bench(b, 'Learning Auto bot (skill 1 = Hard strength, with plans, experience and models) vs the original Hard bot that never learns, same faction. 50% = equal; above = learning helped.'),
+      vsOriginalBrutal: bench(br, 'The same at the top end: learning Auto bot at skill 1.2 (= Brutal strength) vs the original Brutal bot (Hard\'s brain with faster reactions, no cheats), same faction.'),
       eloScale: {
         explain: 'What Elo bots really play at, calibrated from results (real matches count most).',
         strongestBot: Math.round(eloForSkill(MAX_SKILL, curve)),

@@ -30,7 +30,9 @@ export interface LearnedState {
    * Benchmark: the learning Auto bot (skill 1) vs the fixed original Hard bot, same faction.
    * `recent` forgets slowly (≈ the last 200 games), `total` counts everything.
    */
-  benchmark: { recent: [number, number]; total: [number, number]; history: Array<{ at: string; games: number; winRate: number }> };
+  benchmark: Benchmark;
+  /** The same at the top end: the learning Auto bot at Brutal's skill (1.2) vs the fixed original Brutal bot. */
+  benchmarkBrutal: Benchmark;
   /** Real matches of bots against humans: bot wins, games, and the wins Elo expected. */
   vsHumans: { wins: number; games: number; expected: number };
   /** Share of held-out samples the live models predict right. */
@@ -39,6 +41,9 @@ export interface LearnedState {
   history: Array<{ version: number; at: string; models: { value?: MlpJson; policy?: MlpJson } }>;
 }
 
+/** Benchmark results: `recent` forgets slowly (≈ the last 200 games), `total` counts everything. */
+export interface Benchmark { recent: [number, number]; total: [number, number]; history: Array<{ at: string; games: number; winRate: number }> }
+
 /** Skill levels whose strength is measured (0, 0.1, … 1.5). */
 export const SKILL_BUCKETS = Array.from({ length: Math.round(MAX_SKILL / 0.1) + 1 }, (_, i) => i / 10);
 
@@ -46,7 +51,7 @@ export function freshLearnedState(): LearnedState {
   return {
     version: 1, selfPlayGames: 0, realGames: 0, strategy: {}, skillElo: SKILL_BUCKETS.map((s) => Math.round(eloForSkill(s, DEFAULT_SKILL_CURVE))),
     models: {}, modelVersion: 0, modelsEnabled: true, modelEdge: [0, 0], history: [],
-    benchmark: { recent: [0, 0], total: [0, 0], history: [] }, vsHumans: { wins: 0, games: 0, expected: 0 }, modelAccuracy: {},
+    benchmark: { recent: [0, 0], total: [0, 0], history: [] }, benchmarkBrutal: { recent: [0, 0], total: [0, 0], history: [] }, vsHumans: { wins: 0, games: 0, expected: 0 }, modelAccuracy: {},
   };
 }
 
